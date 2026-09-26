@@ -32,11 +32,10 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`standard/RULES.md`](standard/RULES.md) | **فهرست مرجع همه‌ی قواعد** با شناسه، سطح، Tier و مکانیزم اجرا | FA |
 | [`standard/`](standard/) | توضیح قواعد: مدل پلن رایگان، شاخه/PR، CI و دقیقه‌ها، AI، استقرار، KavoshUI … | FA |
 | [`templates/`](templates/) | فایل‌های آماده: `common/` + `tier/T0..T2` + `runtime/server` | EN |
-| [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با `@v1` فرا می‌خوانند | — |
+| [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با tag دقیق `@vX.Y.Z` فرا می‌خوانند | — |
 | [`scripts/`](scripts/) | scaffold، راه‌اندازی ریپو، نصب محافظ‌های عامل، ممیزی، گزارش پرتفوی | — |
 | [`docs/decisions/`](docs/decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
-| [`audits/`](audits/) | ممیزی‌های تاریخ‌دار (KavoshERP 2026-09-26) | FA |
-| [`adoption/`](adoption/) | راهنمای پذیرش پروژه‌ی موجود + برنامه‌ی KavoshERP | FA |
+| [`adoption/`](adoption/) | راهنمای عمومی پذیرش پروژه‌های موجود؛ بدون داده‌ی اختصاصی پروژه‌های private | FA |
 
 ## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
@@ -50,7 +49,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | **M — نگهبان main** (کشف) | بعد از هر push به main | `kavosh-main-guard` — push مستقیم یا ادغام PR قرمز = Issue تخلف |
 | **H — سلامت هفتگی** (اندازه‌گیری) | هر شنبه | `kavosh-health` — شاخه‌ها، دقیقه‌ها، Issueها، CI |
 | **S — تنظیمات رایگان** | یک‌بار | squash-only، حذف خودکار شاخه، برچسب‌ها |
-| **O — ناظر پرتفوی** | روزانه، از بیرون | `kavosh-portfolio` در KavoshStart — محافظ حذف یا خنثی‌شده، M/H متوقف، انحراف تنظیمات |
+| **O — ناظر پرتفوی** | روزانه، از بیرون | `kavosh-portfolio` در KavoshStart فقط برای repoهای public؛ privateها control-plane خصوصی جدا دارند |
 
 مهم‌ترین قاعده‌ی انسانی: **«PR قرمز را ادغام نکن»** (PR-7) — نقضش را لایه‌ی M بعداً ثبت می‌کند. چند MUST دیگر فقط با بازبینی انسانی اجرا می‌شوند و در انتهای [RULES.md](standard/RULES.md) صریحاً فهرست شده‌اند؛ ادعای «اجرای کامل ماشینی» نداریم.
 
@@ -58,6 +57,6 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 
 KavoshStart خودش SemVer دارد و فقط از طریق دروازه‌ی REL-5 منتشر می‌شود. پروژه‌ها workflowها را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، همان مقدار `kavosh.project.json` → `kavoshStart`؛ Dependabot ارتقا را به‌صورت PR پیشنهاد می‌کند (ADR-0006). tag قدیمی `v1` و نسخه‌ی `v1.0.0` (pre-release) برای استفاده نیستند.
 
-## پیش‌نیاز یک‌باره
+## دسترسی workflowهای مشترک
 
-Settings → Actions → General → Access → **«Accessible from repositories owned by the user 'bagdeli'»** — تا پروژه‌های private بتوانند workflowهای این ریپو را فرا بخوانند.
+KavoshStart عمومی است؛ مصرف‌کننده‌ها workflowهای reusable را با tag دقیق `@vX.Y.Z` فرا می‌خوانند. هیچ تنظیم Access خصوصی برای خود KavoshStart لازم نیست.
