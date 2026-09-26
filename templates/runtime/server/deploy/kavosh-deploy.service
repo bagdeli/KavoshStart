@@ -6,4 +6,5 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/kavosh/{{SLUG}}/deploy.env
-ExecStart=/opt/kavosh/{{SLUG}}/deploy/kavosh-deploy.sh
+# Installed once from the repository (runbook step 5); updated deliberately, never by the running deploy.
+ExecStart=/usr/local/bin/kavosh-deploy-{{SLUG}}
