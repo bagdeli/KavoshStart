@@ -33,6 +33,8 @@
    [M] kavosh-main-guard ── بعد از هر push: commit بدون PR؟ PR با check قرمز؟ → Issue «kavosh:violation»
           │
    [H] kavosh-health (هفتگی) ── شاخه‌ها، دقیقه‌ها، Issueها، CI، releaseها → Issue «Repository health»
+
+   [O] kavosh-portfolio (روزانه، در KavoshStart) ── از بیرون: محافظ‌ها حذف/خنثی شده‌اند؟ M و H اجرا می‌شوند؟ → Issue «kavosh:portfolio»
 ```
 
 - **لایه‌ی A** جلوی ۹۰٪ خطاهای عامل را پیش از رسیدن به GitHub می‌گیرد. قابل دور زدن است (مثلاً `--no-verify`)، برای همین آن را هم در deny گذاشته‌ایم و لایه‌ی M پشتیبان است.
@@ -40,10 +42,21 @@
 - **لایه‌ی M** چیزی را برنمی‌گرداند (revert خودکار روی `main` خودش خطرناک است)، بلکه **هیچ تخلفی را بی‌صدا نمی‌گذارد**: Issue تخلف باز می‌شود و تا رفع (معمولاً یک PR اصلاحی یا revert) باز می‌ماند.
 - **قاعده‌ی انسانی واحد:** «PR قرمز را ادغام نکن» (PR-7). دکمه‌ی Merge در دسترس است؛ این تنها جایی است که به انضباط شما تکیه می‌کنیم — و اگر نقض شود، لایه‌ی M آن را ثبت می‌کند.
 
+## لایه‌ی O — ناظر پرتفوی (بیرون از ریپوی محصول)
+هیچ ریپویی نمی‌تواند حذف شدن محافظ خودش را به‌طور قابل‌اتکا گزارش کند: PRی که `kavosh.yml` را حذف یا خنثی کند، همان checkهایی را حذف می‌کند که باید اعتراض می‌کردند. پس یک ناظر **بیرون** از ریپو لازم است:
+
+- `scripts/portfolio_guard.py` (مستقل، فقط stdlib + `gh`) و workflow روزانه‌ی `kavosh-portfolio` در KavoshStart.
+- برای هر ریپوی دارای مانیفست بررسی می‌کند: وجود و اتصال `kavosh.yml`/`ci.yml`/`release.yml` (همان منطق لایه‌ی P)، tag دقیق برابر مانیفست، `enforce: true`، فایل‌های محافظ، تنظیمات merge و توکن، اجرای واقعی main-guard روی head، تازگی Issue سلامت، Issueهای تخلف باز، جمع بودجه‌ی دقیقه‌ها، و مصرف‌کننده‌های tag منجمد `v1`.
+- نتیجه در **یک** Issue با برچسب `kavosh:portfolio` در KavoshStart؛ یافته = job قرمز.
+- پیش‌نیاز: secret `KAVOSH_PORTFOLIO_TOKEN` — fine-grained PAT فقط‌خواندنی روی همه‌ی ریپوهای bagdeli (Contents، Metadata، Actions، Issues، Administration: read). ساختن آن فقط کار مالک است.
+
+**مرز اعتماد (صادقانه):** لایه‌ی O به همین ریپو، GitHub Actions و Billing حساب وابسته است. اگر خودش از کار بیفتد (مثلاً قفل Billing، حذف secret، غیرفعال شدن schedule)، **فقط انسان** متوجه می‌شود: Issue پرتفوی دیگر به‌روز نمی‌شود. همان script بدون تغییر می‌تواند روی یک ماشین مستقل با systemd timer اجرا شود تا این وابستگی کم شود.
+
 ## هزینه‌ی دقیقه‌ی خود KavoshStart
 - `kavosh-governance`: یک job، حدود 1 دقیقه به ازای هر رویداد PR (opened/synchronize/ready/edited عنوان-بدنه).
 - `kavosh-main-guard`: یک job، حدود 1 دقیقه به ازای هر ادغام.
 - `kavosh-health`: هفته‌ای یک job، حدود 1–2 دقیقه.
+- `kavosh-portfolio` (فقط در KavoshStart): روزی یک job، حدود 1–2 دقیقه (≈ 30–60 دقیقه در ماه).
 - جمع برای پروژه‌ای با 30 PR در ماه: حدود 30–60 دقیقه. در بودجه‌ی Tier حساب شده است.
 
 ## اگر روزی پلن پولی شد یا ریپو public شد

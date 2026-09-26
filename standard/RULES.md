@@ -6,7 +6,7 @@
 **سطح:** `MUST` = الزامی؛ اجرای آن یا با ماشین است (لایه‌های A، P، M، G، H، S، O) یا — اگر فقط لایه‌ی `R` دارد — صراحتاً با بازبینی انسانی (فهرست پایین همین فایل) · `SHOULD` = هشدار · `MAY` = اختیاری
 **Tier:** `All` یا فهرست رده‌ها
 **لایه‌ی اجرا** (توضیح در [01-free-plan-operating-model.md](01-free-plan-operating-model.md)):
-`A` محافظ عامل (قبل از push) · `P` بررسی PR · `M` نگهبان main · `G` دروازه‌ی انتشار · `H` گزارش سلامت هفتگی · `S` تنظیم ریپو · `R` بازبینی انسانی
+`A` محافظ عامل (قبل از push) · `P` بررسی PR · `M` نگهبان main · `G` دروازه‌ی انتشار · `H` گزارش سلامت هفتگی · `S` تنظیم ریپو · `O` ناظر پرتفوی (بیرون از ریپو) · `R` بازبینی انسانی
 
 ## SRC — منبع حقیقت
 | ID | قاعده | سطح | Tier | لایه |
@@ -36,10 +36,11 @@
 | BR-2 | نام شاخه: `<type>/<issue>-<slug>`؛ type ∈ feat fix docs refactor test ci chore perf build hotfix revert. | MUST | All | P |
 | BR-3 | عمر شاخه ≤ `limits.branchMaxAgeDays` (پیش‌فرض 3)؛ بیش از 7 روز = هشدار. | SHOULD | All | H |
 | BR-4 | عمق PR پشته‌ای حداکثر 2؛ PR فقط به `main` یا به شاخه‌ی یک PR که خودش به `main` می‌رود. | MUST | All | P |
-| BR-5 | شاخه پس از ادغام خودکار حذف می‌شود. | MUST | All | S |
+| BR-5 | شاخه پس از ادغام خودکار حذف می‌شود. | MUST | All | S, O |
 | BR-6 | push مستقیم به `main` ممنوع (استثنا: اولین scaffold ریپوی خالی). | MUST | All | A, M |
 | BR-7 | force-push به هر شاخه‌ی مشترک و هر گونه بازنویسی تاریخچه‌ی `main` ممنوع. | MUST | All | A, M |
 | BR-8 | هیچ شاخه‌ای بیش از 50 commit جلوتر از `main` نیست («حقیقت پنهان»). | MUST | All | H |
+| BR-9 | لایه‌های M و H در هر ریپوی پذیرفته‌شده واقعاً اجرا می‌شوند (check `main-guard` روی head و Issue سلامت تازه‌تر از 8 روز). | MUST | All | O |
 
 ## PR — Pull Request
 | ID | قاعده | سطح | Tier | لایه |
@@ -48,7 +49,7 @@
 | PR-2 | عنوان PR یک Conventional Commit است (`type(scope): summary`). | MUST | All | P |
 | PR-3 | اندازه ≤ `limits.prMaxLines` (پیش‌فرض 400) خط؛ سقف سخت 2.5× آن و 50 فایل؛ استثنا با برچسب `size:exception` + دلیل. | MUST | All | P |
 | PR-4 | بخش `## AI involvement` در بدنه‌ی PR. | MUST | All | P |
-| PR-5 | فقط Squash merge؛ پیام commit = عنوان PR. | MUST | All | S |
+| PR-5 | فقط Squash merge؛ پیام commit = عنوان PR. | MUST | All | S, O |
 | PR-6 | فقط مالک (انسان) ادغام می‌کند. | MUST | All | A, R |
 | PR-7 | **PR با check قرمز `kavosh` یا `required` ادغام نمی‌شود.** | MUST | All | R, M |
 | PR-8 | تعداد PRهای باز غیر-Draft ≤ `limits.maxOpenReadyPRs`. | SHOULD | All | P, H |
@@ -69,7 +70,7 @@
 |---|---|---|---|---|
 | CI-1 | همه‌ی jobها روی runner میزبانی‌شده‌ی GitHub (`ubuntu-latest`). | MUST | All | P |
 | CI-2 | runner خودمیزبان فقط برای job استقرار، فقط T2، فقط با ADR، فقط ephemeral و مخصوص یک ریپو (`ci.runner = self-hosted-deploy-only`). | MUST | T2 | P, R |
-| CI-3 | هر پروژه بودجه‌ی دقیقه‌ی ماهانه دارد؛ جمع بودجه‌ها ≤ 1600. | MUST | All | H |
+| CI-3 | هر پروژه بودجه‌ی دقیقه‌ی ماهانه دارد؛ جمع بودجه‌ها ≤ 1600. | MUST | All | H, O |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
 | CI-5 | jobهای سنگین (rehearsal، e2e کامل، migration کامل) فقط روی `main`، tag، یا برچسب `ci:full`. | MUST | T1, T2 | R |
 | CI-6 | CI روی PR Draft اجرا نمی‌شود؛ عامل قبل از push `make check` را محلی اجرا می‌کند و ترجیحاً یک‌بار push می‌کند. | MUST | All | A, R |
