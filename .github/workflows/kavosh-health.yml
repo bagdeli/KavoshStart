@@ -146,6 +146,15 @@ jobs:
               return total, len(runs)
 
 
+          def minute_budget_level(used, budget):
+              """CI-3 status for hosted minutes: ok below 80%, warn through 100%, fail above budget."""
+              if budget is None:
+                  return "warn", None
+              used_n = int(str(used).lstrip("~"))
+              pct = round(100 * used_n / budget) if budget else (0 if used_n == 0 else 101)
+              return (True if pct < 80 else "warn" if pct <= 100 else False), pct
+
+
           def main():
               repo = os.environ["REPO"]
               rows = []
@@ -219,13 +228,12 @@ jobs:
 
               # Minutes
               used, nruns = monthly_minutes(repo)
-              used_n = int(str(used).lstrip("~"))
+              level, pct = minute_budget_level(used, budget)
               if budget is not None:
-                  pct = round(100 * used_n / budget) if budget else 100
-                  add(True if pct < 80 else "warn" if pct <= 100 else False, "CI-3", "Minutes this month (estimate)",
+                  add(level, "CI-3", "Minutes this month (estimate)",
                       f"{used} of {budget} ({pct}%, {nruns} runs)", "≤ budget")
               else:
-                  add("warn", "CI-3", "Minutes this month (estimate)", f"{used} ({nruns} runs), no budget in manifest", "set ci.monthlyMinutesBudget")
+                  add(level, "CI-3", "Minutes this month (estimate)", f"{used} ({nruns} runs), no budget in manifest", "set ci.monthlyMinutesBudget")
 
               # Releases and tags
               rel = gh(f"repos/{repo}/releases?per_page=1") or []
