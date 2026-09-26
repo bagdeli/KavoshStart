@@ -2,10 +2,10 @@
 
 - Status: accepted
 - Deciders: bagdeli
-- Evidence: audits/KavoshERP-2026-09-26.md (A1–A3, F3, F4)
+- Evidence: repeated drift observed when live status was copied into many Markdown files.
 
 ## Context and problem
-KavoshERP kept live status (current head, schema, "active authority" issue numbers) in 16+ Markdown files and in
+A large project kept live status (current head, schema, "active authority" issue numbers) in many Markdown files and in
 100-comment handoff issues. Every commit made part of it stale; agents starting on `main` were routed to a closed issue.
 
 ## Considered options
