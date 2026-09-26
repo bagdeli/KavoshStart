@@ -16,7 +16,7 @@ templates/labels.json, rulesets/ settings applied by scripts/bootstrap-repo.sh (
 scripts/portfolio_guard.py Layer O (daily via .github/workflows/kavosh-portfolio.yml; reuses layer P checks)
 tooling/src/*.py         source of the reusable workflows' logic
 tooling/templates/*.yml  workflow skeletons; tooling/build_workflows.py writes .github/workflows/kavosh-*.yml
-decisions/ audits/ adoption/  ADRs, dated audits, adoption plans
+docs/decisions/ audits/ adoption/  ADRs (same place as in product repos), dated audits, adoption plans
 ```
 
 ## Commands

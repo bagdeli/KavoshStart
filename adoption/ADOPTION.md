@@ -21,7 +21,7 @@ git -C <repo>-backup.git bundle create ../<repo>-all-refs.bundle --all
 ```
 
 ## ترتیب پیشنهادی ریپوها
-1. **KavoshStart** — خودش را از روز اول رعایت می‌کند.
+1. **KavoshStart** — خودش را رعایت می‌کند و همان checkها روی خودش اجرا می‌شوند (governance، main-guard، health، release gate، Layer O). شاهد: گزارش PASS در PRها و ردیف KavoshStart در Issue `kavosh:portfolio`.
 2. **KavoshUI** (T1، کتابخانه) — کوچک، فقط 2 شاخه؛ مشکل اصلی CI خودمیزبان (173 شکست از 200) و حجم اسناد. انتقال CI به hosted و پاک‌سازی README/manifestها.
 3. **KavoshERP** (T2) — بزرگ‌ترین کار؛ برنامه‌ی زیر.
 4. بقیه (KavoshSMS، KavoshWebManager، KavoshLicense، …) هنگام کار بعدی روی هر کدام.
