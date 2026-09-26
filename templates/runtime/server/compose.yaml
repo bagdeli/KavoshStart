@@ -1,0 +1,13 @@
+# TODO(kavosh): services of {{NAME}}. KAVOSH_VERSION and KAVOSH_SHA are set by deploy/kavosh-deploy.sh.
+services:
+  app:
+    build: .
+    image: kavosh/{{SLUG}}:${KAVOSH_VERSION:-dev}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      KAVOSH_VERSION: ${KAVOSH_VERSION:-dev}
+      KAVOSH_SHA: ${KAVOSH_SHA:-unknown}
+    ports:
+      - "127.0.0.1:8080:8080"
+    # The app must serve GET /version → {"version": "$KAVOSH_VERSION", "sha": "$KAVOSH_SHA"} (DEP-3)

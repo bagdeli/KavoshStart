@@ -1,0 +1,76 @@
+# KavoshStart main guard (layer M). Embedded into .github/workflows/kavosh-main-guard.yml.
+# Runs on every push to the default branch. It never rewrites history; it records violations in ONE
+# open issue labelled `kavosh:violation` so nothing is silently lost (BR-6, BR-7, PR-7).
+import json
+import os
+import subprocess
+from datetime import datetime, timezone
+
+SCAFFOLD_PREFIX = "chore: scaffold from KavoshStart"
+GOVERNANCE_CHECK_HINTS = ("governance", "required")
+
+
+def gh(*args, check=True):
+    r = subprocess.run(["gh", *args], capture_output=True, text=True, encoding="utf-8")
+    if check and r.returncode != 0:
+        raise RuntimeError(r.stderr)
+    return json.loads(r.stdout) if r.stdout.strip() else None
+
+
+def main():
+    repo = os.environ["REPO"]
+    event = json.load(open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8"))
+    violations = []
+
+    if event.get("forced"):
+        violations.append(f"**BR-7 force-push** to `{event['ref']}` by @{event.get('pusher', {}).get('name', '?')} "
+                          f"(before `{event.get('before', '')[:7]}` → after `{event.get('after', '')[:7]}`)")
+
+    commits = event.get("commits") or []
+    if len(commits) >= 20:
+        violations.append(f"**BR-6** push contained ≥ 20 commits — only the first 20 were inspected; "
+                          f"a PR squash-merge always produces exactly one commit")
+    for c in commits[:20]:
+        sha, msg = c["id"], c["message"].splitlines()[0]
+        pulls = gh("api", f"repos/{repo}/commits/{sha}/pulls") or []
+        merged = [p for p in pulls if p.get("merged_at")]
+        if not merged:
+            parents = gh("api", f"repos/{repo}/commits/{sha}", "--jq", ".parents | length", check=False)
+            if msg.startswith(SCAFFOLD_PREFIX) and parents == 0:
+                continue  # initial scaffold of an empty repo is the single allowed direct commit
+            violations.append(f"**BR-6 direct push** `{sha[:7]}` “{msg}” — no merged pull request")
+            continue
+        pr = merged[0]
+        runs = gh("api", f"repos/{repo}/commits/{pr['head']['sha']}/check-runs?per_page=100") or {}
+        bad = [r["name"] for r in runs.get("check_runs", [])
+               if any(h in r["name"].lower() for h in GOVERNANCE_CHECK_HINTS)
+               and r.get("conclusion") not in ("success", "skipped", "neutral")]
+        if bad:
+            violations.append(f"**PR-7 merged while red** #{pr['number']} “{pr['title']}” — failing/unfinished: {', '.join(bad)}")
+
+    print("\n".join(violations) or "no violations")
+    if not violations:
+        return
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    entry = f"### {now} — push `{event.get('after', '')[:7]}`\n" + "\n".join(f"- {v}" for v in violations) + "\n"
+    gh("label", "create", "kavosh:violation", "-R", repo, "--color", "B60205",
+       "--description", "KavoshStart rule violation detected on main", "--force", check=False)
+    existing = gh("issue", "list", "-R", repo, "--label", "kavosh:violation", "--state", "open", "--json", "number,body") or []
+    if existing:
+        num, body = existing[0]["number"], existing[0]["body"] or ""
+        subprocess.run(["gh", "issue", "edit", str(num), "-R", repo, "--body", body + "\n" + entry], check=True)
+    else:
+        body = ("Violations of KavoshStart rules detected on `main`. Fix each with a PR (revert or correction), "
+                "tick it, and close this issue when all are resolved.\n"
+                "Rules: https://github.com/bagdeli/KavoshStart/blob/main/standard/RULES.md\n\n" + entry)
+        subprocess.run(["gh", "issue", "create", "-R", repo, "--title", "KavoshStart: rule violations on main",
+                        "--label", "kavosh:violation", "--body", body], check=True)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as fh:
+            fh.write("## KavoshStart main guard\n\n" + entry)
+
+
+if __name__ == "__main__":
+    main()

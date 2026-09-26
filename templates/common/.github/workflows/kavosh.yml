@@ -1,0 +1,36 @@
+# KavoshStart governance for this repository. Calls the shared, versioned workflows of bagdeli/KavoshStart.
+# Checks: on PRs "kavosh / governance" · on main "main-guard / main-guard" · weekly "health / health".
+name: kavosh
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "30 4 * * 6"   # Saturday 08:00 Tehran
+  workflow_dispatch:
+
+concurrency:
+  group: kavosh-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: read
+  actions: read
+
+jobs:
+  kavosh:
+    if: github.event_name == 'pull_request'
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v1
+    with:
+      enforce: true   # ADOPT mode: start with false, switch to true once the audit is clean
+  main-guard:
+    if: github.event_name == 'push'
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-main-guard.yml@v1
+  health:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-health.yml@v1

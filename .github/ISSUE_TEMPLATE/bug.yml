@@ -1,0 +1,42 @@
+name: Bug
+description: Something that worked, or should work, is broken.
+title: "fix: "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Actual vs expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and environment
+      placeholder: "v1.2.0 on test (from /version)"
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "P0 — data loss / security / users blocked"
+        - "P1 — major feature broken"
+        - "P2 — workaround exists"
+        - "P3 — cosmetic"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots (no secrets, credentials or personal data)
+      render: text

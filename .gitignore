@@ -1,0 +1,23 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# build / dependencies
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+coverage/
+
+# OS / editors
+.DS_Store
+.idea/
+
+# local agent state
+.claude/settings.local.json

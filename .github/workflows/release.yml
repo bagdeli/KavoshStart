@@ -1,0 +1,31 @@
+# Release PR → vX.Y.Z tag + GitHub Release; then move the major tag (v1) that product repos call.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      - if: steps.rp.outputs.release_created
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Move major tag
+        if: steps.rp.outputs.release_created
+        env:
+          TAG: ${{ steps.rp.outputs.tag_name }}
+          MAJOR: v${{ steps.rp.outputs.major }}
+        run: |
+          git tag -f "$MAJOR" "$TAG^{commit}"
+          git push -f origin "refs/tags/$MAJOR"
