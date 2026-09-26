@@ -2,7 +2,7 @@
 
 - Status: runner part superseded by [0008](0008-runner-by-visibility.md); pull-based deployment still accepted
 - Deciders: bagdeli
-- Evidence: KavoshERP 75 % cancelled runs in 7 days on one self-hosted runner; network/TLS registry issue; KavoshUI 173 failures in 200 runs, also self-hosted.
+- Evidence: anonymized private T2 project showed severe queue/cancellation pressure on one self-hosted runner; a public shared-library project also showed repeated self-hosted CI failures.
 
 ## Decision
 - All CI jobs run on `ubuntu-latest` (CI-1). Self-hosted only for a T2 deploy job with an ADR, ephemeral, repository-scoped (CI-2).
