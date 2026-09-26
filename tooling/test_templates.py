@@ -57,6 +57,21 @@ def main():
                 print(f"FAIL scaffold {combo}:\n{r.stdout}{r.stderr}")
                 failures += 1
                 continue
+            # REL-4/5/6: gated release in every repo, exact KavoshStart pins, package only for artifact runtimes
+            pin = EXAMPLE["kavoshStart"]
+            rel = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
+            kav = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
+            want_pkg = "true" if combo[1] in ("none", "desktop") else "false"
+            problems = []
+            if f"kavosh-release.yml@{pin}" not in rel or f"package: {want_pkg}" not in rel:
+                problems.append("REL-4/5 release.yml")
+            if kav.count(f"@{pin}") != 3 or "@v1\n" in kav + rel:
+                problems.append("REL-6 exact pins")
+            if want_pkg == "true" and "\npackage: " not in (repo / "Makefile").read_text(encoding="utf-8"):
+                problems.append("CI-8 make package target")
+            if problems:
+                print(f"FAIL release contract {combo}: {', '.join(problems)}")
+                failures += 1
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             (repo / "gov.py").write_text(gov, encoding="utf-8")
             env = dict(os.environ, REPO="bagdeli/Example", ENFORCE="true", GITHUB_EVENT_PATH="",
