@@ -78,11 +78,38 @@ class GovernanceFiles(unittest.TestCase):
     def test_DOC1_negative_oversized_markdown(self):
         self.assertTrue(fails_for("DOC-1", lambda d: (d / "big.md").write_text("a" * 70000, encoding="utf-8")))
 
-    def test_CI1_negative_self_hosted_runner(self):
+    def test_CI1_negative_private_repo_on_github_hosted(self):
+        def mutate(d):
+            f = d / ".github/workflows/ci.yml"
+            f.write_text(f.read_text(encoding="utf-8").replace("runs-on: [self-hosted, linux, x64, kavoshsms]", "runs-on: ubuntu-latest"), encoding="utf-8")
+        self.assertTrue(fails_for("CI-1", mutate))
+
+    def test_CI1_negative_private_caller_without_self_hosted_input(self):
+        def mutate(d):
+            f = d / ".github/workflows/kavosh.yml"
+            f.write_text(f.read_text(encoding="utf-8").replace('"self-hosted",', ""), encoding="utf-8")
+        self.assertTrue(fails_for("CI-1", mutate))
+
+    def test_CI1_positive_public_repo_on_github_hosted(self):
+        m = dict(EXAMPLE, visibility="public", tier="T2", ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})
+        self.assertEqual(fails_for("CI-1", manifest=m), [])
+
+    def test_CI1_negative_public_repo_on_self_hosted(self):
+        m = dict(EXAMPLE, visibility="public", ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})
         def mutate(d):
             f = d / ".github/workflows/ci.yml"
             f.write_text(f.read_text(encoding="utf-8").replace("runs-on: ubuntu-latest", "runs-on: [self-hosted, linux]"), encoding="utf-8")
-        self.assertTrue(fails_for("CI-1", mutate))
+        self.assertTrue(fails_for("CI-1", mutate, manifest=m))
+
+    def test_CI1_positive_input_definition_and_comments_are_not_runners(self):
+        """Regression: `runs-on:` as an input key followed by a description, and comments, are not runner values."""
+        text = ("      runs-on:\n"
+                "        description: private repos pass self-hosted labels\n"
+                "    runs-on: ubuntu-latest  # not self-hosted\n")
+        self.assertEqual(g.runs_on_values(text), ["", "ubuntu-latest"])
+
+    def test_CI1_negative_runner_does_not_match_visibility(self):
+        self.assertTrue(fails_for("CI-1", manifest=dict(EXAMPLE, ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})))
 
     def test_SEC3_negative_no_permissions(self):
         def mutate(d):
@@ -107,19 +134,16 @@ class Manifest(unittest.TestCase):
     def test_UI1_negative_ui_without_kavoshui_pin(self):
         self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "kavoshui": None})))
 
-    def test_CI2_positive_self_hosted_with_t2_and_adr(self):
-        m = dict(EXAMPLE, ci={"runner": "self-hosted-deploy-only", "runnerAdr": "docs/decisions/0002-runner.md",
-                               "monthlyMinutesBudget": 300})
-        adr = lambda d: (d / "docs/decisions/0002-runner.md").write_text("# runner", encoding="utf-8")  # noqa: E731
-        self.assertEqual(fails_for("CI-2", adr, manifest=m), [])
+    def test_CI2_positive_t2_with_two_repo_scoped_runners(self):
+        self.assertEqual(fails_for("CI-2"), [])  # example: T2, runners 2, labels incl. repo slug
 
-    def test_CI2_negative_self_hosted_without_adr(self):
-        m = dict(EXAMPLE, ci={"runner": "self-hosted-deploy-only", "monthlyMinutesBudget": 300})
+    def test_CI2_negative_t2_with_a_single_runner(self):
+        m = dict(EXAMPLE, ci=dict(EXAMPLE["ci"], runners=1))
         self.assertTrue(fails_for("CI-2", manifest=m))
 
 
-def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main", body="Closes #12", labels=()):
-    return {"repository": {"default_branch": "main"},
+def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main", body="Closes #12", labels=(), private=True):
+    return {"repository": {"default_branch": "main", "private": private},
             "pull_request": {"number": 7, "title": title, "body": body, "head": {"ref": head}, "base": {"ref": base},
                              "user": {"type": "User"}, "labels": [{"name": l} for l in labels]}}
 
@@ -135,12 +159,12 @@ def fake_gh(lines=100, parent_base=None):
     return gh
 
 
-def run_pr(**kw):
+def run_pr(visibility="private", **kw):
     gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base") if k in kw}
     g.results.clear()
     original, g.gh = g.gh, fake_gh(**gh_kw)
     try:
-        g.check_pr({"limits": {"prMaxLines": 400}}, pr_event(**kw), "o/r")
+        g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility}, pr_event(**kw), "o/r")
     finally:
         g.gh = original
     return {r[1]: r[0] for r in g.results}
@@ -164,6 +188,9 @@ class PullRequest(unittest.TestCase):
 
     def test_BR2_negative_branch_name(self):
         self.assertEqual(run_pr(head="agent/lccg-reconcile-20260925")["BR-2"], "fail")
+
+    def test_CI1_negative_repository_made_public_but_manifest_private(self):
+        self.assertEqual(run_pr(private=False).get("CI-1"), "fail")
 
     def test_BR4_negative_long_lived_base(self):
         self.assertEqual(run_pr(base="vnext/integration-20260918")["BR-4"], "fail")

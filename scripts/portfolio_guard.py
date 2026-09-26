@@ -117,6 +117,19 @@ def inspect_repo(api, repo, branch, private):
     if viol:
         findings.append(("PR-7", f"{len(viol)} open violation issue(s): " + ", ".join(f"#{i['number']}" for i in viol)))
 
+    actual = "private" if private else "public"
+    if m.get("visibility") and m["visibility"] != actual:
+        findings.append(("CI-1", f"repository is {actual} but manifest says {m['visibility']}"))
+    if actual == "private":
+        try:
+            runners = (api.get(f"repos/{repo}/actions/runners") or {}).get("runners", [])
+            online = [r for r in runners if r.get("status") == "online"]
+            need = 2 if m.get("tier") == "T2" else 1
+            if len(online) < need:
+                findings.append(("CI-2", f"{len(online)} online self-hosted runner(s) registered to the repository, need {need}"))
+        except PermissionError:
+            findings.append(("O", "cannot list self-hosted runners (token needs Administration: read)"))
+
     budget = m.get("ci", {}).get("monthlyMinutesBudget", 0) if private else 0
     return m, findings, {"adopted": True, "budget": budget, "tier": m.get("tier"), "pin": m.get("kavoshStart")}
 

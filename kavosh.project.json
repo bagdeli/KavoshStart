@@ -4,6 +4,7 @@
   "name": "KavoshStart",
   "repo": "bagdeli/KavoshStart",
   "summary": "Engineering standard, project intake, templates and reusable GitHub workflows for every Kavosh project built by humans and AI agents.",
+  "visibility": "public",
   "owner": "bagdeli",
   "tier": "T1",
   "runtime": "none",

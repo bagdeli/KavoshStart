@@ -2,25 +2,26 @@
 
 قواعد: CI-1…9
 
-## چرا runner میزبانی‌شده (hosted) و نه خودمیزبان
-| | GitHub-hosted | Self-hosted (روش قبلی) |
+## runner بر اساس visibility (CI-1، CI-2 — ADR-0008)
+| ریپو | runner | چرا |
 |---|---|---|
-| نگهداری | صفر | سرور، به‌روزرسانی، امنیت، صف |
-| شبکه | خارج از ایران → npm/PyPI/Docker Hub مستقیم در دسترس | mirror، DNS و TLS (Issue #94 KavoshERP) |
-| هم‌زمانی | چند job موازی | یک runner = صف و cancel (75٪ cancel در KavoshERP) |
-| امنیت | ماشین یک‌بارمصرف | ماشین ماندگار در شبکه‌ی داخلی |
-| هزینه در Free | از 2,000 دقیقه‌ی مشترک | دقیقه مصرف نمی‌کند (فعلاً) |
+| **private** | خودمیزبان، ثبت‌شده برای همان ریپو: `[self-hosted, linux, x64, <repo-slug>]` | روی این حساب، jobهای GitHub-hosted در ریپوهای private به‌خاطر قفل Billing اجرا نمی‌شوند؛ کار نباید به صورت‌حساب GitHub وابسته باشد |
+| **public** | GitHub-hosted (`ubuntu-latest`) | رایگان و نامحدود؛ runner خودمیزبان روی ریپوی public یعنی اجرای کد PRهای fork روی ماشین ما — ممنوع |
 
-تنها مزیت self-hosted مصرف‌نکردن دقیقه است؛ هزینه‌اش پایداری و امنیت بود. GitHub در دسامبر 2025 برای self-hosted هم کارمزد دقیقه‌ای اعلام کرد و سپس به تعویق انداخت — یعنی این مزیت هم تضمین‌شده نیست.
-**CI-2:** self-hosted فقط برای job استقرار در T2 و با ADR. با استقرار pull-based (بخش 07) معمولاً لازم نیست.
+قواعد runner خودمیزبان (درس KavoshERP: یک runner مشترک = صف و 75٪ cancel):
+- **برای هر ریپو** ثبت می‌شود، نه برای کل حساب؛ label چهارم نام ریپوست تا jobها قاطی نشوند.
+- کاربر بدون دسترسی root، Docker نصب، workspace تمیز در هر job؛ ephemeral در صورت امکان.
+- رازهای production هرگز روی ماشین runner نیستند (استقرار pull-based است — بخش 07).
+- T2 حداقل **دو** runner آنلاین (`ci.runners` در مانیفست)؛ لایه‌ی O تعداد آنلاین را می‌شمارد.
+- نصب: `sudo bash scripts/install-runner.sh <owner/repo> <token> [n]`؛ token را مالک می‌گیرد:
+  `gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token`
+- شبکه: runner داخل ایران باید به github.com، ghcr.io و مخازن بسته‌ها (یا mirror داخلی مثل KavoshRepo) دسترسی پایدار داشته باشد.
+- تغییر visibility یک ریپو = تغییر runner در همان PR؛ governance ناهمخوانی را قرمز می‌کند.
 
 ## بودجه (CI-3)
-| Tier | بودجه‌ی ماهانه |
-|---|---|
-| T0 | 100 |
-| T1 | 300 |
-| T2 | 700 |
-| جمع مجاز همه‌ی پروژه‌های فعال | ≤ 1,600 (ذخیره 400) |
+بودجه فقط به دقیقه‌های GitHub-hosted ریپوهای **private** مربوط است. با CI-1 این مقدار برای پروژه‌های private صفر است
+(`monthlyMinutesBudget: 0`) و ریپوهای public دقیقه‌ی نامحدود رایگان دارند. بودجه فقط برای استثناهای ثبت‌شده با ADR معنا دارد؛
+جمع کل ≤ 1,600.
 
 `kavosh-health` مصرف ماه جاری هر ریپو را از روی jobها (گرد به دقیقه‌ی بالا، فقط hosted) تخمین می‌زند و با `ci.monthlyMinutesBudget` مقایسه می‌کند. `scripts/portfolio.py` جمع کل حساب را نشان می‌دهد.
 با حساب Free و spending limit صفر، پس از اتمام دقیقه‌ها jobهای private تا اول ماه بعد **اجرا نمی‌شوند** — هزینه‌ی مالی ندارد ولی تحویل متوقف می‌شود.

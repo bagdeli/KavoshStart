@@ -6,6 +6,10 @@ name: kavosh-main-guard
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: JSON runner labels. Private repos pass their self-hosted labels (CI-1), e.g. '["self-hosted","linux","x64","kavoshsms"]'
+        type: string
+        default: '["ubuntu-latest"]'
       required-checks:
         description: Check names that must exist and succeed on the head of every merged PR
         type: string
@@ -20,7 +24,7 @@ permissions:
 jobs:
   main-guard:
     name: main-guard
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     timeout-minutes: 5
     steps:
       - name: Inspect push to main

@@ -6,6 +6,10 @@ name: kavosh-governance
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: JSON runner labels. Private repos pass their self-hosted labels (CI-1), e.g. '["self-hosted","linux","x64","kavoshsms"]'
+        type: string
+        default: '["ubuntu-latest"]'
       enforce:
         description: false = report only (adoption phase)
         type: boolean
@@ -24,7 +28,7 @@ jobs:
     name: governance
     # Drafts: only checked when opened (plan stage). Pushes to drafts cost nothing.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.action == 'opened'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

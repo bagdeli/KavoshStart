@@ -1,6 +1,6 @@
 # 0004 — GitHub-hosted runners by default; pull-based deployment
 
-- Status: accepted
+- Status: runner part superseded by [0008](0008-runner-by-visibility.md); pull-based deployment still accepted
 - Deciders: bagdeli
 - Evidence: KavoshERP 75 % cancelled runs in 7 days on one self-hosted runner; network/TLS registry issue; KavoshUI 173 failures in 200 runs, also self-hosted.
 

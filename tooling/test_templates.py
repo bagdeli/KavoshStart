@@ -28,7 +28,9 @@ def manifest(tier, runtime, method, ui, envs):
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "kavoshui": None if ui == "none" else "1.0.0", "locales": ["fa-IR"]}
     m["ci"]["monthlyMinutesBudget"] = {"T0": 100, "T1": 300, "T2": 700}[tier]
-    if tier == "T0":
+    if tier == "T0":  # a public tool: GitHub-hosted runners (CI-1)
+        m["visibility"] = "public"
+        m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 100}
         m["data"] = {"sensitivity": "none", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 1, "lifetime": "weeks", "parallelStreams": 1}
     if tier == "T1":
@@ -98,7 +100,8 @@ def main():
             m["tier"] = "T0"
             (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
             wf = repo / ".github" / "workflows" / "ci.yml"
-            wf.write_text(wf.read_text(encoding="utf-8").replace("ubuntu-latest", "[self-hosted, linux]"), encoding="utf-8")
+            text = wf.read_text(encoding="utf-8")
+            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, kavoshsms]", "runs-on: ubuntu-latest"), encoding="utf-8")
             (repo / ".githooks" / "pre-push").unlink()
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8")

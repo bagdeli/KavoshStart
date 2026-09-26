@@ -34,15 +34,11 @@ The owner may move a project **up** freely. Moving **down** requires an ADR in t
 | AI review workflow | no | optional (`ai-review.yml`) | yes |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated release-please (REL-5) | + rc on test | + rc → UAT → final |
-| **Actions minutes budget / month** | **100** | **300** | **700** |
+| Runner (by visibility, CI-1) | private: self-hosted ×1 · public: hosted | private: self-hosted ×1 · public: hosted | private: self-hosted **×2** · public: hosted |
+| **GitHub-hosted minutes budget (private repos)** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
 ## Budget rule (CI-3)
-The Free plan gives the whole account **2,000 minutes/month**; every job is rounded **up** to a full minute.
-Sum of budgets of all active projects must stay **≤ 1,600** (20 % reserve).
-Before creating a new project, check `scripts/portfolio.py`. If there is no room: archive/pause a project,
-lower a budget with the owner's approval, or classify CI jobs so that more run locally (`make check` before push).
-
-Rough job costs (hosted Linux): governance ≈ 1 min per PR event · T0 CI ≈ 1–2 min · T1 CI ≈ 3–6 min · T2 CI ≈ 6–12 min.
-Example: T1 with 25 PRs × 3 pushes × (1 + 5) ≈ 450 min — **too much**. Hence rule CI-6: push once per PR
-when possible, CI does not run on draft PRs, and governance ignores label/edit noise.
+Private repositories run on self-hosted runners (CI-1), so they use **0** GitHub-hosted minutes; public repositories
+have unlimited free minutes. The 2,000-minute account quota therefore matters only for exceptions recorded in an ADR.
+Keep pushes per PR low anyway (CI-6): self-hosted capacity is finite too.
