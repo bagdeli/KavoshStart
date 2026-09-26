@@ -38,5 +38,7 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 
 ## Boundaries
 **Never:** push to `main` · merge · run `bootstrap-repo.sh --apply` or any GitHub-mutating command against another repository
-without the owner's explicit request · put live status (SHAs, current issue numbers) in files.
+without the owner's explicit request · put live status (SHAs, current issue numbers) in files · put the identity, URL, goals,
+architecture, audit findings, metrics or monitoring output of a private project into this public repository, its Issues/PRs,
+commit messages, Actions logs or examples.
 **Ask first:** changing default limits or tier budgets · renaming workflow jobs or inputs · deleting a rule.
