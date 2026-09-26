@@ -25,9 +25,11 @@ run gh api -X PATCH "repos/$REPO" \
   -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY \
   -F delete_branch_on_merge=true -F allow_update_branch=true -F has_wiki=false
 
-echo "== Actions: allow workflows to create/approve PRs off; default token read-only"
+echo "== Actions: default token read-only; allow Actions to create PRs (required by release-please, REL-4)"
+# GitHub has one switch for "create and approve pull requests". Approving has no effect on GitHub Free
+# (no required reviews), and PR-7 keeps merging a human decision.
 run gh api -X PUT "repos/$REPO/actions/permissions/workflow" \
-  -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
+  -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true
 
 echo "== First milestone"
 run gh api -X POST "repos/$REPO/milestones" -f title=v0.1.0 -f description="First usable release (PROJECT.md)"
