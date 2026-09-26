@@ -35,7 +35,6 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با `@v1` فرا می‌خوانند | — |
 | [`scripts/`](scripts/) | scaffold، راه‌اندازی ریپو، نصب محافظ‌های عامل، ممیزی، گزارش پرتفوی | — |
 | [`docs/decisions/`](docs/decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
-| [`audits/`](audits/) | ممیزی‌های تاریخ‌دار (KavoshERP 2026-09-26) | FA |
 | [`adoption/`](adoption/) | راهنمای پذیرش پروژه‌ی موجود + برنامه‌ی KavoshERP | FA |
 
 ## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
@@ -50,7 +49,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | **M — نگهبان main** (کشف) | بعد از هر push به main | `kavosh-main-guard` — push مستقیم یا ادغام PR قرمز = Issue تخلف |
 | **H — سلامت هفتگی** (اندازه‌گیری) | هر شنبه | `kavosh-health` — شاخه‌ها، دقیقه‌ها، Issueها، CI |
 | **S — تنظیمات رایگان** | یک‌بار | squash-only، حذف خودکار شاخه، برچسب‌ها |
-| **O — ناظر پرتفوی** | روزانه، از بیرون | `kavosh-portfolio` در KavoshStart — محافظ حذف یا خنثی‌شده، M/H متوقف، انحراف تنظیمات |
+| **O — ناظر پرتفوی عمومی** | روزانه، از بیرون | `kavosh-portfolio` در KavoshStart — فقط repoهای public؛ privateها پیش از inspection نادیده گرفته می‌شوند |
 
 مهم‌ترین قاعده‌ی انسانی: **«PR قرمز را ادغام نکن»** (PR-7) — نقضش را لایه‌ی M بعداً ثبت می‌کند. چند MUST دیگر فقط با بازبینی انسانی اجرا می‌شوند و در انتهای [RULES.md](standard/RULES.md) صریحاً فهرست شده‌اند؛ ادعای «اجرای کامل ماشینی» نداریم.
 
@@ -60,4 +59,4 @@ KavoshStart خودش SemVer دارد و فقط از طریق دروازه‌ی R
 
 ## پیش‌نیاز یک‌باره
 
-Settings → Actions → General → Access → **«Accessible from repositories owned by the user 'bagdeli'»** — تا پروژه‌های private بتوانند workflowهای این ریپو را فرا بخوانند.
+مصرف‌کننده‌ها workflowهای عمومی KavoshStart را با tag دقیق release فرا می‌خوانند؛ هیچ دسترسی پرتفوی private به KavoshStart عمومی داده نمی‌شود.
