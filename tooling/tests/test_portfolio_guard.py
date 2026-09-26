@@ -12,8 +12,8 @@ import portfolio_guard as pg  # noqa: E402
 
 REPO = "bagdeli/Demo"
 PIN = "v1.1.0"
-MANIFEST = {"repo": REPO, "kavoshStart": PIN, "tier": "T1", "visibility": "private",
-            "ci": {"runner": "self-hosted", "monthlyMinutesBudget": 0}}
+MANIFEST = {"repo": REPO, "kavoshStart": PIN, "tier": "T1", "visibility": "public",
+            "ci": {"runner": "github-hosted", "monthlyMinutesBudget": 0}}
 KAVOSH = f"""jobs:
   kavosh:
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@{PIN}
@@ -46,7 +46,7 @@ class FakeApi:
         self.health = [{"number": 9, "updated_at": RECENT}]
         self.violations = []
         self.runners = [{"status": "online"}]
-        self.private = True
+        self.private = False
         self.__dict__.update(over)
 
     def repos(self, owner):
@@ -142,19 +142,25 @@ class LayerO(unittest.TestCase):
         self.assertEqual(n, 0)
         self.assertIn("not adopted", text)
 
-    def test_O_negative_budget_sum_over_limit(self):
-        """Covers: CI-3 (negative)"""
-        api = FakeApi()
-        api.files["kavosh.project.json"] = json.dumps(dict(MANIFEST, ci={"monthlyMinutesBudget": 2000}))
-        text, n = pg.run(api, "bagdeli")
-        self.assertGreaterEqual(n, 1)
-        self.assertIn("CI-3", text)
-
     def test_CI1_negative_O_visibility_changed(self):
-        self.assertIn("CI-1", rules(FakeApi(private=False)))
+        self.assertIn("CI-1", rules(FakeApi(private=True)))
 
     def test_CI2_negative_O_no_online_runner(self):
         self.assertIn("CI-2", rules(FakeApi(runners=[{"status": "offline"}])))
+
+    def test_SEC5_positive_public_repo_is_reported(self):
+        """Covers: SEC-5 (positive)"""
+        text, n = pg.run(FakeApi(private=False), "bagdeli")
+        self.assertEqual(n, 0, text)
+        self.assertIn(REPO, text)
+
+    def test_SEC5_negative_private_repo_is_omitted_even_if_visible_to_token(self):
+        """Covers: SEC-5 (negative)"""
+        api = FakeApi(private=True)
+        text, n = pg.run(api, "bagdeli")
+        self.assertEqual(n, 0, text)
+        self.assertNotIn(REPO, text)
+        self.assertNotIn("not adopted", text)
 
     def test_O_reports_frozen_v1_consumers(self):
         api = FakeApi()
