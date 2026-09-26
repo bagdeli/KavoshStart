@@ -20,9 +20,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        if: hashFiles('package.json') != ''
+        if: hashFiles('package.json') != '' && hashFiles('.node-version') != ''
         with:
           node-version-file: ".node-version"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: hashFiles('package.json') != '' && hashFiles('.node-version') == ''
+        with:
+          node-version: "lts/*"   # add .node-version to pin the exact version
       - run: make setup
       - run: make package    # TODO(kavosh): must write files to ./dist
       - env:

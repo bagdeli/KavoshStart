@@ -68,6 +68,41 @@ jobs:
               return (NOW - ts(s)).days
 
 
+          AUTOMATION_LABELS = {"kavosh:health", "kavosh:violation", "kavosh:portfolio"}
+
+
+          def type_label_problems(issues):
+              """WK-1: exactly one type:* label; issues maintained by KavoshStart automation are exempt."""
+              out = []
+              for i in issues:
+                  names = {l["name"] for l in i.get("labels", [])}
+                  if names & AUTOMATION_LABELS:
+                      continue
+                  n = sum(1 for x in names if x.startswith("type:"))
+                  if n != 1:
+                      out.append(f"#{i['number']} ({n} type labels)")
+              return out
+
+
+          def direct_pushes(commits, pulls_for):
+              """BR-6: commits on the default branch that no merged PR produced (the initial scaffold root is allowed)."""
+              out = []
+              for c in commits:
+                  msg = (c.get("commit", {}).get("message") or "").splitlines()[0] if c.get("commit") else ""
+                  if msg.startswith("chore: scaffold from KavoshStart") and not c.get("parents"):
+                      continue
+                  if not any(p.get("merged_at") for p in pulls_for(c["sha"])):
+                      out.append(c["sha"][:7])
+              return out
+
+
+          def trailer_ratio(commits):
+              """AI-3 (informational): how many default-branch commits carry a Co-Authored-By trailer."""
+              total = len(commits)
+              with_trailer = sum(1 for c in commits if "co-authored-by:" in (c.get("commit", {}).get("message") or "").lower())
+              return with_trailer, total
+
+
           def monthly_minutes(repo, exact_limit=120):
               """Billable hosted minutes this month. Exact (per job, rounded up) for up to `exact_limit` runs;
               beyond that, the exact per-run average of the sampled runs is extrapolated — marked with "~"."""
@@ -137,10 +172,10 @@ jobs:
 
               # Issues
               issues = [i for i in paged(f"repos/{repo}/issues?state=open") if "pull_request" not in i]
-              untyped = [f"#{i['number']}" for i in issues if not any(l["name"].startswith("type:") or l["name"].startswith("kavosh:") for l in i["labels"])]
+              mistyped = type_label_problems(issues)
               noisy = [f"#{i['number']} ({i['comments']})" for i in issues if i["comments"] > 30]
               viol = [f"#{i['number']}" for i in issues if any(l["name"] == "kavosh:violation" for l in i["labels"])]
-              add(not untyped, "WK-1", "Open issues without type:* label", ", ".join(untyped[:12]) or 0, "0")
+              add(not mistyped, "WK-1", "Open issues with exactly one type:* label", ", ".join(mistyped[:12]) or "all", "all")
               add(not noisy, "WK-2", "Issues with > 30 comments", ", ".join(noisy) or 0, "0")
               add(not viol, "PR-7", "Open violation issues", ", ".join(viol) or 0, "0")
 
@@ -155,6 +190,15 @@ jobs:
               if main_runs:
                   ok_rate = round(100 * sum(r["conclusion"] == "success" for r in main_runs) / len(main_runs))
                   add(ok_rate > 90, "CI-8", f"CI success on {default} (7 d)", f"{ok_rate}% of {len(main_runs)}", "> 90%")
+
+              # Direct pushes and agent attribution on the default branch (BR-6, AI-3)
+              commits = gh(f"repos/{repo}/commits?sha={default}&since={since}T00:00:00Z&per_page=100") or []
+              direct = direct_pushes(commits, lambda sha: gh(f"repos/{repo}/commits/{sha}/pulls", check=False) or [])
+              add(not direct, "BR-6", f"Direct pushes to {default} (7 d)", ", ".join(direct[:10]) or 0, "0")
+              month = gh(f"repos/{repo}/commits?sha={default}&since={(NOW - timedelta(days=30)).strftime('%Y-%m-%d')}T00:00:00Z&per_page=100") or []
+              attributed, total = trailer_ratio(month)
+              add(True, "AI-3", f"Commits on {default} with Co-Authored-By (30 d)", f"{attributed} of {total}",
+                  "informational: every agent-written change must carry one")
 
               # Minutes
               used, nruns = monthly_minutes(repo)
