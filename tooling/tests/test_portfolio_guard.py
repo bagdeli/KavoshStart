@@ -84,7 +84,7 @@ def rules(api):
 
 class LayerO(unittest.TestCase):
     def test_O_positive_clean_repo(self):
-        """Covers: BR-5, PR-5, BR-9, CI-3, AI-4, REL-6, CI-2 (positive)"""
+        """Covers: BR-5, PR-5, BR-9, AI-4, REL-6 (positive)"""
         self.assertEqual(rules(FakeApi()), set())
         text, n = pg.run(FakeApi(), "bagdeli")
         self.assertEqual(n, 0, text)
@@ -146,7 +146,7 @@ class LayerO(unittest.TestCase):
         self.assertIn("CI-1", rules(FakeApi(private=True)))
 
     def test_CI2_negative_O_no_online_runner(self):
-        self.assertIn("CI-2", rules(FakeApi(runners=[{"status": "offline"}])))
+        self.assertIn("CI-2", rules(FakeApi(private=True, runners=[{"status": "offline"}])))
 
     def test_SEC5_positive_public_repo_is_reported(self):
         """Covers: SEC-5 (positive)"""
