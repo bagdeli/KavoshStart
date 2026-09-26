@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Deciders: bagdeli
-- Evidence: KavoshERP issue with twelve correct rules that were violated anyway (direct pushes to main, 100k-line PRs).
+- Evidence: a prior project had correct written rules that were still violated in practice; prose alone did not enforce them.
 
 ## Decision
 A rule is only a MUST if `standard/RULES.md` names at least one enforcement layer (A agent guard, P PR check,
