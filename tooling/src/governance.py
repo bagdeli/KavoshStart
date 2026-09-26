@@ -9,7 +9,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCHEMA = json.loads(r"""__SCHEMA_JSON__""")
+_SCHEMA_SRC = r"""__SCHEMA_JSON__"""
+# Embedded by build_workflows.py; when imported from the repo (tests) read the schema file instead.
+SCHEMA = (json.loads(_SCHEMA_SRC) if not _SCHEMA_SRC.startswith("__") else
+          json.loads((Path(__file__).resolve().parents[2] / "intake" / "kavosh.project.schema.json").read_text(encoding="utf-8")))
 
 TIER_BUDGET = {"T0": 100, "T1": 300, "T2": 700}
 TIER_ORDER = {"T0": 0, "T1": 1, "T2": 2}
@@ -26,7 +29,6 @@ IGNORE_SIZE_RE = re.compile(
     r"(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|poetry\.lock|uv\.lock|Cargo\.lock|go\.sum)$"
     r"|(^|/)(generated|__snapshots__|dist)/|\.min\.(js|css)$|^CHANGELOG\.md$"
 )
-AGENT_WORDS = re.compile(r"(?i)\b(claude|codex|copilot|gemini|gpt|cursor|agent)\b")
 
 results = []  # (level, rule_id, title, detail)
 
@@ -81,7 +83,7 @@ def expected_tier(m):
             or s.get("domains", 1) >= 4 or s.get("parallelStreams", 1) >= 3
             or (u.get("audience") == "customers" and big_scale)):
         return "T2"
-    if (m.get("runtime") == "server" or d.get("sensitivity") == "personal" or 2 <= s.get("domains", 1) <= 3
+    if (m.get("runtime") == "server" or m.get("projectKind") == "library" or d.get("sensitivity") == "personal" or 2 <= s.get("domains", 1) <= 3
             or s.get("lifetime") != "weeks" or m.get("ui", {}).get("kind") in ("web", "admin")):
         return "T1"
     return "T0"
@@ -182,9 +184,91 @@ def check_files(m):
     sh = [f for f in wf if re.search(r"^\s*runs-on:.*self-hosted", read(f), re.M)]
     add("fail" if sh and not self_hosted_ok else "ok", "CI-1", "Only GitHub-hosted runners", ", ".join(sh) or "ok")
     noperm = [f for f in wf if not re.search(r"^permissions:", read(f), re.M)]
-    add("warn" if noperm else "ok", "SEC-3", "Workflows declare top-level permissions", ", ".join(noperm) or "ok")
+    add("fail" if noperm else "ok", "SEC-3", "Workflows declare top-level permissions", ", ".join(noperm) or "ok")
     noto = [f for f in wf if "runs-on" in read(f) and "timeout-minutes" not in read(f)]
     add("warn" if noto else "ok", "CI-3", "Jobs set timeout-minutes", ", ".join(noto) or "ok")
+
+    unpinned = unpinned_uses({f: read(f) for f in wf}, m)
+    add("fail" if unpinned else "ok", "SEC-2", "Actions pinned to full SHA; KavoshStart to exact tag",
+        "; ".join(unpinned[:8]) or "ok")
+    add("ok" if "PROJECT.md" in files else "fail", "SRC-7", "PROJECT.md exists", "one-page project brief (START.md §1 step 3)")
+    add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
+    for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m):
+        add(level, rule, title, detail)
+
+
+USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*['\"]?([^'\"\s#]+)", re.M)
+EXACT_TAG_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+KAVOSH_WF = "bagdeli/KavoshStart/.github/workflows/"
+
+
+def unpinned_uses(workflows, m):
+    """SEC-2 / REL-6: third-party actions by full SHA; KavoshStart workflows by the manifest's exact tag."""
+    pin = m.get("kavoshStart")
+    out = []
+    for f, text in workflows.items():
+        for ref in USES_RE.findall(text):
+            if ref.startswith("./") or ref.startswith("docker://"):
+                continue
+            target, _, version = ref.partition("@")
+            if target.startswith(KAVOSH_WF):
+                if not EXACT_TAG_RE.match(version) or (pin and version != pin):
+                    out.append(f"{f}: {ref} (must be @{pin or 'vX.Y.Z'}, REL-6)")
+            elif not FULL_SHA_RE.match(version):
+                out.append(f"{f}: {ref}")
+    return out
+
+
+def wiring_problems(workflows, m):
+    """Best-effort in-repo check that the guard workflows are present and wired. A PR can still neuter this
+    check together with the workflow — Layer O (portfolio guard) is the control that sees that."""
+    own = m.get("repo") == "bagdeli/KavoshStart"
+    prefix = "./.github/workflows/" if own else KAVOSH_WF
+    kav = workflows.get(".github/workflows/kavosh.yml", "")
+    problems = []
+    if not kav:
+        return [("fail", "AI-4", "Guard workflow kavosh.yml present", "missing .github/workflows/kavosh.yml")]
+    for name in ("kavosh-governance.yml", "kavosh-main-guard.yml", "kavosh-health.yml"):
+        if prefix + name not in kav:
+            problems.append(("fail", "AI-4", f"kavosh.yml calls {name}", f"expected uses: {prefix}{name}"))
+    if re.search(r"^\s*enforce:\s*false", kav, re.M) and not m.get("adoptionPhase"):
+        problems.append(("fail", "AI-4", "Governance enforced", "enforce: false is only allowed while manifest adoptionPhase is true"))
+    ci = workflows.get(".github/workflows/ci.yml", "") or workflows.get(".github/workflows/self-check.yml", "")
+    if not re.search(r"^  required:\s*$", ci, re.M):
+        problems.append(("fail", "CI-7", "CI has a job named `required`", "ci.yml must define job `required`"))
+    rel = workflows.get(".github/workflows/release.yml", "")
+    if prefix + "kavosh-release.yml" not in rel:
+        problems.append(("fail", "REL-5", "release.yml uses the gated kavosh-release", f"expected uses: {prefix}kavosh-release.yml"))
+    return problems or [("ok", "AI-4", "Guard workflows present and wired", "kavosh.yml, ci.yml, release.yml")]
+
+
+PLACEHOLDER_RE = re.compile(r"<[^@>\n]*>|example\.com", re.I)  # <Agent>, <email> … but not <a@b.c>
+TRAILER_RE = re.compile(r"(?im)^Co-Authored-By:\s*(.+)$")
+
+
+def ai_section_problems(body):
+    """PR-4 / AI-3: the AI involvement section must be filled in; if an agent is named, a real trailer is required."""
+    sec = re.search(r"(?ims)^#+\s*AI involvement\s*$(.*?)(?=^#+\s|\Z)", body)
+    if not sec:
+        return [("fail", "PR-4", "AI involvement section", "add `## AI involvement` (PR template)")]
+    text = re.sub(r"<!--.*?-->", "", sec.group(1), flags=re.S)
+    agent = re.search(r"(?im)^\s*-\s*Agent\s*/\s*model:\s*(.*)$", text)
+    value = agent.group(1).strip() if agent else ""
+    trailers = TRAILER_RE.findall(body)
+    real = [t for t in trailers if not PLACEHOLDER_RE.search(t) and re.search(r"<[^@>\s]+@[^>\s]+>", t)]
+    fake = [t for t in trailers if t not in real]
+    problems = []
+    if not value or PLACEHOLDER_RE.search(value):
+        problems.append(("fail", "PR-4", "AI involvement filled in", "write the agent and model, or `none`"))
+    elif re.fullmatch(r"(?i)none|human( only)?", value):
+        if fake:
+            problems.append(("fail", "AI-3", "No placeholder trailer", "remove the template `Co-Authored-By:` line"))
+    elif not real:
+        problems.append(("fail", "AI-3", "Agent attribution trailer", f"agent `{value}` named but no real `Co-Authored-By: Name <email>` line"))
+    elif fake:
+        problems.append(("fail", "AI-3", "No placeholder trailer", "remove the template `Co-Authored-By:` line"))
+    return problems or [("ok", "PR-4", "AI involvement section", value)]
 
 
 # ---------------------------------------------------------------- pull request
@@ -237,18 +321,11 @@ def check_pr(m, event, repo):
         else:
             add("fail", "BR-4", "Targets main (stack depth)", f"base {base} is a long-lived or deep branch")
 
-    ai = re.search(r"(?ims)^#+\s*AI involvement\s*$(.*?)(^#+\s|\Z)", body)
     if bot:
         add("ok", "PR-4", "AI involvement section", "bot PR")
-    elif not ai:
-        add("fail", "PR-4", "AI involvement section", "add `## AI involvement` (PR template)")
     else:
-        section = ai.group(1)
-        agent_used = AGENT_WORDS.search(re.sub(r"(?i)e\.g\..*", "", section)) and not re.search(r"(?i)\bnone\b|human only", section)
-        if agent_used and not re.search(r"(?im)^Co-Authored-By:\s*\S+", body):
-            add("fail", "AI-3", "Agent attribution trailer in PR body", "agent listed but no `Co-Authored-By:` line (it becomes the squash commit trailer)")
-        else:
-            add("ok", "PR-4", "AI involvement section", "present")
+        for level, rule, t, d in ai_section_problems(body):
+            add(level, rule, t, d)
 
     open_prs = gh("api", f"repos/{repo}/pulls?state=open&per_page=100") or []
     ready = [p for p in open_prs if not p["draft"] and p["user"]["type"] != "Bot"]

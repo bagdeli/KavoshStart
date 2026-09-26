@@ -50,6 +50,7 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 | F1 | R | زبان/فریم‌ورک؟ محدودیتی هست؟ | `stack.languages`, `stack.frameworks` | defaults: API → Python 3.12 + FastAPI; Web → TypeScript + Next.js (KavoshUI compatible); CLI → Python |
 | F2 | R | کدام عامل‌ها روی آن کار می‌کنند؟ | `agents` | `claude`, `codex`, `copilot`, `gemini` |
 | F3 |   | وابستگی به ریپوهای دیگر Kavosh؟ | `dependsOn` | e.g. `KavoshLicense`, `KavoshUI` |
+| F4 | R | آیا این پروژه را ریپوهای دیگر Kavosh مصرف می‌کنند (کتابخانه/استاندارد)؟ | `projectKind` | `application` / `library` / `tool`; library ⇒ at least T1 |
 
 ## Rules for asking
 - Ask everything missing in **one** message. Number the questions with the IDs above.
