@@ -35,7 +35,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با `@v1` فرا می‌خوانند | — |
 | [`scripts/`](scripts/) | scaffold، راه‌اندازی ریپو، نصب محافظ‌های عامل، ممیزی، گزارش پرتفوی | — |
 | [`docs/decisions/`](docs/decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
-| [`adoption/`](adoption/) | راهنمای پذیرش پروژه‌ی موجود + برنامه‌ی KavoshERP | FA |
+| [`adoption/`](adoption/) | راهنمای عمومی پذیرش پروژه‌های موجود | FA |
 
 ## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
