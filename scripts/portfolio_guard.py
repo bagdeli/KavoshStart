@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Layer O — portfolio supervisor. Checks every Kavosh repository FROM OUTSIDE, because a repository cannot
-reliably report that its own enforcement was deleted or neutered (a PR that removes kavosh.yml also removes
-the checks that would have complained).
+"""Layer O — portfolio supervisor. A public control plane inspects PUBLIC Kavosh repositories from outside,
+because a repository cannot reliably report that its own enforcement was deleted or neutered.
 
-    python3 scripts/portfolio_guard.py bagdeli                  # report to stdout, exit 1 if findings
-    python3 scripts/portfolio_guard.py bagdeli --update-issue   # also keep ONE `kavosh:portfolio` issue in KavoshStart
+    python3 scripts/portfolio_guard.py bagdeli --visibility public
+    python3 scripts/portfolio_guard.py bagdeli --visibility public --update-issue
 
-Needs gh authenticated with read access to all repositories (in CI: secret KAVOSH_PORTFOLIO_TOKEN, a fine-grained
-PAT with Contents, Metadata, Actions, Issues read and Administration read). Standalone: the same script can later
-run from a systemd timer on an independent machine without changes.
+Private repositories are deliberately outside the public control plane. A separate private control plane may run
+this script with `--visibility private`, but must keep its report private and must not use `--update-issue`.
+In CI, KAVOSH_PORTFOLIO_TOKEN should have read-only access only to the selected PUBLIC Kavosh repositories.
 
 Trust boundary: Layer O depends on this repository, GitHub Actions and the account's billing. If it stops running,
 only a human notices (the portfolio issue stops updating). The standard does not claim more.
@@ -45,8 +44,10 @@ class Api:
             raise PermissionError(r.stderr.strip()[:200])
         return json.loads(r.stdout) if r.stdout.strip() else None
 
-    def repos(self, owner):
-        r = subprocess.run(["gh", "repo", "list", owner, "--limit", "300", "--json",
+    def repos(self, owner, visibility="public"):
+        if visibility not in {"public", "private"}:
+            raise ValueError("visibility must be public or private")
+        r = subprocess.run(["gh", "repo", "list", owner, "--limit", "300", "--visibility", visibility, "--json",
                             "nameWithOwner,isPrivate,isArchived,defaultBranchRef"],
                            capture_output=True, text=True, encoding="utf-8", check=True)
         return json.loads(r.stdout)
@@ -134,11 +135,19 @@ def inspect_repo(api, repo, branch, private):
     return m, findings, {"adopted": True, "budget": budget, "tier": m.get("tier"), "pin": m.get("kavoshStart")}
 
 
-def run(api, owner):
+def run(api, owner, visibility="public"):
+    if visibility not in {"public", "private"}:
+        raise ValueError("visibility must be public or private")
     rows, total_budget, total_findings = [], 0, 0
     frozen_v1 = []
-    for r in api.repos(owner):
+    for r in api.repos(owner, visibility):
         if r.get("isArchived"):
+            continue
+        # Defense in depth: even if the listing API/filter is wrong, never let a
+        # repository from the opposite visibility enter this report.
+        if visibility == "public" and r.get("isPrivate", True):
+            continue
+        if visibility == "private" and not r.get("isPrivate", True):
             continue
         repo, branch = r["nameWithOwner"], (r.get("defaultBranchRef") or {}).get("name") or "main"
         try:
@@ -159,7 +168,7 @@ def run(api, owner):
     budget_ok = total_budget <= BUDGET_LIMIT
     if not budget_ok:
         total_findings += 1
-    lines = [f"# Portfolio supervisor (Layer O) — {NOW:%Y-%m-%d %H:%M} UTC", "",
+    lines = [f"# Portfolio supervisor (Layer O, {visibility}) — {NOW:%Y-%m-%d %H:%M} UTC", "",
              f"**{total_findings} finding(s).** Budget sum {total_budget} / {BUDGET_LIMIT} {'✅' if budget_ok else '❌ CI-3'}. "
              f"Consumers of frozen tag `v1`: {', '.join(frozen_v1) or 'none'} (tag may be deleted when none).", "",
              "| Repository | Tier | KavoshStart | Findings |", "|---|---|---|---|"]
@@ -185,7 +194,24 @@ def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
         return 2
-    text, findings = run(Api(), argv[0])
+    visibility = "public"
+    if "--visibility" in argv:
+        try:
+            visibility = argv[argv.index("--visibility") + 1]
+        except IndexError:
+            print("--visibility requires public or private", file=sys.stderr)
+            return 2
+    if visibility not in {"public", "private"}:
+        print("--visibility requires public or private", file=sys.stderr)
+        return 2
+    if visibility == "private" and os.environ.get("GITHUB_REPOSITORY") == HOME:
+        print("private portfolio scans are forbidden from the public KavoshStart control plane", file=sys.stderr)
+        return 2
+    if visibility == "private" and "--update-issue" in argv:
+        print("private portfolio reports must not update the public KavoshStart issue", file=sys.stderr)
+        return 2
+
+    text, findings = run(Api(), argv[0], visibility=visibility)
     print(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
