@@ -72,7 +72,7 @@
 |---|---|---|---|---|
 | CI-1 | **runner بر اساس visibility:** ریپوی **private** فقط runner خودمیزبانِ ثبت‌شده برای همان ریپو (`self-hosted, linux, x64, <repo-slug>`)؛ ریپوی **public** فقط runner میزبانی‌شده‌ی GitHub. `visibility` و `ci.runner` مانیفست باید با ریپوی واقعی یکی باشند. | MUST | All | P |
 | CI-2 | runner خودمیزبان: ثبت‌شده فقط برای **یک** ریپو (نه سطح حساب)، کاربر بدون دسترسی root، Docker، workspace تمیز در هر job (ephemeral ترجیحی)، هیچ راز production روی دیسک؛ برای T2 حداقل **دو** runner آنلاین. | MUST | All (private) | P, R |
-| CI-3 | ریپوهای private دقیقه‌ی GitHub-hosted مصرف نمی‌کنند (`monthlyMinutesBudget = 0`)؛ جمع بودجه‌ها ≤ 1600 برای استثناها. | MUST | All | H, O |
+| CI-3 | ریپوهای private دقیقه‌ی GitHub-hosted مصرف نمی‌کنند (`monthlyMinutesBudget = 0`)؛ جمع بودجه‌ها ≤ 1600 برای استثناها. | MUST | All | H |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
 | CI-5 | jobهای سنگین (rehearsal، e2e کامل، migration کامل) فقط روی `main`، tag، یا برچسب `ci:full`. | MUST | T1, T2 | R |
 | CI-6 | CI روی PR Draft اجرا نمی‌شود؛ عامل قبل از push `make check` را محلی اجرا می‌کند و ترجیحاً یک‌بار push می‌کند. | MUST | All | A, R |
