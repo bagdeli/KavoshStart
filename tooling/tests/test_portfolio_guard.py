@@ -49,7 +49,7 @@ class FakeApi:
         self.private = True
         self.__dict__.update(over)
 
-    def repos(self, owner):
+    def repos(self, owner, visibility="public"):
         return [{"nameWithOwner": REPO, "isPrivate": self.private, "isArchived": False, "defaultBranchRef": {"name": "main"}}]
 
     def get(self, path):
@@ -86,7 +86,7 @@ class LayerO(unittest.TestCase):
     def test_O_positive_clean_repo(self):
         """Covers: BR-5, PR-5, BR-9, CI-3, AI-4, REL-6, CI-2 (positive)"""
         self.assertEqual(rules(FakeApi()), set())
-        text, n = pg.run(FakeApi(), "bagdeli")
+        text, n = pg.run(FakeApi(), "bagdeli", visibility="private")
         self.assertEqual(n, 0, text)
 
     def test_O_negative_kavosh_yml_deleted(self):
@@ -138,7 +138,7 @@ class LayerO(unittest.TestCase):
     def test_O_positive_not_adopted_repo_is_listed_not_failed(self):
         api = FakeApi()
         api.files["kavosh.project.json"] = None
-        text, n = pg.run(api, "bagdeli")
+        text, n = pg.run(api, "bagdeli", visibility="private")
         self.assertEqual(n, 0)
         self.assertIn("not adopted", text)
 
@@ -146,7 +146,7 @@ class LayerO(unittest.TestCase):
         """Covers: CI-3 (negative)"""
         api = FakeApi()
         api.files["kavosh.project.json"] = json.dumps(dict(MANIFEST, ci={"monthlyMinutesBudget": 2000}))
-        text, n = pg.run(api, "bagdeli")
+        text, n = pg.run(api, "bagdeli", visibility="private")
         self.assertGreaterEqual(n, 1)
         self.assertIn("CI-3", text)
 
@@ -156,10 +156,27 @@ class LayerO(unittest.TestCase):
     def test_CI2_negative_O_no_online_runner(self):
         self.assertIn("CI-2", rules(FakeApi(runners=[{"status": "offline"}])))
 
+    def test_SEC5_positive_public_scope_keeps_public_repo(self):
+        """Covers: SEC-5 (positive)"""
+        api = FakeApi(private=False)
+        manifest = dict(MANIFEST)
+        manifest["visibility"] = "public"
+        manifest["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
+        api.files["kavosh.project.json"] = json.dumps(manifest)
+        text, _ = pg.run(api, "bagdeli", visibility="public")
+        self.assertIn(REPO, text)
+
+    def test_SEC5_negative_public_scope_drops_private_row_even_if_api_returns_it(self):
+        """Covers: SEC-5 (negative)"""
+        api = FakeApi(private=True)
+        text, n = pg.run(api, "bagdeli", visibility="public")
+        self.assertEqual(n, 0)
+        self.assertNotIn(REPO, text)
+
     def test_O_reports_frozen_v1_consumers(self):
         api = FakeApi()
         api.files[".github/workflows/release.yml"] = RELEASE.replace(f"@{PIN}", "@v1")
-        text, _ = pg.run(api, "bagdeli")
+        text, _ = pg.run(api, "bagdeli", visibility="private")
         self.assertIn(f"Consumers of frozen tag `v1`: {REPO}", text)
 
 
