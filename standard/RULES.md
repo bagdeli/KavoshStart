@@ -105,6 +105,7 @@
 | SEC-2 | actionهای شخص ثالث با SHA کامل (40 کاراکتر) پین می‌شوند. | MUST | All | P |
 | SEC-3 | هر workflow بلوک `permissions:` سطح بالا دارد (حداقل لازم). | MUST | All | P (وجود)، R (حداقلی بودن) |
 | SEC-4 | `.github/dependabot.yml` وجود دارد (حداقل `github-actions`، که ارجاع‌های KavoshStart را هم به‌روز می‌کند). | MUST | All | P |
+| SEC-5 | ریپوی public نباید نام، URL، هدف، معماری، آمار، audit، adoption plan یا خروجی نظارتی پروژه‌ی private را منتشر کند؛ Layer O عمومی فقط repositoryهای public را enumerate/report می‌کند. | MUST | All | O, R |
 
 ## DEP — استقرار (فقط runtime = server/static)
 | ID | قاعده | سطح | Tier | لایه |
