@@ -16,6 +16,8 @@
     "tier": { "enum": ["T0", "T1", "T2"] },
     "tierOverride": { "type": "string", "description": "ADR path if tier differs from CLASSIFICATION.md result" },
     "runtime": { "enum": ["none", "static", "server", "desktop"] },
+    "projectKind": { "enum": ["application", "library", "tool"], "description": "library = consumed by other Kavosh repositories (classifies at least T1)" },
+    "adoptionPhase": { "type": "boolean", "description": "true only while an existing repo is being adopted; allows governance enforce: false" },
     "firstRelease": { "type": "array", "items": { "type": "string" } },
     "outOfScope": { "type": "array", "items": { "type": "string" } },
     "users": {
