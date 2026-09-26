@@ -5,6 +5,10 @@ name: kavosh-health
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: JSON runner labels. Private repos pass their self-hosted labels (CI-1), e.g. '["self-hosted","linux","x64","kavoshsms"]'
+        type: string
+        default: '["ubuntu-latest"]'
       update-issue:
         type: boolean
         default: true
@@ -18,7 +22,7 @@ permissions:
 jobs:
   health:
     name: health
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     timeout-minutes: 10
     steps:
       - name: Compute repository health

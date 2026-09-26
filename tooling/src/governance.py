@@ -118,12 +118,65 @@ def check_manifest():
     if m["ui"]["kind"] != "none" and not m["ui"].get("kavoshui"):
         add("fail", "UI-1", "KavoshUI version pinned", "ui.kind is set but ui.kavoshui is empty")
     budget = m["ci"]["monthlyMinutesBudget"]
-    add("warn" if budget > TIER_BUDGET[m["tier"]] else "ok", "CI-3", "Minutes budget within tier default",
-        f"{budget} (tier default {TIER_BUDGET[m['tier']]})")
-    if m["ci"]["runner"] == "self-hosted-deploy-only":
-        ok = m["tier"] == "T2" and m["ci"].get("runnerAdr") and Path(m["ci"]["runnerAdr"]).exists()
-        add("ok" if ok else "fail", "CI-2", "Self-hosted runner justified", "T2 + ADR required")
+    if m["visibility"] == "private" and budget > 0:
+        add("warn", "CI-3", "No GitHub-hosted minutes on private repos", f"budget {budget}; CI-1 expects 0")
+    for level, rule, title, detail in runner_manifest_problems(m):
+        add(level, rule, title, detail)
     return m
+
+
+def runner_labels(m):
+    slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
+    return m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
+
+
+def runner_manifest_problems(m):
+    """CI-1 / CI-2: the runner follows visibility. private → self-hosted, public → github-hosted."""
+    vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
+    want = "self-hosted" if vis == "private" else "github-hosted"
+    if runner != want:
+        return [("fail", "CI-1", "Runner matches visibility", f"{vis} repository needs ci.runner = {want}, got {runner}")]
+    out = [("ok", "CI-1", "Runner matches visibility", f"{vis} → {runner}")]
+    if runner == "self-hosted":
+        labels = runner_labels(m)
+        slug = labels[-1]
+        if "self-hosted" not in labels or len(labels) < 2:
+            out.append(("fail", "CI-2", "Self-hosted labels", "labels must include self-hosted and a repository-specific label"))
+        if m.get("tier") == "T2" and m.get("ci", {}).get("runners", 1) < 2:
+            out.append(("fail", "CI-2", "T2 has at least two runners", f"ci.runners = {m.get('ci', {}).get('runners', 1)} (one runner = queue + cancellations)"))
+        else:
+            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels {labels} (repo label {slug})"))
+    return out
+
+
+RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
+
+
+def runs_on_values(text):
+    """Values of every `runs-on:` line (job runners and reusable-workflow inputs), comments removed."""
+    return [v.split("#", 1)[0].strip() for v in RUNS_ON_RE.findall(text)]
+
+
+def is_hosted(value):
+    return bool(re.search(r"(ubuntu|windows|macos)-", value)) and "self-hosted" not in value
+
+
+def runner_workflow_problems(workflows, m):
+    """CI-1 in workflow files: no hosted runs-on in private repos, no self-hosted in public repos;
+    callers of KavoshStart reusable workflows in private repos pass a self-hosted runs-on input."""
+    vis = m.get("visibility")
+    if vis == "public":
+        bad = [f for f, t in workflows.items() if any("self-hosted" in v for v in runs_on_values(t))]
+        return [("fail" if bad else "ok", "CI-1", "Public repository uses only GitHub-hosted runners", ", ".join(bad) or "ok")]
+    if vis == "private":
+        bad = [f for f, t in workflows.items() if any(is_hosted(v) for v in runs_on_values(t))]
+        callers = [f for f, t in workflows.items()
+                   if KAVOSH_WF in t and not any("self-hosted" in v for v in runs_on_values(t))]
+        out = [("fail" if bad else "ok", "CI-1", "Private repository never uses GitHub-hosted runners", ", ".join(bad) or "ok")]
+        if callers:
+            out.append(("fail", "CI-1", "KavoshStart workflows get a self-hosted runs-on input", ", ".join(callers)))
+        return out
+    return []
 
 
 # ---------------------------------------------------------------- repository files
@@ -179,10 +232,9 @@ def check_files(m):
     claude = read(".claude/settings.json")
     add("ok" if "git push" in claude and "deny" in claude else "warn", "AI-4", "Claude deny rules present", ".claude/settings.json")
 
-    self_hosted_ok = m.get("ci", {}).get("runner") == "self-hosted-deploy-only"
     wf = [f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))]
-    sh = [f for f in wf if re.search(r"^\s*runs-on:.*self-hosted", read(f), re.M)]
-    add("fail" if sh and not self_hosted_ok else "ok", "CI-1", "Only GitHub-hosted runners", ", ".join(sh) or "ok")
+    for level, rule, title, detail in runner_workflow_problems({f: read(f) for f in wf}, m):
+        add(level, rule, title, detail)
     noperm = [f for f in wf if not re.search(r"^permissions:", read(f), re.M)]
     add("fail" if noperm else "ok", "SEC-3", "Workflows declare top-level permissions", ", ".join(noperm) or "ok")
     noto = [f for f in wf if "runs-on" in read(f) and "timeout-minutes" not in read(f)]
@@ -287,6 +339,10 @@ def check_pr(m, event, repo):
     max_ready = int(limits.get("maxOpenReadyPRs", 3))
     bot = pr["user"]["type"] == "Bot" or bool(EXEMPT_BRANCH_RE.search(head))
 
+    actual = "private" if event["repository"].get("private") else "public"
+    if m.get("visibility") and m["visibility"] != actual:
+        add("fail", "CI-1", "Manifest visibility matches the repository",
+            f"repository is {actual}, manifest says {m['visibility']} — a public repo must never run on self-hosted runners")
     add("ok" if CC_RE.match(title) else "fail", "PR-2", "Title is a Conventional Commit", title)
     add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
     add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")

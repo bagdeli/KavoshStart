@@ -21,7 +21,7 @@ permissions:
 jobs:
   review:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: {{RUNS_ON_YAML}}   # CI-1 (from kavosh.project.json)
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

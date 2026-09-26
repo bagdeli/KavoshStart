@@ -5,86 +5,353 @@
   "description": "Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["kavoshStart", "name", "repo", "summary", "tier", "runtime", "users", "data", "size", "ui", "stack", "deploy", "ci", "agents"],
+  "required": [
+    "kavoshStart",
+    "name",
+    "repo",
+    "summary",
+    "visibility",
+    "tier",
+    "runtime",
+    "users",
+    "data",
+    "size",
+    "ui",
+    "stack",
+    "deploy",
+    "ci",
+    "agents"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
-    "kavoshStart": { "type": "string", "pattern": "^v[0-9]+[.][0-9]+[.][0-9]+$", "description": "Exact KavoshStart release the project follows" },
-    "name": { "type": "string", "minLength": 2 },
-    "repo": { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
-    "summary": { "type": "string", "minLength": 10, "maxLength": 300 },
-    "owner": { "type": "string" },
-    "tier": { "enum": ["T0", "T1", "T2"] },
-    "tierOverride": { "type": "string", "description": "ADR path if tier differs from CLASSIFICATION.md result" },
-    "runtime": { "enum": ["none", "static", "server", "desktop"] },
-    "projectKind": { "enum": ["application", "library", "tool"], "description": "library = consumed by other Kavosh repositories (classifies at least T1)" },
-    "adoptionPhase": { "type": "boolean", "description": "true only while an existing repo is being adopted; allows governance enforce: false" },
-    "firstRelease": { "type": "array", "items": { "type": "string" } },
-    "outOfScope": { "type": "array", "items": { "type": "string" } },
+    "$schema": {
+      "type": "string"
+    },
+    "kavoshStart": {
+      "type": "string",
+      "pattern": "^v[0-9]+[.][0-9]+[.][0-9]+$",
+      "description": "Exact KavoshStart release the project follows"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 300
+    },
+    "visibility": {
+      "enum": [
+        "private",
+        "public"
+      ],
+      "description": "Repository visibility. Decides the runner (CI-1): private → self-hosted, public → github-hosted"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "tier": {
+      "enum": [
+        "T0",
+        "T1",
+        "T2"
+      ]
+    },
+    "tierOverride": {
+      "type": "string",
+      "description": "ADR path if tier differs from CLASSIFICATION.md result"
+    },
+    "runtime": {
+      "enum": [
+        "none",
+        "static",
+        "server",
+        "desktop"
+      ]
+    },
+    "projectKind": {
+      "enum": [
+        "application",
+        "library",
+        "tool"
+      ],
+      "description": "library = consumed by other Kavosh repositories (classifies at least T1)"
+    },
+    "adoptionPhase": {
+      "type": "boolean",
+      "description": "true only while an existing repo is being adopted; allows governance enforce: false"
+    },
+    "firstRelease": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "outOfScope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "users": {
-      "type": "object", "additionalProperties": false, "required": ["audience", "scale"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audience",
+        "scale"
+      ],
       "properties": {
-        "audience": { "enum": ["internal", "customers", "public"] },
-        "scale": { "enum": ["1-10", "10-100", "100-1000", "1000+"] }
+        "audience": {
+          "enum": [
+            "internal",
+            "customers",
+            "public"
+          ]
+        },
+        "scale": {
+          "enum": [
+            "1-10",
+            "10-100",
+            "100-1000",
+            "1000+"
+          ]
+        }
       }
     },
     "data": {
-      "type": "object", "additionalProperties": false, "required": ["sensitivity", "regulatedIntegrations", "multiTenant"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sensitivity",
+        "regulatedIntegrations",
+        "multiTenant"
+      ],
       "properties": {
-        "sensitivity": { "enum": ["none", "internal", "personal", "financial"] },
-        "regulatedIntegrations": { "type": "array", "items": { "type": "string" } },
-        "multiTenant": { "type": "boolean" }
+        "sensitivity": {
+          "enum": [
+            "none",
+            "internal",
+            "personal",
+            "financial"
+          ]
+        },
+        "regulatedIntegrations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "multiTenant": {
+          "type": "boolean"
+        }
       }
     },
     "size": {
-      "type": "object", "additionalProperties": false, "required": ["domains", "lifetime", "parallelStreams"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domains",
+        "lifetime",
+        "parallelStreams"
+      ],
       "properties": {
-        "domains": { "type": "integer", "minimum": 1 },
-        "lifetime": { "enum": ["weeks", "months", "years"] },
-        "parallelStreams": { "type": "integer", "minimum": 1 }
+        "domains": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lifetime": {
+          "enum": [
+            "weeks",
+            "months",
+            "years"
+          ]
+        },
+        "parallelStreams": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "ui": {
-      "type": "object", "additionalProperties": false, "required": ["kind"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
       "properties": {
-        "kind": { "enum": ["none", "web", "admin", "desktop"] },
-        "kavoshui": { "type": ["string", "null"], "pattern": "^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$" },
-        "locales": { "type": "array", "items": { "type": "string" } }
+        "kind": {
+          "enum": [
+            "none",
+            "web",
+            "admin",
+            "desktop"
+          ]
+        },
+        "kavoshui": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$"
+        },
+        "locales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "stack": {
-      "type": "object", "additionalProperties": false, "required": ["languages"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "languages"
+      ],
       "properties": {
-        "languages": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "frameworks": { "type": "array", "items": { "type": "string" } },
-        "database": { "enum": ["postgresql", "sqlite", "mysql", "none"] }
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "frameworks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database": {
+          "enum": [
+            "postgresql",
+            "sqlite",
+            "mysql",
+            "none"
+          ]
+        }
       }
     },
     "deploy": {
-      "type": "object", "additionalProperties": false, "required": ["method", "environments"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "environments"
+      ],
       "properties": {
-        "method": { "enum": ["none", "release-artifact", "pull-build", "pull-image"] },
-        "location": { "enum": ["iran", "abroad", "both"] },
-        "environments": { "type": "array", "items": { "enum": ["test", "production"] } },
-        "urls": { "type": "object", "additionalProperties": { "type": "string" } }
+        "method": {
+          "enum": [
+            "none",
+            "release-artifact",
+            "pull-build",
+            "pull-image"
+          ]
+        },
+        "location": {
+          "enum": [
+            "iran",
+            "abroad",
+            "both"
+          ]
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "test",
+              "production"
+            ]
+          }
+        },
+        "urls": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
       }
     },
     "ci": {
-      "type": "object", "additionalProperties": false, "required": ["runner", "monthlyMinutesBudget"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runner",
+        "monthlyMinutesBudget"
+      ],
       "properties": {
-        "runner": { "enum": ["github-hosted", "self-hosted-deploy-only"] },
-        "runnerAdr": { "type": "string", "description": "Required ADR path when runner is self-hosted-deploy-only" },
-        "monthlyMinutesBudget": { "type": "integer", "minimum": 0, "maximum": 2000 }
+        "runner": {
+          "enum": [
+            "self-hosted",
+            "github-hosted"
+          ],
+          "description": "Must match visibility: private → self-hosted, public → github-hosted (CI-1)"
+        },
+        "runnerLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Self-hosted labels; default [self-hosted, linux, x64, <repo-slug>] (CI-2)"
+        },
+        "runners": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Number of self-hosted runners registered to this repository (T2 ≥ 2)"
+        },
+        "monthlyMinutesBudget": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000,
+          "description": "GitHub-hosted minutes on private repos (0 under CI-1)"
+        }
       }
     },
     "limits": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "prMaxLines": { "type": "integer", "minimum": 100, "maximum": 2000 },
-        "maxOpenReadyPRs": { "type": "integer", "minimum": 1, "maximum": 10 },
-        "branchMaxAgeDays": { "type": "integer", "minimum": 1, "maximum": 14 }
+        "prMaxLines": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 2000
+        },
+        "maxOpenReadyPRs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "branchMaxAgeDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        }
       }
     },
-    "agents": { "type": "array", "items": { "enum": ["claude", "codex", "copilot", "gemini", "human-only"] }, "minItems": 1 },
-    "dependsOn": { "type": "array", "items": { "type": "string" } }
+    "agents": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "claude",
+          "codex",
+          "copilot",
+          "gemini",
+          "human-only"
+        ]
+      },
+      "minItems": 1
+    },
+    "dependsOn": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
   }
 }

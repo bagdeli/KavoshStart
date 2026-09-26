@@ -57,6 +57,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
+8. **Runner (CI-1):** private repository → ask the owner to register the self-hosted runner(s) with
+   `scripts/install-runner.sh` (the owner creates the registration token; you never handle it). Verify:
+   `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`. Public repository → nothing to do.
 
 ### Step 5 — Backlog
 1. Create milestone `v0.1.0` (first usable release).

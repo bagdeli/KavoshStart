@@ -12,7 +12,8 @@ import portfolio_guard as pg  # noqa: E402
 
 REPO = "bagdeli/Demo"
 PIN = "v1.1.0"
-MANIFEST = {"repo": REPO, "kavoshStart": PIN, "tier": "T1", "ci": {"monthlyMinutesBudget": 300}}
+MANIFEST = {"repo": REPO, "kavoshStart": PIN, "tier": "T1", "visibility": "private",
+            "ci": {"runner": "self-hosted", "monthlyMinutesBudget": 0}}
 KAVOSH = f"""jobs:
   kavosh:
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@{PIN}
@@ -44,10 +45,12 @@ class FakeApi:
         self.head_checks = ["main-guard / main-guard", "required"]
         self.health = [{"number": 9, "updated_at": RECENT}]
         self.violations = []
+        self.runners = [{"status": "online"}]
+        self.private = True
         self.__dict__.update(over)
 
     def repos(self, owner):
-        return [{"nameWithOwner": REPO, "isPrivate": True, "isArchived": False, "defaultBranchRef": {"name": "main"}}]
+        return [{"nameWithOwner": REPO, "isPrivate": self.private, "isArchived": False, "defaultBranchRef": {"name": "main"}}]
 
     def get(self, path):
         if "/contents/" in path:
@@ -59,6 +62,8 @@ class FakeApi:
             if self.token_perm is PermissionError:
                 raise PermissionError("403")
             return {"default_workflow_permissions": self.token_perm}
+        if path.endswith("/actions/runners"):
+            return {"runners": self.runners}
         if "/branches/" in path:
             return {"commit": {"sha": "h" * 40}}
         if "/check-runs" in path:
@@ -73,13 +78,13 @@ class FakeApi:
 
 
 def rules(api):
-    _, findings, _ = pg.inspect_repo(api, REPO, "main", True)
+    _, findings, _ = pg.inspect_repo(api, REPO, "main", api.private)
     return {r for r, _ in findings}
 
 
 class LayerO(unittest.TestCase):
     def test_O_positive_clean_repo(self):
-        """Covers: BR-5, PR-5, BR-9, CI-3, AI-4, REL-6 (positive)"""
+        """Covers: BR-5, PR-5, BR-9, CI-3, AI-4, REL-6, CI-2 (positive)"""
         self.assertEqual(rules(FakeApi()), set())
         text, n = pg.run(FakeApi(), "bagdeli")
         self.assertEqual(n, 0, text)
@@ -144,6 +149,12 @@ class LayerO(unittest.TestCase):
         text, n = pg.run(api, "bagdeli")
         self.assertGreaterEqual(n, 1)
         self.assertIn("CI-3", text)
+
+    def test_CI1_negative_O_visibility_changed(self):
+        self.assertIn("CI-1", rules(FakeApi(private=False)))
+
+    def test_CI2_negative_O_no_online_runner(self):
+        self.assertIn("CI-2", rules(FakeApi(runners=[{"status": "offline"}])))
 
     def test_O_reports_frozen_v1_consumers(self):
         api = FakeApi()

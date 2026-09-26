@@ -32,6 +32,7 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 - Never edit `.github/workflows/kavosh-*.yml` by hand — edit `tooling/` and rebuild. Self-check fails on drift.
 - Reusable workflow inputs and job names are the public API (`@v1`). Breaking them = major version.
 - Workflow logic uses python3 stdlib + gh only; third-party actions are pinned by SHA.
+- Every job of a reusable workflow uses `runs-on: ${{ fromJSON(inputs.runs-on) }}` (CI-1: callers choose by visibility).
 - Templates must pass `tooling/test_templates.py`. Placeholders: `{{NAME}}` style, defined in `scripts/scaffold.py`.
 - Persian for explanations (`standard/`, `README.md`), English for anything agents execute (`START.md`, templates, ADRs).
 

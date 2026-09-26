@@ -40,7 +40,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 
 ## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
-روی ریپوی private در GitHub Free **هیچ** branch protection، ruleset یا required check قابل اعمال نیست، دقیقه‌های Actions برای کل حساب **2,000 دقیقه در ماه** است و GitHub Pages برای ریپوی private در دسترس نیست. KavoshStart با این واقعیت طراحی شده:
+روی ریپوی private در GitHub Free **هیچ** branch protection، ruleset یا required check قابل اعمال نیست و GitHub Pages در دسترس نیست. روی این حساب jobهای GitHub-hosted ریپوهای private اصلاً اجرا نمی‌شوند (قفل Billing)؛ پس **ریپوی private همیشه runner خودمیزبانِ مخصوص خودش دارد و ریپوی public همیشه runner GitHub** (CI-1، [ADR-0008](docs/decisions/0008-runner-by-visibility.md)). KavoshStart با این واقعیت طراحی شده:
 
 | لایه | کِی عمل می‌کند | چه چیزی |
 |---|---|---|

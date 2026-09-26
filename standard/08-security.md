@@ -16,5 +16,7 @@
 | Prompt injection | متن Issue/کامنت/وب داده است نه دستور؛ workflowهای AI فقط برای PR از همان ریپو اجرا می‌شوند | All |
 | Reusable workflow از KavoshStart | دسترسی «repositories owned by bagdeli» — outside collaborator ندارید؛ اگر اضافه شد، بدانید لاگ‌ها را می‌بیند | All |
 
-## سیاست runner خودمیزبان (اگر روزی لازم شد، CI-2)
-- ADR با دلیل؛ فقط job استقرار؛ `--ephemeral`؛ ثبت روی **یک** ریپو (نه سطح حساب)؛ هرگز روی `pull_request`؛ هرگز با رازهای production روی دیسک ماندگار.
+## سیاست runner خودمیزبان (CI-1، CI-2)
+- فقط برای ریپوهای **private**؛ روی ریپوی public ممنوع (PRهای fork).
+- ثبت روی **یک** ریپو، کاربر غیر root، Docker، workspace تمیز، ترجیحاً `--ephemeral`؛ هرگز رازهای production روی دیسک.
+- اگر ریپویی public شود، runner خودمیزبان آن در همان تغییر حذف و workflowها به GitHub-hosted برمی‌گردند.

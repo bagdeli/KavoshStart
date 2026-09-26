@@ -35,6 +35,11 @@ def layers(manifest: dict) -> list:
 def values(m: dict) -> dict:
     ui = m.get("ui", {})
     slug = re.sub(r"[^a-z0-9]+", "-", m["repo"].split("/")[-1].lower()).strip("-")
+    # CI-1: private → self-hosted runner registered to this repository; public → GitHub-hosted
+    if m.get("visibility", "private") == "private":
+        labels = m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
+    else:
+        labels = ["ubuntu-latest"]
     return {
         "NAME": m["name"],
         "REPO": m["repo"],
@@ -50,6 +55,8 @@ def values(m: dict) -> dict:
         "BUDGET": str(m.get("ci", {}).get("monthlyMinutesBudget", "")),
         "PR_MAX_LINES": str(m.get("limits", {}).get("prMaxLines", 400)),
         "PACKAGE": "true" if m["runtime"] in ("none", "desktop") else "false",
+        "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")),
+        "RUNS_ON_YAML": ("[" + ", ".join(labels) + "]") if labels != ["ubuntu-latest"] else "ubuntu-latest",
     }
 
 

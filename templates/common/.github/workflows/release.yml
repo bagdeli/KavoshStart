@@ -18,4 +18,5 @@ jobs:
   release:
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-release.yml@{{KAVOSHSTART}}
     with:
+      runs-on: '{{RUNS_ON_JSON}}'
       package: {{PACKAGE}}   # true for runtime none/desktop: `make package` → dist/* attached to the release
