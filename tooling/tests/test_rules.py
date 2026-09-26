@@ -93,7 +93,7 @@ class RulesContract(unittest.TestCase):
         self.assertIn("secret KAVOSH_PUBLIC_PORTFOLIO_TOKEN is missing", wf)
         self.assertIn("exit 1", wf)
         doc = (ROOT / "standard" / "01-free-plan-operating-model.md").read_text(encoding="utf-8")
-        self.assertIn("**فقط انسان** متوجه می‌شود", doc)
+        self.assertIn("فقط انسان متوجه می‌شود", doc)
 
 
 if __name__ == "__main__":
