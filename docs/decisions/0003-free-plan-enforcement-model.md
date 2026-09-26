@@ -21,7 +21,7 @@ in a `kavosh:violation` issue; H (weekly health) measures drift and minutes; S a
 (squash-only, auto-delete branches, read-only default token).
 
 ## Consequences
-- Good: every violation is either prevented or recorded; no silent drift like KavoshERP's 537-commit gap.
+- Good: every violation is either prevented or recorded; no silent long-lived divergence between the default branch and hidden integration work.
 - Bad: a determined bypass is still possible; it is detected after the fact, not prevented.
 - When a paid plan or public visibility arrives: apply `templates/rulesets/*.json`; nothing else changes.
 
