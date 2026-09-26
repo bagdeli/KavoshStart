@@ -76,6 +76,8 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §2 ADOPT an existing repository
 1. Run `bash scripts/audit-repo.sh bagdeli/<repo>` (read-only). Summarise findings against `standard/RULES.md`.
+   If the target repository is private, keep its identity, audit output, goals, architecture and adoption plan inside
+   that private repository/workspace. Never copy them into public KavoshStart Issues, PRs, commits, files, logs or examples (SEC-5).
 2. Run the intake (§1 steps 1–3) using what the repository already shows; ask only what is missing.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
@@ -103,3 +105,4 @@ manually (e.g. the Actions access setting). Stop.
 - Anything touching production data or credentials; SETAD/Moadian/bank credentials (never handle them at all).
 - A rule in `standard/RULES.md` would have to be broken to finish the task.
 - The CI minute budget of the project would be exceeded this month.
+- Writing a private project's identity, URL, goals, architecture, audit findings, metrics or monitoring output into a public repository or public CI log.
