@@ -2,11 +2,10 @@
 
 - Status: accepted
 - Deciders: bagdeli
-- Evidence: audits/KavoshERP-2026-09-26.md (A1–A3, F3, F4)
+- Evidence: anonymized audit of a large private project (details retained only in its private workspace)
 
 ## Context and problem
-KavoshERP kept live status (current head, schema, "active authority" issue numbers) in 16+ Markdown files and in
-100-comment handoff issues. Every commit made part of it stale; agents starting on `main` were routed to a closed issue.
+A large private project kept live status (current head, schema and active work references) across many Markdown files and long handoff issues. Every commit made part of it stale; agents starting on `main` could be routed to obsolete work.
 
 ## Considered options
 1. Keep status files and validate them with a script.
