@@ -46,6 +46,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 |---|---|---|
 | **A — محافظ عامل** (پیشگیری) | قبل از push | `.githooks/pre-push` + قواعد deny در `.claude/settings.json` |
 | **P — بررسی PR** (قرمز شدن) | روی هر PR | workflow `kavosh-governance` — مالک هرگز PR قرمز را ادغام نمی‌کند |
+| **G — دروازه‌ی انتشار** | قبل از هر نسخه | `kavosh-release` — بدون checkهای الزامی سبز، نسخه‌ای ساخته نمی‌شود |
 | **M — نگهبان main** (کشف) | بعد از هر push به main | `kavosh-main-guard` — push مستقیم یا ادغام PR قرمز = Issue تخلف |
 | **H — سلامت هفتگی** (اندازه‌گیری) | هر شنبه | `kavosh-health` — شاخه‌ها، دقیقه‌ها، Issueها، CI |
 | **S — تنظیمات رایگان** | یک‌بار | squash-only، حذف خودکار شاخه، برچسب‌ها |
@@ -54,7 +55,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 
 ## نسخه‌بندی
 
-KavoshStart خودش SemVer دارد. پروژه‌ها workflowها را با tag متحرک `@v1` فرا می‌خوانند و نسخه‌ی دقیق را در `kavosh.project.json` → `kavoshStart` ثبت می‌کنند. تغییر ناسازگار = `v2`.
+KavoshStart خودش SemVer دارد و فقط از طریق دروازه‌ی REL-5 منتشر می‌شود. پروژه‌ها workflowها را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، همان مقدار `kavosh.project.json` → `kavoshStart`؛ Dependabot ارتقا را به‌صورت PR پیشنهاد می‌کند (ADR-0006). tag قدیمی `v1` و نسخه‌ی `v1.0.0` (pre-release) برای استفاده نیستند.
 
 ## پیش‌نیاز یک‌باره
 

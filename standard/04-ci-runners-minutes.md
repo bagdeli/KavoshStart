@@ -36,11 +36,10 @@
 ## ساختار workflowهای هر پروژه
 | فایل | رویداد | Tier |
 |---|---|---|
-| `kavosh.yml` | PR، push به main، هفتگی ← فراخوانی workflowهای KavoshStart | All |
+| `kavosh.yml` | PR، push به main، هفتگی ← فراخوانی workflowهای KavoshStart با tag دقیق | All |
 | `ci.yml` | PR (غیر Draft)، push به main ← `make check` + job `required` | All |
-| `release.yml` | push به main ← release-please | T1, T2 |
+| `release.yml` | پس از موفقیت ci روی main ← `kavosh-release` (دروازه‌ی REL-5 + release-please + فایل‌های انتشار) | All |
 | `ai-review.yml` | PR ready ← بازبینی AI (نیاز به کلید API) | T2 (T1 اختیاری) |
-| `release-assets.yml` | tag ← ساخت فایل‌های انتشار | runtime none/desktop |
 
 ## قرارداد فرمان (CI-8)
 CI هیچ‌وقت ابزار زبان خاصی را مستقیم صدا نمی‌زند؛ فقط `make setup` و `make check`. پس:

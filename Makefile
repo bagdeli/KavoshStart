@@ -9,6 +9,7 @@ lint:
 	for f in scripts/*.sh templates/common/.githooks/* templates/runtime/server/deploy/*.sh; do bash -n "$$f" || exit 1; done
 
 test:
+	python3 -m unittest discover -s tooling/tests
 	python3 tooling/test_templates.py
 
 build:

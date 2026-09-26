@@ -26,7 +26,15 @@ main   ●────●────●────●────●───�
 | عمق stack | 1 | 2 | ≥ 3 |
 
 ## انتشار
+```text
+push به main → ci (required) + kavosh (main-guard) → ci موفق → release (workflow_run)
+   → REL-5: checkهای الزامی همان commit موجود و موفق؟ و هنوز head main است؟
+   → release-please: Release PR را به‌روز می‌کند / پس از ادغام آن: tag + Release (+ فایل‌های انتشار در همان اجرا)
+```
 - release-please یک «Release PR» باز نگه می‌دارد؛ ادغامش = نسخه + `CHANGELOG.md` + tag + Release.
+- **Approve and run:** Release PR را `GITHUB_TOKEN` می‌سازد؛ طبق قاعده‌ی GitHub، CI آن PR تا تأیید مالک اجرا نمی‌شود. در تب Checks روی «Approve and run» بزنید، سبز شدن را ببینید، بعد ادغام کنید.
+- اگر CI قرمز است یا اجرا نشده (مثلاً قفل Billing)، هیچ نسخه‌ای ساخته نمی‌شود (REL-5). دور زدن این دروازه با tag دستی تخلف است.
+- tag `v1` قدیمی منجمد است و هرگز جابه‌جا نمی‌شود؛ پروژه‌ها فقط `@vX.Y.Z` دقیق (REL-6).
 - پیش‌انتشار: `vX.Y.Z-rc.N` ← سرور test خودکار آن را می‌کشد ← UAT ← نسخه‌ی نهایی ← مالک روی production پین می‌کند.
 - hotfix نسخه‌ی قدیمی: شاخه‌ی `release/X.Y` **از روی tag** و فقط برای همان hotfix؛ بعد حذف.
 

@@ -1,6 +1,6 @@
 # 0005 — Reusable workflows embed their logic; floating major tag
 
-- Status: accepted
+- Status: accepted; the floating-tag part is superseded by [0006](0006-exact-version-pins.md)
 - Deciders: bagdeli
 
 ## Context and problem

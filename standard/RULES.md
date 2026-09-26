@@ -6,7 +6,7 @@
 **سطح:** `MUST` = نقض آن check را قرمز می‌کند یا Issue تخلف می‌سازد · `SHOULD` = هشدار · `MAY` = اختیاری
 **Tier:** `All` یا فهرست رده‌ها
 **لایه‌ی اجرا** (توضیح در [01-free-plan-operating-model.md](01-free-plan-operating-model.md)):
-`A` محافظ عامل (قبل از push) · `P` بررسی PR · `M` نگهبان main · `H` گزارش سلامت هفتگی · `S` تنظیم ریپو · `R` بازبینی انسانی
+`A` محافظ عامل (قبل از push) · `P` بررسی PR · `M` نگهبان main · `G` دروازه‌ی انتشار · `H` گزارش سلامت هفتگی · `S` تنظیم ریپو · `R` بازبینی انسانی
 
 ## SRC — منبع حقیقت
 | ID | قاعده | سطح | Tier | لایه |
@@ -59,7 +59,9 @@
 | REL-1 | «انتشار» = tag `vX.Y.Z` + GitHub Release روی commit از `main`. هیچ جایگزین دیگری (Issue closure record، امتیاز 100/100) معتبر نیست. | MUST | All | H |
 | REL-2 | نسخه‌بندی SemVer؛ پیش‌انتشار `vX.Y.Z-rc.N`. | MUST | All | R |
 | REL-3 | tagهای غیرنسخه (مثل `develop`) ممنوع. | MUST | All | H |
-| REL-4 | release-please نسخه و `CHANGELOG.md` را از Conventional Commits می‌سازد. | MUST | T1, T2 | S |
+| REL-4 | release-please نسخه و `CHANGELOG.md` را از Conventional Commits می‌سازد (workflow مشترک `kavosh-release`). | MUST | All | G |
+| REL-5 | **دروازه‌ی انتشار:** نسخه فقط از commit فعلی `main` ساخته می‌شود که checkهای الزامی (`required`، `main-guard / main-guard`) آن **وجود داشته و موفق** باشند. در دسترس نبودن CI مجوز انتشار نیست. | MUST | All | G |
+| REL-6 | پروژه‌ها workflowهای KavoshStart را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، برابر با `kavoshStart` مانیفست؛ tag متحرک (`v1`) ممنوع و منجمد است. ارتقا فقط با PR (Dependabot). | MUST | All | P, R |
 
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
