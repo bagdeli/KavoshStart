@@ -43,14 +43,15 @@
 - **قاعده‌ی انسانی واحد:** «PR قرمز را ادغام نکن» (PR-7). دکمه‌ی Merge در دسترس است؛ این تنها جایی است که به انضباط شما تکیه می‌کنیم — و اگر نقض شود، لایه‌ی M آن را ثبت می‌کند.
 
 ## لایه‌ی O — ناظر پرتفوی (بیرون از ریپوی محصول)
-هیچ ریپویی نمی‌تواند حذف شدن محافظ خودش را به‌طور قابل‌اتکا گزارش کند: PRی که `kavosh.yml` را حذف یا خنثی کند، همان checkهایی را حذف می‌کند که باید اعتراض می‌کردند. پس یک ناظر **بیرون** از ریپو لازم است:
+هیچ ریپویی نمی‌تواند حذف شدن محافظ خودش را به‌طور قابل‌اتکا گزارش کند. اما control-plane عمومی نباید برای حل این مسئله مرز محرمانگی پروژه‌های private را بشکند.
 
-- `scripts/portfolio_guard.py` (مستقل، فقط stdlib + `gh`) و workflow روزانه‌ی `kavosh-portfolio` در KavoshStart.
-- برای هر ریپوی دارای مانیفست بررسی می‌کند: وجود و اتصال `kavosh.yml`/`ci.yml`/`release.yml` (همان منطق لایه‌ی P)، tag دقیق برابر مانیفست، `enforce: true`، فایل‌های محافظ، تنظیمات merge و توکن، اجرای واقعی main-guard روی head، تازگی Issue سلامت، Issueهای تخلف باز، جمع بودجه‌ی دقیقه‌ها، و مصرف‌کننده‌های tag منجمد `v1`.
-- نتیجه در **یک** Issue با برچسب `kavosh:portfolio` در KavoshStart؛ یافته = job قرمز.
-- پیش‌نیاز: secret `KAVOSH_PORTFOLIO_TOKEN` — fine-grained PAT فقط‌خواندنی روی همه‌ی ریپوهای bagdeli (Contents، Metadata، Actions، Issues، Administration: read). ساختن آن فقط کار مالک است.
+- `scripts/portfolio_guard.py` و workflow روزانه‌ی `kavosh-portfolio` در KavoshStart عمومی **فقط repositoryهای public** را با `--visibility public` enumerate می‌کنند.
+- گزارش عمومی شامل وجود/اتصال workflowها، pin نسخه، `enforce: true`، تنظیمات merge/token، اجرای main-guard، health، violationها و بودجه‌ی repoهای public است.
+- secret `KAVOSH_PORTFOLIO_TOKEN` باید fine-grained، read-only و فقط محدود به repositoryهای public انتخاب‌شده باشد. این token نباید به هیچ repository private دسترسی داشته باشد.
+- repoهای private اگر به ناظر بیرونی نیاز دارند، از **control-plane خصوصی جدا** استفاده می‌کنند. نام، URL، یافته، runner status یا health آن‌ها نباید به Issue، log یا artifact عمومی KavoshStart برسد.
+- خود script امکان scope خصوصی را برای اجرای خارج از KavoshStart دارد، اما اجرای `--visibility private` از workflow عمومی KavoshStart رد می‌شود و report خصوصی اجازه‌ی `--update-issue` روی KavoshStart عمومی ندارد.
 
-**مرز اعتماد (صادقانه):** لایه‌ی O به همین ریپو، GitHub Actions و Billing حساب وابسته است. اگر خودش از کار بیفتد (مثلاً قفل Billing، حذف secret، غیرفعال شدن schedule)، **فقط انسان** متوجه می‌شود: Issue پرتفوی دیگر به‌روز نمی‌شود. همان script بدون تغییر می‌تواند روی یک ماشین مستقل با systemd timer اجرا شود تا این وابستگی کم شود.
+**مرز اعتماد:** Layer O عمومی به KavoshStart و GitHub Actions وابسته است. اگر خودش از کار بیفتد، فقط انسان متوجه می‌شود. ناظر خصوصی نیز باید health خودش را در همان فضای private گزارش کند.
 
 ## هزینه‌ی دقیقه‌ی خود KavoshStart
 - `kavosh-governance`: یک job، حدود 1 دقیقه به ازای هر رویداد PR (opened/synchronize/ready/edited عنوان-بدنه).
