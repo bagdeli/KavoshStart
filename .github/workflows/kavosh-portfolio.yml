@@ -1,0 +1,52 @@
+# Layer O — portfolio supervisor. Thin wrapper around scripts/portfolio_guard.py (the logic is standalone and can
+# also run from a systemd timer on an independent machine). Checks every repository of the owner from outside.
+# Needs secret KAVOSH_PORTFOLIO_TOKEN: fine-grained PAT, all repositories of bagdeli, read-only
+# (Contents, Metadata, Actions, Issues, Administration: read). Created by the owner; never by an agent.
+name: kavosh-portfolio
+
+on:
+  schedule:
+    - cron: "0 4 * * *"   # daily 07:30 Tehran (~1–2 billable minutes)
+  workflow_dispatch:
+
+concurrency:
+  group: kavosh-portfolio
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  portfolio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Token present
+        env:
+          PAT: ${{ secrets.KAVOSH_PORTFOLIO_TOKEN }}
+        run: |
+          [ -n "$PAT" ] || { echo "::error title=Layer O::secret KAVOSH_PORTFOLIO_TOKEN is missing — the owner must create it (see standard/01)"; exit 1; }
+      - name: Inspect portfolio (read with PAT)
+        id: inspect
+        env:
+          GH_TOKEN: ${{ secrets.KAVOSH_PORTFOLIO_TOKEN }}
+        run: |
+          set +e
+          python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" > report.md
+          echo "findings=$?" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Update the kavosh:portfolio issue (write with this repo's token)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create kavosh:portfolio -R "${{ github.repository }}" --color 5319E7 --description "Layer O portfolio findings" --force
+          n=$(gh issue list -R "${{ github.repository }}" --label kavosh:portfolio --state open --json number -q '.[0].number')
+          if [ -n "$n" ]; then gh issue edit "$n" -R "${{ github.repository }}" --body-file report.md
+          else gh issue create -R "${{ github.repository }}" --title "Portfolio supervisor (Layer O)" --label kavosh:portfolio --body-file report.md; fi
+      - name: Fail when there are findings
+        if: steps.inspect.outputs.findings != '0'
+        run: exit 1
