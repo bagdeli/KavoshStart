@@ -7,7 +7,7 @@
 ## Context and problem
 On this account GitHub-hosted jobs of **private** repositories do not start (failed-payment lock), while public
 repositories run normally (probe on 2026-09-26). A standard that requires GitHub-hosted runners for private projects
-therefore stops every private project — exactly the kind of blockage that pushed KavoshERP off course. Self-hosted
+therefore stops every private project — exactly the kind of delivery blockage this standard is designed to avoid. Self-hosted
 runners on public repositories are a known risk: pull requests from forks would execute code on our machines.
 
 ## Decision
@@ -20,7 +20,7 @@ runners on public repositories are a known risk: pull requests from forks would 
 ## Consequences
 - Good: private projects never depend on GitHub billing or hosted minutes; public projects never expose a server.
 - Bad: each private project needs runner capacity and maintenance; one runner per T2 project is not enough
-  (KavoshERP: 75 % cancelled runs with a single runner).
+  (an anonymized private T2 project showed severe cancellation/queue pressure with a single runner).
 - Making a private repository public requires switching the runner in the same change (governance fails otherwise).
 
 ## Enforcement
