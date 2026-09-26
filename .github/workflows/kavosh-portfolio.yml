@@ -1,6 +1,7 @@
-# Layer O — portfolio supervisor. Thin wrapper around scripts/portfolio_guard.py (the logic is standalone and can
-# also run from a systemd timer on an independent machine). Checks every repository of the owner from outside.
-# Needs secret KAVOSH_PORTFOLIO_TOKEN: fine-grained PAT, all repositories of bagdeli, read-only
+# Layer O — public portfolio supervisor. Thin wrapper around scripts/portfolio_guard.py.
+# This PUBLIC control plane enumerates PUBLIC Kavosh repositories only. Private repositories are deliberately
+# excluded and must be monitored from a separate private control plane.
+# KAVOSH_PORTFOLIO_TOKEN: fine-grained PAT, selected PUBLIC Kavosh repositories only, read-only
 # (Contents, Metadata, Actions, Issues, Administration: read). Created by the owner; never by an agent.
 name: kavosh-portfolio
 
@@ -29,14 +30,14 @@ jobs:
         env:
           PAT: ${{ secrets.KAVOSH_PORTFOLIO_TOKEN }}
         run: |
-          [ -n "$PAT" ] || { echo "::error title=Layer O::secret KAVOSH_PORTFOLIO_TOKEN is missing — the owner must create it (see standard/01)"; exit 1; }
+          [ -n "$PAT" ] || { echo "::error title=Layer O::secret KAVOSH_PORTFOLIO_TOKEN is missing — create a read-only token scoped only to selected public Kavosh repositories (see standard/01)"; exit 1; }
       - name: Inspect portfolio (read with PAT)
         id: inspect
         env:
           GH_TOKEN: ${{ secrets.KAVOSH_PORTFOLIO_TOKEN }}
         run: |
           set +e
-          python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" > report.md
+          python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" --visibility public > report.md
           echo "findings=$?" >> "$GITHUB_OUTPUT"
           cat report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Update the kavosh:portfolio issue (write with this repo's token)
