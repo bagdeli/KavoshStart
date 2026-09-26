@@ -9,7 +9,7 @@ main   ●────●────●────●────●───�
          ●         ●     ●        ← feat/12-login ، fix/15-sms-retry … (≤ 3 روز)
 ```
 - **`main` همیشه حقیقت و همیشه قابل‌انتشار است.** کار ناتمامی که باید ادغام شود پشت feature flag می‌رود، نه در شاخه‌ی بلندعمر.
-- مشکل KavoshERP («main خیلی عقب‌تر از branchها») دقیقاً نقض BR-1 و BR-8 بود: کار روی `vnext/integration-*` جمع شد و `main` 537 commit عقب ماند. در این مدل، شاخه‌ی integration وجود ندارد؛ integration همان `main` است.
+- وقتی کار روی شاخه‌های integration بلندعمر جمع شود، `main` می‌تواند صدها commit عقب بماند؛ این دقیقاً نقض BR-1 و BR-8 است. در این مدل، شاخه‌ی integration وجود ندارد؛ integration همان `main` است.
 
 ## چرخه‌ی یک PR
 1. Issue در وضعیت Ready ← `git switch -c feat/<n>-<slug> origin/main`
