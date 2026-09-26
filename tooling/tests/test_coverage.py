@@ -124,6 +124,17 @@ class GovernanceFiles(unittest.TestCase):
         self.assertTrue(fails_for("SRC-7", lambda d: (d / "PROJECT.md").unlink()))
 
 
+class ReleaseTags(unittest.TestCase):
+    def test_REL3_negative_component_in_tag(self):
+        def mutate(d):
+            f = d / "release-please-config.json"
+            f.write_text(f.read_text(encoding="utf-8").replace('"include-component-in-tag": false,', ""), encoding="utf-8")
+        self.assertTrue(fails_for("REL-3", mutate))
+
+    def test_REL3_positive_plain_version_tags(self):
+        self.assertEqual(g.release_tag_config('{"include-v-in-tag": true, "include-component-in-tag": false}')[0], "ok")
+
+
 class Manifest(unittest.TestCase):
     def test_SRC5_negative_schema_violation(self):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T9")))

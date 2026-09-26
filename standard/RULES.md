@@ -62,7 +62,7 @@
 |---|---|---|---|---|
 | REL-1 | «انتشار» = tag `vX.Y.Z` + GitHub Release روی commit از `main`. هیچ جایگزین دیگری (Issue closure record، امتیاز 100/100) معتبر نیست. | MUST | All | via REL-4, REL-5 |
 | REL-2 | نسخه‌بندی SemVer؛ پیش‌انتشار `vX.Y.Z-rc.N`. | MUST | All | R |
-| REL-3 | tagهای غیرنسخه (مثل `develop`) ممنوع. | MUST | All | H |
+| REL-3 | فقط tag نسخه‌ی ساده `vX.Y.Z[-rc.N]`؛ tag با نام پروژه (`name-v1.2.0`) یا غیرنسخه (مثل `develop`) ممنوع؛ release-please با `include-component-in-tag: false`. | MUST | All | A, P, H |
 | REL-4 | release-please نسخه و `CHANGELOG.md` را از Conventional Commits می‌سازد (workflow مشترک `kavosh-release`). | MUST | All | G |
 | REL-5 | **دروازه‌ی انتشار:** نسخه فقط از commit فعلی `main` ساخته می‌شود که checkهای الزامی (`required`، `main-guard / main-guard`) آن **وجود داشته و موفق** باشند. در دسترس نبودن CI مجوز انتشار نیست. | MUST | All | G |
 | REL-6 | پروژه‌ها workflowهای KavoshStart را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، برابر با `kavoshStart` مانیفست؛ tag متحرک (`v1`) ممنوع و منجمد است. ارتقا فقط با PR (Dependabot). | MUST | All | P |

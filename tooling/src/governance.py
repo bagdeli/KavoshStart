@@ -244,9 +244,25 @@ def check_files(m):
     add("fail" if unpinned else "ok", "SEC-2", "Actions pinned to full SHA; KavoshStart to exact tag",
         "; ".join(unpinned[:8]) or "ok")
     add("ok" if "PROJECT.md" in files else "fail", "SRC-7", "PROJECT.md exists", "one-page project brief (START.md §1 step 3)")
+    level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
+    add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
     add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
     for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m):
         add(level, rule, title, detail)
+
+
+def release_tag_config(text):
+    """REL-3: release-please must tag vX.Y.Z — include-v-in-tag true and include-component-in-tag false
+    (otherwise tags look like 'name-v1.2.0', which pins (REL-6) and the deploy script (DEP-2) reject)."""
+    if text is None:
+        return "fail", "release-please-config.json missing"
+    try:
+        cfg = json.loads(text)
+    except ValueError as e:
+        return "fail", f"release-please-config.json invalid: {e}"
+    if cfg.get("include-v-in-tag") is not True or cfg.get("include-component-in-tag") is not False:
+        return "fail", "set include-v-in-tag: true and include-component-in-tag: false"
+    return "ok", "vX.Y.Z"
 
 
 USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*['\"]?([^'\"\s#]+)", re.M)
