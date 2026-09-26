@@ -42,7 +42,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 Co-Authored-By: Codex <noreply@openai.com>
 Co-Authored-By: Copilot <copilot@github.com>
 ```
-و بخش `## AI involvement` در PR. هویت git انسانی یکی است: `86550574+bagdeli@users.noreply.github.com` (در KavoshERP دو هویت بود).
+و بخش `## AI involvement` در PR. هویت git انسانی باید پایدار و یکتا باشد؛ ممیزی‌های خصوصی نشان داده‌اند چند هویت برای یک مالک attribution را مبهم می‌کند.
 
 ## جمله‌ی استاندارد برای شروع کار با هر عامل
 ```text
