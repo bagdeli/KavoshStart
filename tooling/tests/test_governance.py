@@ -35,6 +35,7 @@ def fails(results):
 
 class Pinning(unittest.TestCase):
     def test_SEC2_positive_sha_pins_and_exact_kavosh_tag(self):
+        """Covers: REL-6 (positive)"""
         text = f"steps:\n  - uses: actions/checkout@{SHA} # v4.2.2\n" + KAVOSH_OK
         self.assertEqual(g.unpinned_uses({"a.yml": text}, M), [])
 
@@ -53,6 +54,7 @@ class Pinning(unittest.TestCase):
 
 class Wiring(unittest.TestCase):
     def test_AI4_positive_wired(self):
+        """Covers: CI-7, REL-4, REL-5 (positive)"""
         self.assertEqual(fails(g.wiring_problems(wf(), M)), [])
 
     def test_AI4_negative_kavosh_yml_deleted(self):
@@ -71,6 +73,7 @@ class Wiring(unittest.TestCase):
         self.assertTrue(any(r[1] == "CI-7" for r in fails(g.wiring_problems(wf(ci="jobs:\n  test:\n"), M))))
 
     def test_REL5_negative_ungated_release(self):
+        """Covers: REL-4 (negative)"""
         rel = "jobs:\n  r:\n    steps:\n      - uses: googleapis/release-please-action@x\n"
         self.assertTrue(any(r[1] == "REL-5" for r in fails(g.wiring_problems(wf(rel=rel), M))))
 
