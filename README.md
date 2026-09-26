@@ -34,11 +34,11 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`templates/`](templates/) | فایل‌های آماده: `common/` + `tier/T0..T2` + `runtime/server` | EN |
 | [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با `@v1` فرا می‌خوانند | — |
 | [`scripts/`](scripts/) | scaffold، راه‌اندازی ریپو، نصب محافظ‌های عامل، ممیزی، گزارش پرتفوی | — |
-| [`decisions/`](decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
+| [`docs/decisions/`](docs/decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
 | [`audits/`](audits/) | ممیزی‌های تاریخ‌دار (KavoshERP 2026-09-26) | FA |
 | [`adoption/`](adoption/) | راهنمای پذیرش پروژه‌ی موجود + برنامه‌ی KavoshERP | FA |
 
-## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](decisions/0003-free-plan-enforcement-model.md))
+## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
 روی ریپوی private در GitHub Free **هیچ** branch protection، ruleset یا required check قابل اعمال نیست، دقیقه‌های Actions برای کل حساب **2,000 دقیقه در ماه** است و GitHub Pages برای ریپوی private در دسترس نیست. KavoshStart با این واقعیت طراحی شده:
 
