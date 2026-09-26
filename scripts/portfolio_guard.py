@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Layer O — portfolio supervisor. Checks every Kavosh repository FROM OUTSIDE, because a repository cannot
-reliably report that its own enforcement was deleted or neutered (a PR that removes kavosh.yml also removes
-the checks that would have complained).
+"""Layer O — public portfolio supervisor.
 
-    python3 scripts/portfolio_guard.py bagdeli                  # report to stdout, exit 1 if findings
-    python3 scripts/portfolio_guard.py bagdeli --update-issue   # also keep ONE `kavosh:portfolio` issue in KavoshStart
+A repository cannot reliably report that its own enforcement was deleted or neutered, so Layer O checks adopted
+PUBLIC repositories from outside. Private repositories are skipped before their name, metadata, files or findings
+can enter the public report. Private-project monitoring belongs in a separate private control surface.
 
-Needs gh authenticated with read access to all repositories (in CI: secret KAVOSH_PORTFOLIO_TOKEN, a fine-grained
-PAT with Contents, Metadata, Actions, Issues read and Administration read). Standalone: the same script can later
-run from a systemd timer on an independent machine without changes.
+    python3 scripts/portfolio_guard.py bagdeli                  # public report to stdout, exit 1 if findings
+    python3 scripts/portfolio_guard.py bagdeli --update-issue   # keep one public `kavosh:portfolio` issue
 
-Trust boundary: Layer O depends on this repository, GitHub Actions and the account's billing. If it stops running,
-only a human notices (the portfolio issue stops updating). The standard does not claim more.
+In CI use KAVOSH_PUBLIC_PORTFOLIO_TOKEN, a fine-grained read-only token scoped only to the governed public
+repositories (Contents, Metadata, Actions, Issues and Administration: read). The skip is still enforced in code
+so an accidentally broader credential does not make private repositories appear in a public report.
+
+Trust boundary: public Layer O depends on this repository and GitHub Actions. If it stops running, only a human
+notices (the portfolio issue stops updating). The standard does not claim visibility into private projects.
 """
 import base64
 import json
@@ -138,7 +140,9 @@ def run(api, owner):
     rows, total_budget, total_findings = [], 0, 0
     frozen_v1 = []
     for r in api.repos(owner):
-        if r.get("isArchived"):
+        if r.get("isArchived") or r.get("isPrivate"):
+            # SEC-5: a public control surface must not inspect or report private repositories,
+            # even when an accidentally broad credential can enumerate them.
             continue
         repo, branch = r["nameWithOwner"], (r.get("defaultBranchRef") or {}).get("name") or "main"
         try:
@@ -159,7 +163,7 @@ def run(api, owner):
     budget_ok = total_budget <= BUDGET_LIMIT
     if not budget_ok:
         total_findings += 1
-    lines = [f"# Portfolio supervisor (Layer O) — {NOW:%Y-%m-%d %H:%M} UTC", "",
+    lines = [f"# Public portfolio supervisor (Layer O) — {NOW:%Y-%m-%d %H:%M} UTC", "",
              f"**{total_findings} finding(s).** Budget sum {total_budget} / {BUDGET_LIMIT} {'✅' if budget_ok else '❌ CI-3'}. "
              f"Consumers of frozen tag `v1`: {', '.join(frozen_v1) or 'none'} (tag may be deleted when none).", "",
              "| Repository | Tier | KavoshStart | Findings |", "|---|---|---|---|"]
