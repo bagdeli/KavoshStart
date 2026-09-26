@@ -13,7 +13,7 @@ main ── release-please ── tag v1.4.0-rc.1        systemd timer (هر 5 �
                                  └──── git fetch --tags ┘   (یا docker pull)
                                                         │ نسخه‌ی هدف ≠ نسخه‌ی فعلی؟
                                                         ▼
-                                  build → migrate → up → health-check ── ✗ → بازگشت به نسخه‌ی قبل
+                  export تمیز → backup → migrate → build/up → health-check ── ✗ → بازگشت «برنامه» به نسخه‌ی قبل
                                                         │ ✓
                                                         ▼
                                                 /version = v1.4.0-rc.1 (sha)
@@ -40,6 +40,19 @@ main ── release-please ── tag v1.4.0-rc.1        systemd timer (هر 5 �
 | `deploy/deploy.env.example` | متغیرهای هر سرور (کانال، مسیر، URL سلامت) — بدون راز |
 | `compose.yaml` | اسکلت Docker Compose با برچسب نسخه |
 | `docs/runbooks/deploy.md` | راه‌اندازی سرور جدید و بازگشت دستی |
+
+## دیتابیس: آنچه خودکار است و آنچه نیست (DEP-4…6)
+| مرحله | خودکار؟ | توضیح |
+|---|---|---|
+| backup قبل از migration | ✅ | `BACKUP_CMD`؛ اگر شکست بخورد، هیچ تغییری اعمال نمی‌شود |
+| migration | ✅ | `MIGRATE_CMD`؛ فقط expand (اضافه کردن) در همان نسخه |
+| بازگشت برنامه به نسخه‌ی قبل | ✅ | چون migrationها expand-only هستند، نسخه‌ی قبل روی schema جدید کار می‌کند |
+| بازگرداندن دیتابیس | ❌ | عمداً دستی (runbook)؛ بازگرداندن خودکار می‌تواند داده‌ی ثبت‌شده بعد از backup را پاک کند |
+
+قاعده‌ی expand/contract: حذف ستون در نسخه‌ی N+1، فقط وقتی نسخه‌ی N دیگر از آن استفاده نمی‌کند. این تنها چیزی است که «بازگشت خودکار» را واقعاً امن می‌کند.
+
+## ساختار روی سرور
+هر نسخه در `releases/vX.Y.Z/` با `git archive` استخراج می‌شود (بدون فایل‌های مانده از قبل)، `.env` در `shared/` و بیرون از نسخه‌هاست، و `current` به نسخه‌ی در حال اجرا اشاره می‌کند. سه نسخه‌ی آخر نگه داشته می‌شود.
 
 ## ثبت استقرار
 اسکریپت پس از هر استقرار موفق یا ناموفق یک خط در `/var/log/kavosh/<project>-deploy.log` می‌نویسد. (اختیاری، بعداً: ارسال وضعیت به GitHub Deployments API با توکن محدود.)
