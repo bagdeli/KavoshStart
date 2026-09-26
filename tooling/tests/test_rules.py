@@ -90,10 +90,10 @@ class RulesContract(unittest.TestCase):
         """Deliberately 'break' Layer O: without its secret the workflow fails red; if it stops running entirely,
         nothing automated notices — the standard must say so honestly (#7)."""
         wf = (ROOT / ".github" / "workflows" / "kavosh-portfolio.yml").read_text(encoding="utf-8")
-        self.assertIn("secret KAVOSH_PORTFOLIO_TOKEN is missing", wf)
+        self.assertIn("secret KAVOSH_PUBLIC_PORTFOLIO_TOKEN is missing", wf)
         self.assertIn("exit 1", wf)
         doc = (ROOT / "standard" / "01-free-plan-operating-model.md").read_text(encoding="utf-8")
-        self.assertIn("**فقط انسان** متوجه می‌شود", doc)
+        self.assertIn("فقط انسان متوجه می‌شود", doc)
 
 
 if __name__ == "__main__":

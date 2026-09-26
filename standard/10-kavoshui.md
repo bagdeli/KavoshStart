@@ -17,4 +17,4 @@
 5. عامل پیش از هر کار UI این اسناد KavoshUI را می‌خواند: `AGENTS.md`، `docs/foundations/DESIGN_STANDARD_FA.md`، `docs/foundations/COMPONENT_SELECTION_STANDARD_FA.md`، `docs/architecture/CONSUMER_CONFORMANCE_STANDARD_FA.md` — و **نه** همه‌ی 91 سند.
 
 ## نکته برای خود KavoshUI
-KavoshUI یک پروژه‌ی T1 (کتابخانه‌ی مصرف‌شده توسط دیگران) است و باید KavoshStart را بپذیرد. در ممیزی 2026-09-26: 173 شکست از 200 اجرای اخیر CI، همه روی runner خودمیزبان، و 91 سند Markdown. همان الگوی KavoshERP؛ پذیرش آن در [adoption/ADOPTION.md](../adoption/ADOPTION.md) پیشنهاد شده است.
+KavoshUI یک پروژه‌ی T1 (کتابخانه‌ی مصرف‌شده توسط دیگران) است و باید KavoshStart را بپذیرد. ممیزی آن باید فقط داده‌های خود KavoshUI را مبنا قرار دهد؛ پذیرش آن در [adoption/ADOPTION.md](../adoption/ADOPTION.md) پیشنهاد شده است.

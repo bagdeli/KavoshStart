@@ -70,9 +70,9 @@
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| CI-1 | **runner بر اساس visibility:** ریپوی **private** فقط runner خودمیزبانِ ثبت‌شده برای همان ریپو (`self-hosted, linux, x64, <repo-slug>`)؛ ریپوی **public** فقط runner میزبانی‌شده‌ی GitHub. `visibility` و `ci.runner` مانیفست باید با ریپوی واقعی یکی باشند. | MUST | All | P, O |
-| CI-2 | runner خودمیزبان: ثبت‌شده فقط برای **یک** ریپو (نه سطح حساب)، کاربر بدون دسترسی root، Docker، workspace تمیز در هر job (ephemeral ترجیحی)، هیچ راز production روی دیسک؛ برای T2 حداقل **دو** runner آنلاین. | MUST | All (private) | P, O |
-| CI-3 | ریپوهای private دقیقه‌ی GitHub-hosted مصرف نمی‌کنند (`monthlyMinutesBudget = 0`)؛ جمع بودجه‌ها ≤ 1600 برای استثناها. | MUST | All | H, O |
+| CI-1 | **runner بر اساس visibility:** ریپوی **private** فقط runner خودمیزبانِ ثبت‌شده برای همان ریپو (`self-hosted, linux, x64, <repo-slug>`)؛ ریپوی **public** فقط runner میزبانی‌شده‌ی GitHub. `visibility` و `ci.runner` مانیفست باید با ریپوی واقعی یکی باشند. | MUST | All | P |
+| CI-2 | runner خودمیزبان: ثبت‌شده فقط برای **یک** ریپو (نه سطح حساب)، کاربر بدون دسترسی root، Docker، workspace تمیز در هر job (ephemeral ترجیحی)، هیچ راز production روی دیسک؛ برای T2 حداقل **دو** runner آنلاین. | MUST | All (private) | P, R |
+| CI-3 | ریپوهای private دقیقه‌ی GitHub-hosted مصرف نمی‌کنند (`monthlyMinutesBudget = 0`)؛ جمع بودجه‌ها ≤ 1600 برای استثناها. | MUST | All | H |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
 | CI-5 | jobهای سنگین (rehearsal، e2e کامل، migration کامل) فقط روی `main`، tag، یا برچسب `ci:full`. | MUST | T1, T2 | R |
 | CI-6 | CI روی PR Draft اجرا نمی‌شود؛ عامل قبل از push `make check` را محلی اجرا می‌کند و ترجیحاً یک‌بار push می‌کند. | MUST | All | A, R |
@@ -105,6 +105,7 @@
 | SEC-2 | actionهای شخص ثالث با SHA کامل (40 کاراکتر) پین می‌شوند. | MUST | All | P |
 | SEC-3 | هر workflow بلوک `permissions:` سطح بالا دارد (حداقل لازم). | MUST | All | P (وجود)، R (حداقلی بودن) |
 | SEC-4 | `.github/dependabot.yml` وجود دارد (حداقل `github-actions`، که ارجاع‌های KavoshStart را هم به‌روز می‌کند). | MUST | All | P |
+| SEC-5 | سطح عمومی KavoshStart و automation عمومی هیچ نام، URL، هدف، audit، plan، finding یا runtime metadata متعلق به پروژه‌ی private را ثبت/گزارش نمی‌کند؛ Layer O عمومی repoهای private را پیش از inspection نادیده می‌گیرد. | MUST | All | O, R |
 
 ## DEP — استقرار (فقط runtime = server/static)
 | ID | قاعده | سطح | Tier | لایه |
@@ -126,5 +127,5 @@
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)
 این‌ها ماشینی بررسی نمی‌شوند؛ مالک هنگام بازبینی PR مسئول آن‌هاست و نقضشان «کشف خودکار» ندارد:
 WK-3 · WK-5 · PR-6 (بخش مالک؛ لایه‌ی A فقط عامل را محدود می‌کند) · PR-7 (تصمیم ادغام؛ لایه‌ی M پس از وقوع کشف می‌کند) ·
-REL-2 · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1…4 · UI-2 · UI-3.
+REL-2 · CI-2 (ظرفیت/ایزولیشن عملیاتی runner خصوصی) · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1…4 · UI-2 · UI-3.
 هر وقت برای یکی از این‌ها check ارزان پیدا شد، لایه‌ی ماشینی اضافه و از این فهرست حذف می‌شود (ADR-0002).

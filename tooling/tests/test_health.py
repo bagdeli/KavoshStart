@@ -44,6 +44,14 @@ class DirectPushes(unittest.TestCase):
         self.assertEqual(h.trailer_ratio(cs), (1, 2))
 
 
+class MinuteBudget(unittest.TestCase):
+    def test_CI3_positive_below_budget(self):
+        self.assertEqual(h.minute_budget_level(50, 100), (True, 50))
+
+    def test_CI3_negative_over_budget(self):
+        self.assertEqual(h.minute_budget_level(101, 100), (False, 101))
+
+
 class TemplateHardening(unittest.TestCase):
     def test_SEC1_gitleaks_download_is_checksum_verified(self):
         for tier in ("T1", "T2"):

@@ -30,5 +30,5 @@
 | بودجه‌ی دقیقه‌ی CI در ماه | 100 |
 
 ## فرض‌ها
-- ریپو private می‌ماند؛ ریپوهای مصرف‌کننده با تنظیم Access «repositories owned by the user» به workflowها دسترسی دارند.
-- GitHub-hosted runnerها در دسترس‌اند (پس از رفع قفل Billing، Issue #1).
+- ریپو public می‌ماند؛ مصرف‌کننده‌ها workflowهای KavoshStart را با tag دقیق release فرا می‌خوانند.
+- GitHub-hosted runner برای خود KavoshStart استفاده می‌شود؛ اطلاعات و monitoring پروژه‌های private وارد این control surface عمومی نمی‌شود.

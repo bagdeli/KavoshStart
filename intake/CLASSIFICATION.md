@@ -8,7 +8,7 @@ apply to every combination.
 
 | Tier | Trigger (any one is enough) | Typical examples |
 |---|---|---|
-| **T2 — Platform** | `data.regulatedIntegrations` not empty · `data.sensitivity = financial` · `data.multiTenant = true` · `size.domains ≥ 4` · `size.parallelStreams ≥ 3` · `users.audience = customers` and `users.scale ≥ 100-1000` | KavoshERP, KavoshLicense |
+| **T2 — Platform** | `data.regulatedIntegrations` not empty · `data.sensitivity = financial` · `data.multiTenant = true` · `size.domains ≥ 4` · `size.parallelStreams ≥ 3` · `users.audience = customers` and `users.scale ≥ 100-1000` | regulated or multi-domain customer platform |
 | **T1 — Application** | `runtime = server` · `data.sensitivity = personal` · `size.domains 2–3` · `size.lifetime ≠ weeks` · `ui.kind ∈ {web, admin}` · `projectKind = library` (consumed by other Kavosh repos) | KavoshSMS, KavoshWebManager, KavoshUI |
 | **T0 — Tool** | none of the above | script, CLI, one-off importer, static landing page, prototype |
 
