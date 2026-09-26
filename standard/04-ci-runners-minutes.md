@@ -8,11 +8,11 @@
 | **private** | خودمیزبان، ثبت‌شده برای همان ریپو: `[self-hosted, linux, x64, <repo-slug>]` | روی این حساب، jobهای GitHub-hosted در ریپوهای private به‌خاطر قفل Billing اجرا نمی‌شوند؛ کار نباید به صورت‌حساب GitHub وابسته باشد |
 | **public** | GitHub-hosted (`ubuntu-latest`) | رایگان و نامحدود؛ runner خودمیزبان روی ریپوی public یعنی اجرای کد PRهای fork روی ماشین ما — ممنوع |
 
-قواعد runner خودمیزبان (درس KavoshERP: یک runner مشترک = صف و 75٪ cancel):
+قواعد runner خودمیزبان (یک runner مشترک می‌تواند به صف و لغوهای زیاد منجر شود):
 - **برای هر ریپو** ثبت می‌شود، نه برای کل حساب؛ label چهارم نام ریپوست تا jobها قاطی نشوند.
 - کاربر بدون دسترسی root، Docker نصب، workspace تمیز در هر job؛ ephemeral در صورت امکان.
 - رازهای production هرگز روی ماشین runner نیستند (استقرار pull-based است — بخش 07).
-- T2 حداقل **دو** runner آنلاین (`ci.runners` در مانیفست)؛ لایه‌ی O تعداد آنلاین را می‌شمارد.
+- T2 حداقل **دو** runner آنلاین (`ci.runners` در مانیفست)؛ در پروژه‌ی private این ظرفیت در همان سطح private توسط مالک/ناظر خصوصی بررسی می‌شود.
 - نصب: `sudo bash scripts/install-runner.sh <owner/repo> <token> [n]`؛ token را مالک می‌گیرد:
   `gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token`
 - شبکه: runner داخل ایران باید به github.com، ghcr.io و مخازن بسته‌ها (یا mirror داخلی مثل KavoshRepo) دسترسی پایدار داشته باشد.
