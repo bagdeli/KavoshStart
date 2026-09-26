@@ -78,9 +78,13 @@ __PYTHON__
         with:
           python-version: "3.12"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        if: hashFiles('package.json') != ''
+        if: hashFiles('package.json') != '' && hashFiles('.node-version') != ''
         with:
           node-version-file: ".node-version"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: hashFiles('package.json') != '' && hashFiles('.node-version') == ''
+        with:
+          node-version: "lts/*"
       - run: make setup
       - run: make package
       - name: Attach dist/* to the release

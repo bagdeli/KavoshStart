@@ -9,7 +9,7 @@ for f in $staged; do
   esac
 done
 if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --staged --redact --no-banner || { echo "KavoshStart SEC-1: gitleaks found a secret" >&2; exit 1; }
+  gitleaks git --pre-commit --staged --redact --no-banner || { echo "KavoshStart SEC-1: gitleaks found a secret" >&2; exit 1; }
 elif git diff --cached -U0 | grep -Eiq "(api[_-]?key|secret|password|passwd|token)[\"' ]*[:=][\"' ]*[A-Za-z0-9/+_-]{16,}"; then
   echo "KavoshStart SEC-1: possible secret in staged changes (install gitleaks for accurate scanning)" >&2
   exit 1
