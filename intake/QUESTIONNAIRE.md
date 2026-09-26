@@ -10,7 +10,7 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 | A2 | R | هدف پروژه در یک جمله؟ | `summary` | Must describe the product now, not the vision |
 | A3 | R | چه کسانی از آن استفاده می‌کنند و تقریباً چند نفر؟ | `users.audience`, `users.scale` | `internal` / `customers` / `public`; `1-10`, `10-100`, `100-1000`, `1000+` |
 | A4 | R | اولین خروجی قابل‌استفاده (v0.1.0) دقیقاً چه کاری انجام می‌دهد؟ | `firstRelease` | 1–5 bullet points; becomes milestone v0.1.0 |
-| A5 |   | چه چیزهایی عمداً در این پروژه نیست؟ | `outOfScope` | Prevents scope drift (KavoshERP README vs AGENTS.md conflict) |
+| A5 |   | چه چیزهایی عمداً در این پروژه نیست؟ | `outOfScope` | Prevents scope drift when README, PROJECT.md and AGENTS.md disagree |
 
 ## B. Runtime and deployment
 | # | R | Question (FA) | Field | Notes / default |
