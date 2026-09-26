@@ -39,6 +39,7 @@ def push(*commits, forced=False):
 
 class MainGuard(unittest.TestCase):
     def test_PR7_positive_squash_merge_all_green(self):
+        """Covers: BR-7, BR-6 (positive)"""
         api = api_for({"m1": [pr(5, "m1", "h1")]}, {"h1": [check("kavosh / governance"), check("required")]})
         self.assertEqual(mg.inspect(push(("m1", "feat: x")), REPO, REQ, api), [])
 

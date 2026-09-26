@@ -79,16 +79,19 @@ def rules(api):
 
 class LayerO(unittest.TestCase):
     def test_O_positive_clean_repo(self):
+        """Covers: BR-5, PR-5, BR-9, CI-3, AI-4, REL-6 (positive)"""
         self.assertEqual(rules(FakeApi()), set())
         text, n = pg.run(FakeApi(), "bagdeli")
         self.assertEqual(n, 0, text)
 
     def test_O_negative_kavosh_yml_deleted(self):
+        """Covers: AI-4 (negative)"""
         api = FakeApi()
         api.files[".github/workflows/kavosh.yml"] = None
         self.assertIn("AI-4", rules(api))
 
     def test_O_negative_guard_ref_changed(self):
+        """Covers: REL-6 (negative)"""
         for ref in ("v1", "v1.0.0", "main"):
             api = FakeApi()
             api.files[".github/workflows/kavosh.yml"] = KAVOSH.replace(f"kavosh-health.yml@{PIN}", f"kavosh-health.yml@{ref}")
@@ -104,6 +107,7 @@ class LayerO(unittest.TestCase):
         self.assertIn("AI-4", rules(api))
 
     def test_O_negative_settings_drift(self):
+        """Covers: PR-5, BR-5 (negative)"""
         api = FakeApi()
         api.settings["allow_merge_commit"] = True
         self.assertIn("PR-5/BR-5", rules(api))
@@ -115,9 +119,11 @@ class LayerO(unittest.TestCase):
         self.assertIn("O", rules(FakeApi(token_perm=PermissionError)))
 
     def test_O_negative_main_guard_not_running(self):
+        """Covers: BR-9 (negative)"""
         self.assertIn("M", rules(FakeApi(head_checks=["required"])))
 
     def test_O_negative_health_stopped_or_missing(self):
+        """Covers: BR-9 (negative)"""
         self.assertIn("H", rules(FakeApi(health=[{"number": 9, "updated_at": OLD}])))
         self.assertIn("H", rules(FakeApi(health=[])))
 
@@ -132,6 +138,7 @@ class LayerO(unittest.TestCase):
         self.assertIn("not adopted", text)
 
     def test_O_negative_budget_sum_over_limit(self):
+        """Covers: CI-3 (negative)"""
         api = FakeApi()
         api.files["kavosh.project.json"] = json.dumps(dict(MANIFEST, ci={"monthlyMinutesBudget": 2000}))
         text, n = pg.run(api, "bagdeli")

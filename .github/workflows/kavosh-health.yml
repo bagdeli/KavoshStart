@@ -68,6 +68,26 @@ jobs:
               return (NOW - ts(s)).days
 
 
+          def branch_problems(compares, max_age):
+              """BR-3 / BR-8 from compare results {branch: compare(default...branch)}: (idle > 7 d, older than max_age, > 50 ahead)."""
+              stale, old, ahead = [], [], []
+              for name, cmp in compares.items():
+                  last = cmp["commits"][-1]["commit"]["committer"]["date"] if cmp.get("commits") else None
+                  if last and days(last) > 7:
+                      stale.append(name)
+                  elif last and days(last) > max_age:
+                      old.append(name)
+                  if cmp.get("ahead_by", 0) > 50:
+                      ahead.append(f"{name} (+{cmp['ahead_by']})")
+              return stale, old, ahead
+
+
+          def non_version_tags(tags):
+              """REL-3: only vX.Y.Z[-rc.N] tags (and the frozen historic v1) are allowed."""
+              import re
+              return [t for t in tags if not re.match(r"^v[0-9]+([.][0-9]+[.][0-9]+(-rc[.][0-9]+)?)?$", t)]
+
+
           AUTOMATION_LABELS = {"kavosh:health", "kavosh:violation", "kavosh:portfolio"}
 
 
@@ -141,20 +161,13 @@ jobs:
 
               # Branches
               branches = [b["name"] for b in paged(f"repos/{repo}/branches") if b["name"] != default]
-              stale, ahead = [], []
               max_age = int(limits.get("branchMaxAgeDays", 3))
-              old = []
+              compares = {}
               for name in branches[:40]:  # a healthy repo has ≤ 10; beyond 40 the count alone is the finding
                   cmp = gh(f"repos/{repo}/compare/{default}...{name}", check=False)
-                  if not cmp:
-                      continue
-                  last = cmp["commits"][-1]["commit"]["committer"]["date"] if cmp.get("commits") else None
-                  if last and days(last) > 7:
-                      stale.append(name)
-                  elif last and days(last) > max_age:
-                      old.append(name)
-                  if cmp.get("ahead_by", 0) > 50:
-                      ahead.append(f"{name} (+{cmp['ahead_by']})")
+                  if cmp:
+                      compares[name] = cmp
+              stale, old, ahead = branch_problems(compares, max_age)
               add(len(branches) <= 10, "BR-1", "Branches other than main", len(branches), "≤ 10")
               add(not stale, "BR-3", "Branches idle > 7 days", ", ".join(stale[:8]) or 0, "0")
               add("warn" if old else True, "BR-3", f"Branches older than {max_age} days", ", ".join(old[:8]) or 0, "0")
@@ -213,7 +226,7 @@ jobs:
               # Releases and tags
               rel = gh(f"repos/{repo}/releases?per_page=1") or []
               tags = [t["name"] for t in paged(f"repos/{repo}/tags")]
-              bad_tags = [t for t in tags if not t.startswith("v")]
+              bad_tags = non_version_tags(tags)
               tier = manifest.get("tier", "T1")
               if rel:
                   age = days(rel[0]["published_at"] or rel[0]["created_at"])

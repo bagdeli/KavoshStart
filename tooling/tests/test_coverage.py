@@ -1,0 +1,234 @@
+"""Positive/negative tests for machine-enforced MUSTs not covered elsewhere (#7).
+Governance file/manifest checks run against a real scaffolded repository in a temp dir; PR checks use a fake gh;
+agent-guard hooks run in a temp git repo with a bare remote."""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tooling" / "src"))
+import governance as g  # noqa: E402
+import health as h  # noqa: E402
+
+EXAMPLE = json.loads((ROOT / "intake" / "kavosh.project.example.json").read_text(encoding="utf-8"))
+BASH = shutil.which("bash")
+GIT_ID = ["-c", "user.email=t@t", "-c", "user.name=t"]
+
+
+def git(cwd, *a, check=True):
+    return subprocess.run(["git", *a], cwd=cwd, capture_output=True, text=True, check=check)
+
+
+@contextmanager
+def scaffolded(mutate=None, manifest=None):
+    """A freshly scaffolded T2/server repo (passes governance), optionally mutated, as the cwd."""
+    d = Path(tempfile.mkdtemp())
+    prev = os.getcwd()
+    try:
+        git(d, "init", "-q", "-b", "main")
+        (d / "kavosh.project.json").write_text(json.dumps(manifest or EXAMPLE), encoding="utf-8")
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(d)], capture_output=True, check=True)
+        if mutate:
+            mutate(d)
+        git(d, "add", "-A")
+        os.chdir(d)
+        g.results.clear()
+        yield d
+    finally:
+        os.chdir(prev)
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def failed(rule):
+    return [r for r in g.results if r[0] == "fail" and r[1] == rule]
+
+
+def run_files(mutate=None, manifest=None):
+    with scaffolded(mutate, manifest):
+        m = g.check_manifest()
+        g.check_files(m)
+        return list(g.results)
+
+
+def fails_for(rule, mutate=None, manifest=None):
+    return [r for r in run_files(mutate, manifest) if r[0] == "fail" and r[1] == rule]
+
+
+class GovernanceFiles(unittest.TestCase):
+    def test_baseline_scaffold_is_clean(self):
+        """Covers: AI-1, SRC-2, SRC-3, DOC-1, CI-1, SEC-3, SEC-4, SRC-7, SRC-5, UI-1 (positive)"""
+        self.assertEqual([r for r in run_files() if r[0] == "fail"], [])
+
+    def test_AI1_negative_agents_md_too_long(self):
+        self.assertTrue(fails_for("AI-1", lambda d: (d / "AGENTS.md").write_text("x\n" * 200, encoding="utf-8")))
+
+    def test_SRC2_negative_sha_in_docs(self):
+        self.assertTrue(fails_for("SRC-2", lambda d: (d / "docs" / "notes.md").write_text("head " + "a" * 40, encoding="utf-8")))
+
+    def test_SRC3_negative_status_file(self):
+        self.assertTrue(fails_for("SRC-3", lambda d: (d / "STATUS.md").write_text("status", encoding="utf-8")))
+
+    def test_DOC1_negative_oversized_markdown(self):
+        self.assertTrue(fails_for("DOC-1", lambda d: (d / "big.md").write_text("a" * 70000, encoding="utf-8")))
+
+    def test_CI1_negative_self_hosted_runner(self):
+        def mutate(d):
+            f = d / ".github/workflows/ci.yml"
+            f.write_text(f.read_text(encoding="utf-8").replace("runs-on: ubuntu-latest", "runs-on: [self-hosted, linux]"), encoding="utf-8")
+        self.assertTrue(fails_for("CI-1", mutate))
+
+    def test_SEC3_negative_no_permissions(self):
+        def mutate(d):
+            f = d / ".github/workflows/ci.yml"
+            f.write_text(f.read_text(encoding="utf-8").replace("permissions:\n  contents: read\n", ""), encoding="utf-8")
+        self.assertTrue(fails_for("SEC-3", mutate))
+
+    def test_SEC4_negative_no_dependabot(self):
+        self.assertTrue(fails_for("SEC-4", lambda d: (d / ".github/dependabot.yml").unlink()))
+
+    def test_SRC7_negative_no_project_md(self):
+        self.assertTrue(fails_for("SRC-7", lambda d: (d / "PROJECT.md").unlink()))
+
+
+class Manifest(unittest.TestCase):
+    def test_SRC5_negative_schema_violation(self):
+        self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T9")))
+
+    def test_SRC5_negative_tier_below_classification(self):
+        self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T0")))
+
+    def test_UI1_negative_ui_without_kavoshui_pin(self):
+        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "kavoshui": None})))
+
+    def test_CI2_positive_self_hosted_with_t2_and_adr(self):
+        m = dict(EXAMPLE, ci={"runner": "self-hosted-deploy-only", "runnerAdr": "docs/decisions/0002-runner.md",
+                               "monthlyMinutesBudget": 300})
+        adr = lambda d: (d / "docs/decisions/0002-runner.md").write_text("# runner", encoding="utf-8")  # noqa: E731
+        self.assertEqual(fails_for("CI-2", adr, manifest=m), [])
+
+    def test_CI2_negative_self_hosted_without_adr(self):
+        m = dict(EXAMPLE, ci={"runner": "self-hosted-deploy-only", "monthlyMinutesBudget": 300})
+        self.assertTrue(fails_for("CI-2", manifest=m))
+
+
+def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main", body="Closes #12", labels=()):
+    return {"repository": {"default_branch": "main"},
+            "pull_request": {"number": 7, "title": title, "body": body, "head": {"ref": head}, "base": {"ref": base},
+                             "user": {"type": "User"}, "labels": [{"name": l} for l in labels]}}
+
+
+def fake_gh(lines=100, parent_base=None):
+    def gh(*args):
+        path = args[1]
+        if "/files" in path:
+            return [{"filename": "src/a.py", "additions": lines, "deletions": 0}] if "page=1" in path else []
+        if "head=" in path:
+            return [{"base": {"ref": parent_base}}] if parent_base else []
+        return []
+    return gh
+
+
+def run_pr(**kw):
+    gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base") if k in kw}
+    g.results.clear()
+    original, g.gh = g.gh, fake_gh(**gh_kw)
+    try:
+        g.check_pr({"limits": {"prMaxLines": 400}}, pr_event(**kw), "o/r")
+    finally:
+        g.gh = original
+    return {r[1]: r[0] for r in g.results}
+
+
+class PullRequest(unittest.TestCase):
+    def test_PR1_PR2_PR3_BR2_BR4_positive_good_pr(self):
+        """Covers: PR-1, PR-2, PR-3, BR-2, BR-4 (positive)"""
+        r = run_pr()
+        for rule in ("PR-1", "PR-2", "PR-3", "BR-2", "BR-4"):
+            self.assertEqual(r[rule], "ok", rule)
+
+    def test_PR1_negative_no_linked_issue(self):
+        self.assertEqual(run_pr(body="no link")["PR-1"], "fail")
+
+    def test_PR2_negative_title(self):
+        self.assertEqual(run_pr(title="Post-v1.1 canonical continuation")["PR-2"], "fail")
+
+    def test_PR3_negative_too_large(self):
+        self.assertEqual(run_pr(lines=1500)["PR-3"], "fail")
+
+    def test_BR2_negative_branch_name(self):
+        self.assertEqual(run_pr(head="agent/lccg-reconcile-20260925")["BR-2"], "fail")
+
+    def test_BR4_negative_long_lived_base(self):
+        self.assertEqual(run_pr(base="vnext/integration-20260918")["BR-4"], "fail")
+
+
+def cmp(days_ago, ahead):
+    date = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {"ahead_by": ahead, "commits": [{"commit": {"committer": {"date": date}}}]}
+
+
+class HealthPure(unittest.TestCase):
+    def test_BR8_positive_short_branches(self):
+        self.assertEqual(h.branch_problems({"feat/1-x": cmp(1, 3)}, 3)[2], [])
+
+    def test_BR8_negative_hidden_truth_branch(self):
+        self.assertEqual(h.branch_problems({"vnext/integration": cmp(1, 537)}, 3)[2], ["vnext/integration (+537)"])
+
+    def test_REL3_positive_version_tags(self):
+        self.assertEqual(h.non_version_tags(["v1.0.0", "v1.1.0-rc.2", "v1"]), [])
+
+    def test_REL3_negative_other_tags(self):
+        self.assertEqual(h.non_version_tags(["develop", "v1.0.0", "release-1"]), ["develop", "release-1"])
+
+
+@unittest.skipUnless(BASH, "bash not available")
+class AgentGuardHooks(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        git(self.tmp, "init", "-q", "--bare", "remote.git")
+        self.work = self.tmp / "work"
+        git(self.tmp, "init", "-q", "-b", "main", "work")
+        shutil.copytree(ROOT / "templates/common/.githooks", self.work / ".githooks")
+        git(self.work, "config", "core.hooksPath", ".githooks")
+        git(self.work, "remote", "add", "origin", "../remote.git")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def commit(self, name, text, msg="feat: x"):
+        (self.work / name).write_text(text, encoding="utf-8")
+        git(self.work, "add", "-f", name)
+        return git(self.work, *GIT_ID, "commit", "-q", "-m", msg, check=False)
+
+    def test_SEC1_positive_normal_commit(self):
+        self.assertEqual(self.commit("a.py", "print('ok')\n").returncode, 0)
+
+    def test_SEC1_negative_env_file(self):
+        self.assertNotEqual(self.commit(".env", "X=1\n").returncode, 0)
+
+    def test_SEC1_negative_secret_in_code(self):
+        fake = "api" + "_key = " + '"' + "abcdefghijklmnop" + "qrstuvwxyz0123" + '"\n'  # assembled so this file itself passes SEC-1
+        self.assertNotEqual(self.commit("c.py", fake).returncode, 0)
+
+    def test_BR6_negative_hook_blocks_push_to_main(self):
+        """Covers: BR-7 (negative)"""
+        self.commit("a.txt", "a", "chore: scaffold from KavoshStart v1.1.0")
+        self.assertEqual(git(self.work, "push", "-q", "origin", "main", check=False).returncode, 0)  # initial scaffold
+        self.commit("b.txt", "b")
+        self.assertNotEqual(git(self.work, "push", "-q", "origin", "main", check=False).returncode, 0)
+
+    def test_BR6_positive_feature_branch_push(self):
+        self.commit("a.txt", "a")
+        git(self.work, "switch", "-q", "-c", "feat/1-x")
+        self.assertEqual(git(self.work, "push", "-q", "origin", "feat/1-x", check=False).returncode, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
