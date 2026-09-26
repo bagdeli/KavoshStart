@@ -1,7 +1,7 @@
-# Layer O — portfolio supervisor. Thin wrapper around scripts/portfolio_guard.py (the logic is standalone and can
-# also run from a systemd timer on an independent machine). Checks every repository of the owner from outside.
-# Needs secret KAVOSH_PORTFOLIO_TOKEN: fine-grained PAT, all repositories of bagdeli, read-only
-# (Contents, Metadata, Actions, Issues, Administration: read). Created by the owner; never by an agent.
+# Layer O — PUBLIC portfolio supervisor. Thin wrapper around scripts/portfolio_guard.py.
+# It inspects and reports public repositories only; private repositories are ignored before inspection/reporting.
+# Needs secret KAVOSH_PUBLIC_PORTFOLIO_TOKEN: fine-grained PAT scoped only to the public repositories governed here,
+# read-only (Contents, Metadata, Actions, Issues, Administration: read). Created by the owner; never by an agent.
 name: kavosh-portfolio
 
 on:
@@ -27,13 +27,13 @@ jobs:
           persist-credentials: false
       - name: Token present
         env:
-          PAT: ${{ secrets.KAVOSH_PORTFOLIO_TOKEN }}
+          PAT: ${{ secrets.KAVOSH_PUBLIC_PORTFOLIO_TOKEN }}
         run: |
-          [ -n "$PAT" ] || { echo "::error title=Layer O::secret KAVOSH_PORTFOLIO_TOKEN is missing — the owner must create it (see standard/01)"; exit 1; }
-      - name: Inspect portfolio (read with PAT)
+          [ -n "$PAT" ] || { echo "::error title=Layer O::secret KAVOSH_PUBLIC_PORTFOLIO_TOKEN is missing — create a read-only token scoped only to governed public repositories (see standard/01)"; exit 1; }
+      - name: Inspect public portfolio (read with public-only PAT)
         id: inspect
         env:
-          GH_TOKEN: ${{ secrets.KAVOSH_PORTFOLIO_TOKEN }}
+          GH_TOKEN: ${{ secrets.KAVOSH_PUBLIC_PORTFOLIO_TOKEN }}
         run: |
           set +e
           python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" > report.md
