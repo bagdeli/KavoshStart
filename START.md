@@ -82,8 +82,8 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §3 UPGRADE
 1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target.
-2. One PR: update `kavosh.project.json` → `kavoshStart`, apply template changes listed in the changelog, and
-   adjust anything the new rules require. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
+2. One PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart`
+   to the same tag (REL-6), apply template changes listed in the changelog, and adjust anything the new rules require. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
 3. KavoshUI upgrades are separate PRs: `chore(ui): upgrade KavoshUI to vX.Y.Z`, with rendered screenshots (RTL + mobile).
 
 ## §4 WORK on an issue (every day)

@@ -17,6 +17,7 @@ PAIRS = {
     "kavosh-governance.yml": "governance.py",
     "kavosh-main-guard.yml": "main_guard.py",
     "kavosh-health.yml": "health.py",
+    "kavosh-release.yml": "release_gate.py",
 }
 INDENT = " " * 10
 

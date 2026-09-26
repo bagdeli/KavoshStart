@@ -6,7 +6,8 @@
     python3 scripts/scaffold.py <repo-dir> --dry-run  # show what would happen
 
 Layers, later wins inside the template set (never over existing files in the target):
-    common  →  tier/T1 (for T1 and T2)  →  tier/T2 (for T2)  →  runtime/server (server, static) | runtime/artifact (none, desktop)
+    common  →  tier/T1 (for T1 and T2)  →  tier/T2 (for T2)  →  runtime/server (server, static)
+(runtime none/desktop: release.yml gets package: true — assets are built by kavosh-release)
 """
 import json
 import re
@@ -26,7 +27,8 @@ def layers(manifest: dict) -> list:
         out.append("tier/T1")
     if manifest["tier"] == "T2":
         out.append("tier/T2")
-    out.append("runtime/server" if manifest["runtime"] in ("server", "static") else "runtime/artifact")
+    if manifest["runtime"] in ("server", "static"):
+        out.append("runtime/server")
     return out
 
 
@@ -47,6 +49,7 @@ def values(m: dict) -> dict:
         "DEPLOY_METHOD": m.get("deploy", {}).get("method", "none"),
         "BUDGET": str(m.get("ci", {}).get("monthlyMinutesBudget", "")),
         "PR_MAX_LINES": str(m.get("limits", {}).get("prMaxLines", 400)),
+        "PACKAGE": "true" if m["runtime"] in ("none", "desktop") else "false",
     }
 
 
