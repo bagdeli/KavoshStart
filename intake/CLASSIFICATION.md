@@ -18,10 +18,10 @@ The owner may move a project **up** freely. Moving **down** requires an ADR in t
 
 | Runtime | Meaning | Delivery | Template overlay |
 |---|---|---|---|
-| `none` | library, CLI, script | GitHub Release assets / package; no server | — |
+| `none` | library, CLI, script | `make package` → assets on the gated release; no server | — (release.yml `package: true`) |
 | `static` | only static files | own web server via `pull-build` (Pages needs a public repo on Free) | `runtime/server` (static profile) |
 | `server` | always-on service(s) | pull-based deploy to Kavosh server (`standard/07-deployment.md`) | `runtime/server` |
-| `desktop` | installable app | GitHub Release assets built on tag | — |
+| `desktop` | installable app | `make package` → installer assets on the gated release | — (release.yml `package: true`) |
 
 ## What each tier gets
 
@@ -33,7 +33,7 @@ The owner may move a project **up** freely. Moving **down** requires an ADR in t
 | CI on PR | `make check` (lint+test) | `make check` + build | + contract/migration checks; heavy jobs only on `main`/label `ci:full` |
 | AI review workflow | no | optional (`ai-review.yml`) | yes |
 | Secret scan in CI | no (local hook) | yes | yes |
-| Release | tag on demand | release-please, rc on test | release-please, rc → UAT → final |
+| Release | gated release-please (REL-5) | + rc on test | + rc → UAT → final |
 | **Actions minutes budget / month** | **100** | **300** | **700** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
