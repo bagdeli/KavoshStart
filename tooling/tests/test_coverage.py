@@ -136,6 +136,12 @@ class ReleaseTags(unittest.TestCase):
 
 
 class Manifest(unittest.TestCase):
+    def test_SRC5_negative_manifest_identity_must_match_trusted_repository(self):
+        with scaffolded() as _:
+            g.results.clear()
+            g.check_manifest(actual_repo="another-owner/another-repo")
+            self.assertTrue(failed("SRC-5"))
+
     def test_SRC5_negative_schema_violation(self):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T9")))
 

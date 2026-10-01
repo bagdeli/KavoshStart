@@ -28,6 +28,7 @@ COMBOS = [
 
 def manifest(tier, runtime, method, ui, envs):
     m = json.loads(json.dumps(EXAMPLE))
+    m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "kavoshui": None if ui == "none" else "1.0.0", "locales": ["fa-IR"]}
@@ -37,6 +38,8 @@ def manifest(tier, runtime, method, ui, envs):
         m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
         m["data"] = {"sensitivity": "none", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 1, "lifetime": "weeks", "parallelStreams": 1}
+    else:
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
     if tier == "T1":
         m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
@@ -116,7 +119,7 @@ def main():
             (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
             wf = repo / ".github" / "workflows" / "ci.yml"
             text = wf.read_text(encoding="utf-8")
-            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, kavoshsms]", "runs-on: ubuntu-latest"), encoding="utf-8")
+            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, example]", "runs-on: ubuntu-latest"), encoding="utf-8")
             (repo / ".githooks" / "pre-push").unlink()
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8")

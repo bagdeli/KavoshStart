@@ -89,7 +89,7 @@ def expected_tier(m):
     return "T0"
 
 
-def check_manifest():
+def check_manifest(actual_repo=None):
     p = Path("kavosh.project.json")
     if not p.exists():
         add("fail", "SRC-5", "kavosh.project.json exists", "missing — run the KavoshStart intake (START.md §1)")
@@ -103,7 +103,6 @@ def check_manifest():
     add("fail" if errs else "ok", "SRC-5", "Manifest matches schema", "; ".join(errs[:8]) or "valid")
     if errs:
         return m
-    actual_repo = os.environ.get("GITHUB_REPOSITORY")
     if actual_repo and m.get("repo") != actual_repo:
         add("fail", "SRC-5", "Manifest identity matches GitHub event",
             f"manifest repo {m.get('repo')} does not match trusted repository {actual_repo}")
@@ -270,7 +269,7 @@ def check_files(m, actual_repo=None):
     level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
     add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
     add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
-    trusted_repo = actual_repo or os.environ.get("GITHUB_REPOSITORY") or m.get("repo")
+    trusted_repo = actual_repo or m.get("repo")
     for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m, trusted_repo):
         add(level, rule, title, detail)
 
@@ -453,8 +452,8 @@ def main():
     enforce = os.environ.get("ENFORCE", "true") == "true"
     report_only_forbidden = not enforce
     repo = os.environ["REPO"]
-    m = check_manifest()
-    check_files(m or {})
+    m = check_manifest(repo)
+    check_files(m or {}, repo)
     if report_only_forbidden:
         add("fail", "AI-4", "Report-only enforcement bypass is forbidden",
             "enforce: false cannot produce a successful governance check")
