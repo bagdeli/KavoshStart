@@ -5,8 +5,8 @@
 ## نقش‌ها
 | نقش | چه کسی | کار |
 |---|---|---|
-| مالک | شما | دامنه، اولویت، تأیید رده و Spec، **ادغام**، انتشار، تصمیم‌های قانونی و production |
-| مجری | Claude Code، Codex، Copilot، Gemini | برنامه، کد، تست، به‌روزرسانی PR |
+| مالک | شما | دامنه، اولویت، تأیید رده و Spec، مجوزهای محدود برای ادغام، انتشار و production |
+| مجری | Claude Code، Codex، Copilot، Gemini | برنامه، کد، تست، به‌روزرسانی PR و اجرای عمل صریحاً مجاز |
 | بازبین | عامل دوم (ابزار یا مدل متفاوت) + شما | بازبینی diff؛ «Request changes» عامل الزام‌آور نیست ولی باید پاسخ داده شود |
 | پلتفرم | workflowهای KavoshStart | اجرای قواعد، بی‌طرف |
 
@@ -16,7 +16,7 @@
 | `AGENTS.md` | **تنها منبع**: پروژه (از مانیفست)، نقشه‌ی ریپو، فرمان‌ها، قراردادها، Definition of Done، مرزها |
 | `CLAUDE.md` | `@AGENTS.md` + نکات مخصوص Claude |
 | `GEMINI.md`، `.github/copilot-instructions.md` | یک خط ارجاع |
-| `.claude/settings.json` | قواعد deny (لایه‌ی A) |
+| `.claude/settings.json` | deny برای اعمال ممنوع و ask برای اعمال نیازمند اجازه (لایه‌ی A) |
 | `.githooks/pre-push` | مسدودکردن push به main و force-push (لایه‌ی A) |
 | `apps/*/AGENTS.md` | جزئیات هر بخش در monorepo (نزدیک‌ترین فایل اولویت دارد) |
 
@@ -47,6 +47,7 @@ Co-Authored-By: Copilot <copilot@github.com>
 ## جمله‌ی استاندارد برای شروع کار با هر عامل
 ```text
 Use KavoshStart (bagdeli/KavoshStart, START.md §4). Work on issue #<n> in bagdeli/<repo> only.
-Branch <type>/<n>-<slug> from origin/main, open a draft PR with your plan first, keep it under the
-project's prMaxLines, run `make check` before a single push, update the PR body, never merge.
+Branch <type>/<n>-<slug> from origin/main and open a draft PR with your plan. Keep it reviewable, run
+`make check` locally, and update the PR body. Merge only when the owner explicitly authorizes this PR and current
+head, after rechecking base, green required checks, mergeability and review threads. Never use `--admin`.
 ```

@@ -13,17 +13,20 @@ main   ●────●────●────●────●───�
 
 ## چرخه‌ی یک PR
 1. Issue در وضعیت Ready ← `git switch -c feat/<n>-<slug> origin/main`
-2. Draft PR زود (برنامه در بدنه) — CI روی Draft اجرا نمی‌شود (CI-6)، فقط governance سبک.
+2. Draft PR زود (برنامه در بدنه). stack عمیق مجاز است و health هشدار می‌دهد؛ پیش از Ready به main یا یک والد بلافاصله قابل‌ادغام normalize می‌شود. CI سنگین روی Draft خاموش است؛ dispatch زودهنگام مجوز quota نیست.
 3. کد + تست + `make check` محلی ← یک push.
-4. Ready for review ← `kavosh` و `required` سبز.
-5. مالک بازبینی و **Squash merge** ← شاخه خودکار حذف ← Issue بسته.
+4. Ready for review ← `kavosh` و `required` سبز، شاخه shallow، threadها resolved.
+5. مالک برای PR و head فعلی مجوز merge می‌دهد؛ عامل preflight تازه می‌کند و **Squash merge** عادی انجام می‌دهد. `--admin` ممنوع است.
 
 ## اندازه
 | | هدف | هشدار | قرمز |
 |---|---|---|---|
 | خطوط تغییر (بدون lockfile/generated) | ≤ 200 | > `prMaxLines` (400) | > 2.5 × `prMaxLines` (1000) |
 | فایل‌ها | ≤ 20 | > 20 | > 50 |
-| عمق stack | 1 | 2 | ≥ 3 |
+| عمق stack در Draft | آزاد | هشدار می‌گیرد | normalize پیش از Ready |
+| عمق stack در Ready/Merge | 1 | یک والد بلافاصله قابل ادغام | ≥ 3 یا والد غیرقابل ادغام = قرمز |
+
+برچسب `size:exception` فقط درخواست استثناست. عبور از سقف سخت نیازمند دلیل روشن و تأیید مالک روی همان head فعلی است.
 
 ## انتشار
 ```text
@@ -32,7 +35,7 @@ push به main → ci (required) + kavosh (main-guard) → ci موفق → relea
    → release-please: Release PR را به‌روز می‌کند / پس از ادغام آن: tag + Release (+ فایل‌های انتشار در همان اجرا)
 ```
 - release-please یک «Release PR» باز نگه می‌دارد؛ ادغامش = نسخه + `CHANGELOG.md` + tag + Release.
-- **Approve and run:** Release PR را `GITHUB_TOKEN` می‌سازد؛ طبق قاعده‌ی GitHub، CI آن PR تا تأیید مالک اجرا نمی‌شود. در تب Checks روی «Approve and run» بزنید، سبز شدن را ببینید، بعد ادغام کنید.
+- **Approve and run:** Release PR را `GITHUB_TOKEN` می‌سازد؛ اگر workflow action-required شد، فقط پس از مشاهدهٔ commit و هزینهٔ احتمالی اجرای مشخص را مجاز کنید، سپس سبز شدن را ببینید.
 - اگر CI قرمز است یا اجرا نشده (مثلاً قفل Billing)، هیچ نسخه‌ای ساخته نمی‌شود (REL-5). دور زدن این دروازه با tag دستی تخلف است.
 - tag `v1` قدیمی منجمد است و هرگز جابه‌جا نمی‌شود؛ پروژه‌ها فقط `@vX.Y.Z` دقیق (REL-6).
 - پیش‌انتشار: `vX.Y.Z-rc.N` ← سرور test خودکار آن را می‌کشد ← UAT ← نسخه‌ی نهایی ← مالک روی production پین می‌کند.

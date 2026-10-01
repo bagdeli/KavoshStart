@@ -9,7 +9,7 @@ checks (API returns 403), no GitHub Pages, and 2,000 Actions minutes per month f
 up to a full minute.
 
 ## Considered options
-1. Make repositories public to get rulesets and unlimited minutes.
+1. Never make private repository content public to obtain free CI. GitHub Free supports public rulesets; public repositories use standard hosted compute only when it does not consume shared allowance. Private contents remain private.
 2. Accept prose-only rules.
 3. Layered enforcement without server-side protection.
 

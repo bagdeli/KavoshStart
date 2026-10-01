@@ -48,7 +48,7 @@
 - `scripts/portfolio_guard.py` و workflow روزانه‌ی `kavosh-portfolio` فقط repoهای public را بررسی می‌کنند.
 - اگر credential به اشتباه repoهای private را هم ببیند، script آن‌ها را **پیش از inspection و report** نادیده می‌گیرد (SEC-5).
 - نتیجه فقط درباره‌ی repoهای public در Issue عمومی `kavosh:portfolio` نوشته می‌شود.
-- secret مورد استفاده `KAVOSH_PUBLIC_PORTFOLIO_TOKEN` است: fine-grained PAT فقط‌خواندنی و فقط برای repoهای public تحت این استاندارد.
+- Layer O با `GITHUB_TOKEN` محدود به همان مخزن و مجوزهای حداقلی اجرا می‌شود؛ PAT مشترک یا secret حساب لازم نیست. تنظیماتی که نیازمند دسترسی مدیریتی‌اند باید توسط مالک بررسی شوند.
 - نام، URL، هدف، audit، plan، finding یا runtime metadata پروژه‌ی private نباید وارد file، Issue، PR، commit message، Release یا log عمومی شود.
 
 برای repoهای **private**، ناظر بیرونی — در صورت نیاز — باید در یک control surface private مستقل اجرا شود. KavoshStart عمومی منبع گزارش یا inventory پروژه‌های private نیست. الزام‌های داخل خود repo (governance و runner policy) باقی می‌مانند؛ ظرفیت/سلامت عملیاتی runner private تا زمان وجود ناظر private با بازبینی مالک تأیید می‌شود.

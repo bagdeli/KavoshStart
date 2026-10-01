@@ -12,17 +12,18 @@
       "Bash(git branch -D:*)",
       "Bash(git push origin --delete:*)",
       "Bash(git tag -d:*)",
-      "Bash(gh pr merge:*)",
+      "Bash(gh pr merge --admin:*)",
       "Bash(gh repo delete:*)",
       "Bash(gh release delete:*)",
-      "Read(./.env)",
-      "Read(./.env.*)",
       "Read(./**/secrets/**)"
     ],
     "ask": [
+      "Bash(gh pr merge:*)",
       "Bash(gh issue close:*)",
       "Bash(gh pr close:*)",
-      "Bash(gh api -X DELETE:*)"
+      "Bash(gh api -X DELETE:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
     ]
   }
 }
