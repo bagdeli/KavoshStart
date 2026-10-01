@@ -179,7 +179,7 @@ def runner_workflow_problems(workflows, m):
         def standard_hosted(value):
             if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
                 value = value[1:-1]
-            if value in allowed or value.startswith("${{"):
+            if value in allowed or value.startswith("$" + "{{"):
                 return True
             try:
                 labels = json.loads(value)
