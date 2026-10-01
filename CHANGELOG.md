@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/bagdeli/KavoshStart/compare/v1.2.0...v1.3.0) (2026-10-01)
+
+
+### Features
+
+* **vnext:** enforce authorized free-only operations ([d0f03bb](https://github.com/bagdeli/KavoshStart/commit/d0f03bbc7752bff11c55ff431bd0b11bfe1257a9)), closes [#34](https://github.com/bagdeli/KavoshStart/issues/34)
+
+
+### Bug Fixes
+
+* **privacy:** separate public and private control surfaces ([8042db7](https://github.com/bagdeli/KavoshStart/commit/8042db77b95f431471cf89eca252f6b04f5f255a))
+
 ## [1.2.0](https://github.com/bagdeli/KavoshStart/compare/v1.1.0...v1.2.0) (2026-09-26)
 
 
