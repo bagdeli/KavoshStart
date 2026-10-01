@@ -101,10 +101,20 @@ jobs:
           def evaluate(runs, required):
               """Return (open, pending, reasons). The newest run per name wins (re-runs replace older results)."""
               latest = {}
+              pending_runs = {}
               for r in runs:
                   name = r.get("name", "")
-                  if name not in latest or (r.get("started_at") or "") > (latest[name].get("started_at") or ""):
+                  if r.get("status") != "completed":
+                      pending_runs[name] = r
+                  stamp = r.get("started_at") or r.get("created_at") or ""
+                  previous = latest.get(name, {})
+                  previous_stamp = previous.get("started_at") or previous.get("created_at") or ""
+                  pending_now = r.get("status") != "completed"
+                  pending_previous = previous.get("status") != "completed"
+                  if (name not in latest or stamp > previous_stamp or
+                          (pending_now and not pending_previous and (not stamp or stamp == previous_stamp))):
                       latest[name] = r
+              latest.update(pending_runs)
               reasons, pending = [], False
               for name in required:
                   r = latest.get(name)
@@ -120,6 +130,9 @@ jobs:
 
           def gate(repo, sha, required, branch="main", wait=300, interval=15, api=None, sleep=time.sleep):
               api = api or gh_api
+              required = list(dict.fromkeys(required or []))
+              if not set(DEFAULT_REQUIRED).issubset(required):
+                  return False, [f"required checks must include {', '.join(DEFAULT_REQUIRED)}"]
               head = api(f"repos/{repo}/branches/{branch}").get("commit", {}).get("sha")
               if head != sha:
                   return None, [f"{sha[:7]} is not the current head of {branch} ({(head or '?')[:7]}); the next run will handle the newer commit"]
@@ -127,6 +140,9 @@ jobs:
               while True:
                   ok, pending, reasons = evaluate(check_runs(repo, sha, api), required)
                   if ok or not pending or time.monotonic() >= deadline:
+                      final_head = api(f"repos/{repo}/branches/{branch}").get("commit", {}).get("sha")
+                      if final_head != sha:
+                          return None, [f"{sha[:7]} stopped being the current head of {branch} during validation"]
                       return ok, reasons
                   sleep(interval)
 

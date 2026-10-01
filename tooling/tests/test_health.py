@@ -30,7 +30,8 @@ class TypeLabels(unittest.TestCase):
 
 class DirectPushes(unittest.TestCase):
     def test_BR6_positive_all_from_merged_prs(self):
-        pulls = {"a" * 40: [{"merged_at": "x"}]}
+        pulls = {"a" * 40: [{"merged_at": "x", "merge_commit_sha": "a" * 40,
+                              "base": {"ref": "main"}}]}
         self.assertEqual(h.direct_pushes([commit("a" * 40, "feat: x")], lambda s: pulls.get(s, [])), [])
 
     def test_BR6_negative_commit_without_pr(self):
@@ -53,6 +54,14 @@ class MinuteBudget(unittest.TestCase):
 
 
 class TemplateHardening(unittest.TestCase):
+    def test_CI2_runner_installer_rejects_rootful_docker_and_is_ephemeral(self):
+        """Covers: CI-2 (negative rootful access, positive ephemeral rootless runner)"""
+        text = (ROOT / "scripts/install-runner.sh").read_text(encoding="utf-8")
+        self.assertIn("rootful Docker is root-equivalent", text)
+        self.assertIn("only accepts rootless Docker runners", text)
+        self.assertNotIn("usermod -aG docker", text)
+        self.assertIn("--ephemeral", text)
+
     def test_SEC1_gitleaks_download_is_checksum_verified(self):
         for tier in ("T1", "T2"):
             text = (ROOT / f"templates/tier/{tier}/.github/workflows/ci.yml").read_text(encoding="utf-8")

@@ -103,6 +103,10 @@ def check_manifest():
     add("fail" if errs else "ok", "SRC-5", "Manifest matches schema", "; ".join(errs[:8]) or "valid")
     if errs:
         return m
+    actual_repo = os.environ.get("GITHUB_REPOSITORY")
+    if actual_repo and m.get("repo") != actual_repo:
+        add("fail", "SRC-5", "Manifest identity matches GitHub event",
+            f"manifest repo {m.get('repo')} does not match trusted repository {actual_repo}")
     exp = expected_tier(m)
     if TIER_ORDER[m["tier"]] < TIER_ORDER[exp] and not (m.get("tierOverride") and Path(m["tierOverride"]).exists()):
         add("fail", "SRC-5", "Tier consistent with CLASSIFICATION.md", f"manifest {m['tier']} < classified {exp}; raise tier or add tierOverride ADR")
@@ -119,7 +123,8 @@ def check_manifest():
         add("fail", "UI-1", "KavoshUI version pinned", "ui.kind is set but ui.kavoshui is empty")
     budget = m["ci"]["monthlyMinutesBudget"]
     if m["visibility"] == "private" and budget > 0:
-        add("warn", "CI-3", "No GitHub-hosted minutes on private repos", f"budget {budget}; CI-1 expects 0")
+        add("fail", "CI-3", "Shared hosted quota disabled by default on private repos",
+            f"budget {budget}; a manifest is not authorization")
     for level, rule, title, detail in runner_manifest_problems(m):
         add(level, rule, title, detail)
     return m
@@ -131,21 +136,25 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: the runner follows visibility. private → self-hosted, public → github-hosted."""
+    """CI-1 / CI-2: private hosted execution stays off unless separately authorized."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
-    want = "self-hosted" if vis == "private" else "github-hosted"
+    if vis not in ("public", "private"):
+        return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
+    if vis == "private" and runner == "github-hosted":
+        return [("fail", "CI-1", "Private hosted execution requires direct authorization",
+                 "private GitHub-hosted CI is disabled by default; manifest configuration is not authorization")]
+    want = "github-hosted" if vis == "public" else "self-hosted"
     if runner != want:
-        return [("fail", "CI-1", "Runner matches visibility", f"{vis} repository needs ci.runner = {want}, got {runner}")]
-    out = [("ok", "CI-1", "Runner matches visibility", f"{vis} → {runner}")]
+        return [("fail", "CI-1", "Runner matches cost and visibility policy", f"{vis} repository needs ci.runner = {want}, got {runner}")]
+    out = [("ok", "CI-1", "Runner matches cost and visibility policy", f"{vis} → {runner}")]
     if runner == "self-hosted":
         labels = runner_labels(m)
-        slug = labels[-1]
-        if "self-hosted" not in labels or len(labels) < 2:
-            out.append(("fail", "CI-2", "Self-hosted labels", "labels must include self-hosted and a repository-specific label"))
-        if m.get("tier") == "T2" and m.get("ci", {}).get("runners", 1) < 2:
-            out.append(("fail", "CI-2", "T2 has at least two runners", f"ci.runners = {m.get('ci', {}).get('runners', 1)} (one runner = queue + cancellations)"))
+        slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
+        expected = ["self-hosted", "linux", "x64", slug]
+        if not slug or any(label not in labels for label in expected) or len(set(labels)) != len(labels):
+            out.append(("fail", "CI-2", "Self-hosted labels match this repository", f"expected {expected}; got {labels}"))
         else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels {labels} (repo label {slug})"))
+            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels {labels} include {expected}"))
     return out
 
 
@@ -166,10 +175,24 @@ def runner_workflow_problems(workflows, m):
     callers of KavoshStart reusable workflows in private repos pass a self-hosted runs-on input."""
     vis = m.get("visibility")
     if vis == "public":
-        bad = [f for f, t in workflows.items() if any("self-hosted" in v for v in runs_on_values(t))]
-        return [("fail" if bad else "ok", "CI-1", "Public repository uses only GitHub-hosted runners", ", ".join(bad) or "ok")]
+        allowed = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "windows-latest", "windows-2025",
+                   "windows-2022", "macos-latest", "macos-15", "macos-14", "macos-13"}
+        def standard_hosted(value):
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1]
+            if value in allowed or value.startswith("${{"):
+                return True
+            try:
+                labels = json.loads(value)
+                return isinstance(labels, list) and bool(labels) and all(x in allowed for x in labels)
+            except (ValueError, TypeError):
+                return False
+        bad = [f"{f}: {v}" for f, t in workflows.items() for v in runs_on_values(t)
+               if v and not standard_hosted(v)]
+        return [("fail" if bad else "ok", "CI-1", "Public repository uses standard GitHub-hosted runners only", ", ".join(bad) or "ok")]
     if vis == "private":
-        bad = [f for f, t in workflows.items() if any(is_hosted(v) for v in runs_on_values(t))]
+        bad = [f"{f}: {v}" for f, t in workflows.items() for v in runs_on_values(t)
+               if "self-hosted" not in v]
         callers = [f for f, t in workflows.items()
                    if KAVOSH_WF in t and not any("self-hosted" in v for v in runs_on_values(t))]
         out = [("fail" if bad else "ok", "CI-1", "Private repository never uses GitHub-hosted runners", ", ".join(bad) or "ok")]
@@ -192,7 +215,7 @@ def read(f):
         return ""
 
 
-def check_files(m):
+def check_files(m, actual_repo=None):
     files = git_files()
     md = [f for f in files if f.lower().endswith(".md")]
 
@@ -247,7 +270,8 @@ def check_files(m):
     level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
     add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
     add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
-    for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m):
+    trusted_repo = actual_repo or os.environ.get("GITHUB_REPOSITORY") or m.get("repo")
+    for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m, trusted_repo):
         add(level, rule, title, detail)
 
 
@@ -277,7 +301,12 @@ def unpinned_uses(workflows, m):
     out = []
     for f, text in workflows.items():
         for ref in USES_RE.findall(text):
-            if ref.startswith("./") or ref.startswith("docker://"):
+            if ref.startswith("./"):
+                continue
+            if ref.startswith("docker://"):
+                image = ref[len("docker://"):]
+                if not re.search(r"@sha256:[0-9a-f]{64}$", image):
+                    out.append(f"{f}: {ref} (container actions must use an immutable sha256 digest)")
                 continue
             target, _, version = ref.partition("@")
             if target.startswith(KAVOSH_WF):
@@ -288,10 +317,10 @@ def unpinned_uses(workflows, m):
     return out
 
 
-def wiring_problems(workflows, m):
+def wiring_problems(workflows, m, actual_repo=None):
     """Best-effort in-repo check that the guard workflows are present and wired. A PR can still neuter this
     check together with the workflow — Layer O (portfolio guard) is the control that sees that."""
-    own = m.get("repo") == "bagdeli/KavoshStart"
+    own = actual_repo == "bagdeli/KavoshStart" if actual_repo is not None else m.get("repo") == "bagdeli/KavoshStart"
     prefix = "./.github/workflows/" if own else KAVOSH_WF
     kav = workflows.get(".github/workflows/kavosh.yml", "")
     problems = []
@@ -300,8 +329,9 @@ def wiring_problems(workflows, m):
     for name in ("kavosh-governance.yml", "kavosh-main-guard.yml", "kavosh-health.yml"):
         if prefix + name not in kav:
             problems.append(("fail", "AI-4", f"kavosh.yml calls {name}", f"expected uses: {prefix}{name}"))
-    if re.search(r"^\s*enforce:\s*false", kav, re.M) and not m.get("adoptionPhase"):
-        problems.append(("fail", "AI-4", "Governance enforced", "enforce: false is only allowed while manifest adoptionPhase is true"))
+    if re.search(r"^\s*enforce:\s*false", kav, re.M):
+        problems.append(("fail", "AI-4", "Governance cannot be downgraded by repository config",
+                         "enforce: false cannot authorize a report-only bypass"))
     ci = workflows.get(".github/workflows/ci.yml", "") or workflows.get(".github/workflows/self-check.yml", "")
     if not re.search(r"^  required:\s*$", ci, re.M):
         problems.append(("fail", "CI-7", "CI has a job named `required`", "ci.yml must define job `required`"))
@@ -374,10 +404,22 @@ def check_pr(m, event, repo):
     lines = sum(f["additions"] + f["deletions"] for f in counted)
     labels = {l["name"] for l in pr.get("labels", [])}
     hard = math.ceil(max_lines * 2.5)
-    if "size:exception" in labels:
-        add("warn", "PR-3", "PR size", f"{lines} lines / {len(counted)} files — size:exception label")
-    elif lines > hard or len(counted) > 50:
+    exception_requested = "size:exception" in labels
+    approved_size = False
+    if exception_requested:
+        reason = re.search(r"(?im)^size exception reason:\s*(\S.+)$", body)
+        reviews = gh("api", f"repos/{repo}/pulls/{pr['number']}/reviews") or []
+        owner = repo.split("/")[0].lower()
+        approved_size = bool(reason and any(
+            (r.get("user") or {}).get("login", "").lower() == owner
+            and r.get("state") == "APPROVED" and r.get("commit_id") == pr["head"].get("sha")
+            for r in reviews))
+    if (lines > hard or len(counted) > 50) and not approved_size:
         add("fail", "PR-3", "PR size", f"{lines} lines / {len(counted)} files > {hard} / 50 — split it")
+    elif exception_requested and (lines > max_lines) and not approved_size:
+        add("fail", "PR-3", "Size exception authorization", "requires a written reason and owner approval on the current head")
+    elif exception_requested:
+        add("warn", "PR-3", "Owner-authorized size exception", f"{lines} lines / {len(counted)} files; reason and current-head owner approval recorded")
     elif lines > max_lines:
         add("warn", "PR-3", "PR size", f"{lines} lines > target {max_lines}")
     else:
@@ -388,10 +430,12 @@ def check_pr(m, event, repo):
     else:
         owner = repo.split("/")[0]
         parents = gh("api", f"repos/{repo}/pulls?state=open&head={owner}:{base}") or []
-        if parents and parents[0]["base"]["ref"] == default:
-            add("warn", "BR-4", "Targets main (stack depth)", f"stacked on {base} (depth 2 — maximum)")
+        if parents and pr.get("draft"):
+            add("warn", "BR-4", "Draft stack depth", f"Draft stacked on {base}; normalize before Ready")
+        elif parents and parents[0]["base"]["ref"] == default and parents[0].get("mergeable") is True:
+            add("warn", "BR-4", "Ready PR has an immediately mergeable parent", f"stacked on {base}")
         else:
-            add("fail", "BR-4", "Targets main (stack depth)", f"base {base} is a long-lived or deep branch")
+            add("fail", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent")
 
     if bot:
         add("ok", "PR-4", "AI involvement section", "bot PR")
@@ -407,9 +451,13 @@ def check_pr(m, event, repo):
 # ---------------------------------------------------------------- main
 def main():
     enforce = os.environ.get("ENFORCE", "true") == "true"
+    report_only_forbidden = not enforce
     repo = os.environ["REPO"]
     m = check_manifest()
     check_files(m or {})
+    if report_only_forbidden:
+        add("fail", "AI-4", "Report-only enforcement bypass is forbidden",
+            "enforce: false cannot produce a successful governance check")
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     event = json.load(open(event_path, encoding="utf-8")) if event_path and Path(event_path).exists() else {}
     if "pull_request" in event:
@@ -433,7 +481,7 @@ def main():
     for l, r, t, d in results:
         if l != "ok":
             print(f"::{'error' if l == 'fail' and enforce else 'warning'} title={r} {t}::{d}")
-    sys.exit(1 if failed and enforce else 0)
+    sys.exit(1 if report_only_forbidden or (failed and enforce) else 0)
 
 
 if __name__ == "__main__":

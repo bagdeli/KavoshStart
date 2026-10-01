@@ -4,9 +4,11 @@
 #   gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token
 # Usage:
 #   sudo bash install-runner.sh <owner/repo> <registration-token> [instance-number]
-# Installs under /opt/actions-runner/<repo>-<n>, runs as the unprivileged user "gha-<repo>" via systemd.
+# Installs under /opt/actions-runner/<repo>-<n>, runs as the service user "gha-<repo>" via systemd.
+# Rootful Docker access is root-equivalent. This installer accepts rootless Docker only. An external disposable-VM
+# provisioner must destroy each worker after its job; this installer does not claim to provide that lifecycle.
 # Labels: self-hosted, linux, x64, <repo-slug>  (must equal kavosh.project.json → ci.runnerLabels).
-# T2 projects: install at least two instances (instance-number 1 and 2).
+# Install capacity from measured queue/SLO needs; tier alone does not require a fixed count.
 set -euo pipefail
 
 REPO="${1:?usage: install-runner.sh owner/repo registration-token [instance]}"
@@ -21,8 +23,16 @@ NAME="$(hostname -s)-$SLUG-$N"
 command -v docker >/dev/null || echo "warning: Docker not found — most Kavosh CI jobs need it" >&2
 command -v jq >/dev/null || { echo "jq is required (apt-get install -y jq)" >&2; exit 1; }
 
+if command -v docker >/dev/null; then
+  security_options=$(docker info --format '{{json .SecurityOptions}}' 2>/dev/null || true)
+  case "$security_options" in
+    *rootless*) ;;
+    *)
+      echo "rootful Docker is root-equivalent; this installer only accepts rootless Docker runners" >&2
+      exit 1 ;;
+  esac
+fi
 id "$USER_NAME" >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin "$USER_NAME"
-getent group docker >/dev/null && usermod -aG docker "$USER_NAME"
 
 # Latest runner release + its published SHA-256 (from the release notes markers).
 rel=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest)
@@ -39,7 +49,7 @@ chown -R "$USER_NAME:$USER_NAME" "$DIR"
 
 sudo -u "$USER_NAME" ./config.sh --unattended --replace \
   --url "https://github.com/$REPO" --token "$TOKEN" \
-  --name "$NAME" --labels "linux,x64,$SLUG" --work "_work"
+  --name "$NAME" --labels "linux,x64,$SLUG" --work "_work" --ephemeral
 
 ./svc.sh install "$USER_NAME"
 ./svc.sh start

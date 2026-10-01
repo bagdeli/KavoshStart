@@ -108,14 +108,15 @@ jobs:
               return out
 
 
-          def direct_pushes(commits, pulls_for):
+          def direct_pushes(commits, pulls_for, default_branch="main"):
               """BR-6: commits on the default branch that no merged PR produced (the initial scaffold root is allowed)."""
               out = []
               for c in commits:
                   msg = (c.get("commit", {}).get("message") or "").splitlines()[0] if c.get("commit") else ""
                   if msg.startswith("chore: scaffold from KavoshStart") and not c.get("parents"):
                       continue
-                  if not any(p.get("merged_at") for p in pulls_for(c["sha"])):
+                  if not any(p.get("merged_at") and p.get("merge_commit_sha") == c["sha"]
+                             and p.get("base", {}).get("ref") == default_branch for p in pulls_for(c["sha"])):
                       out.append(c["sha"][:7])
               return out
 
@@ -219,7 +220,7 @@ jobs:
 
               # Direct pushes and agent attribution on the default branch (BR-6, AI-3)
               commits = gh(f"repos/{repo}/commits?sha={default}&since={since}T00:00:00Z&per_page=100") or []
-              direct = direct_pushes(commits, lambda sha: gh(f"repos/{repo}/commits/{sha}/pulls", check=False) or [])
+              direct = direct_pushes(commits, lambda sha: gh(f"repos/{repo}/commits/{sha}/pulls", check=False) or [], default)
               add(not direct, "BR-6", f"Direct pushes to {default} (7 d)", ", ".join(direct[:10]) or 0, "0")
               month = gh(f"repos/{repo}/commits?sha={default}&since={(NOW - timedelta(days=30)).strftime('%Y-%m-%d')}T00:00:00Z&per_page=100") or []
               attributed, total = trailer_ratio(month)

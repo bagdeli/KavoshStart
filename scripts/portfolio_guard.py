@@ -8,9 +8,9 @@ can enter the public report. Private-project monitoring belongs in a separate pr
     python3 scripts/portfolio_guard.py bagdeli                  # public report to stdout, exit 1 if findings
     python3 scripts/portfolio_guard.py bagdeli --update-issue   # keep one public `kavosh:portfolio` issue
 
-In CI use KAVOSH_PUBLIC_PORTFOLIO_TOKEN, a fine-grained read-only token scoped only to the governed public
-repositories (Contents, Metadata, Actions, Issues and Administration: read). The skip is still enforced in code
-so an accidentally broader credential does not make private repositories appear in a public report.
+In CI use the repository-scoped GITHUB_TOKEN with only the Contents, Actions, Pull requests and Issues
+permissions needed for this public repository. No account PAT or shared secret is required. Settings that require
+administrative access are outside this monitor's authority and must be checked by the repository owner.
 
 Trust boundary: public Layer O depends on this repository and GitHub Actions. If it stops running, only a human
 notices (the portfolio issue stops updating). The standard does not claim visibility into private projects.
@@ -34,6 +34,7 @@ WORKFLOWS = [".github/workflows/kavosh.yml", ".github/workflows/ci.yml", ".githu
              ".github/workflows/release.yml"]
 HEALTH_MAX_AGE_DAYS = 8
 NOW = datetime.now(timezone.utc)
+PUBLIC_INVENTORY = Path(__file__).resolve().parents[1] / ".github" / "kavosh-public-repositories.json"
 
 
 class Api:
@@ -78,7 +79,7 @@ def inspect_repo(api, repo, branch, private):
 
     workflows = {w: content(api, repo, w, branch) or "" for w in WORKFLOWS}
     workflows = {k: v for k, v in workflows.items() if v}
-    for level, rule, title, detail in wiring_problems(workflows, m):
+    for level, rule, title, detail in wiring_problems(workflows, m, repo):
         if level == "fail":
             findings.append((rule, f"{title}: {detail}"))
     for bad in unpinned_uses({k: v for k, v in workflows.items() if "kavosh" in v.lower() or k.endswith("release.yml")}, m):
@@ -97,13 +98,6 @@ def inspect_repo(api, repo, branch, private):
     drift = [f"{k}={info.get(k)}" for k, v in expected.items() if k in info and info.get(k) != v]
     if drift:
         findings.append(("PR-5/BR-5", "repository settings drift: " + ", ".join(drift)))
-    try:
-        perms = api.get(f"repos/{repo}/actions/permissions/workflow") or {}
-        if perms and perms.get("default_workflow_permissions") != "read":
-            findings.append(("SEC-3", f"default GITHUB_TOKEN permission is {perms.get('default_workflow_permissions')}, expected read"))
-    except PermissionError:
-        findings.append(("O", "cannot read Actions settings (token needs Administration: read)"))
-
     head = (api.get(f"repos/{repo}/branches/{branch}") or {}).get("commit", {}).get("sha")
     if head:
         runs = (api.get(f"repos/{repo}/commits/{head}/check-runs?per_page=100") or {}).get("check_runs", [])
@@ -122,37 +116,56 @@ def inspect_repo(api, repo, branch, private):
     actual = "private" if private else "public"
     if m.get("visibility") and m["visibility"] != actual:
         findings.append(("CI-1", f"repository is {actual} but manifest says {m['visibility']}"))
-    if actual == "private":
-        try:
-            runners = (api.get(f"repos/{repo}/actions/runners") or {}).get("runners", [])
-            online = [r for r in runners if r.get("status") == "online"]
-            need = 2 if m.get("tier") == "T2" else 1
-            if len(online) < need:
-                findings.append(("CI-2", f"{len(online)} online self-hosted runner(s) registered to the repository, need {need}"))
-        except PermissionError:
-            findings.append(("O", "cannot list self-hosted runners (token needs Administration: read)"))
-
     budget = m.get("ci", {}).get("monthlyMinutesBudget", 0) if private else 0
     return m, findings, {"adopted": True, "budget": budget, "tier": m.get("tier"), "pin": m.get("kavoshStart")}
 
 
-def run(api, owner):
+def run(api, owner, inventory=None):
     rows, total_budget, total_findings = [], 0, 0
     frozen_v1 = []
-    for r in api.repos(owner):
-        if r.get("isArchived") or r.get("isPrivate"):
-            # SEC-5: a public control surface must not inspect or report private repositories,
-            # even when an accidentally broad credential can enumerate them.
-            continue
-        repo, branch = r["nameWithOwner"], (r.get("defaultBranchRef") or {}).get("name") or "main"
+    if inventory is None:
         try:
-            m, findings, info = inspect_repo(api, repo, branch, r.get("isPrivate", True))
-        except PermissionError as e:
-            rows.append((repo, "?", "?", [("O", f"cannot inspect: {e}")]))
+            registry = json.loads(PUBLIC_INVENTORY.read_text(encoding="utf-8"))
+            inventory = registry["repositories"]
+        except (OSError, ValueError, KeyError, TypeError):
+            inventory = []
+            total_findings += 1
+            rows.append(("public inventory unavailable", "?", "?", [("O", "the governed public repository inventory cannot be read")]))
+    for repo in inventory:
+        # The curated public registry is independent from each consumer's manifest. Check current visibility
+        # before fetching any file; recheck after inspection and suppress entries that became private/unknown.
+        try:
+            fresh = api.get(f"repos/{repo}")
+        except PermissionError:
+            fresh = None
+        if not fresh:
+            rows.append(("visibility unverifiable", "?", "?", [("O", "a registered public repository could not be revalidated; details withheld")]))
             total_findings += 1
             continue
+        if fresh.get("private") is not False or fresh.get("archived"):
+            continue
+        branch = (fresh.get("default_branch") or "main")
+        try:
+            m, findings, info = inspect_repo(api, repo, branch, False)
+        except PermissionError:
+            try:
+                still_public = (api.get(f"repos/{repo}") or {}).get("private") is False
+            except PermissionError:
+                still_public = False
+            if not still_public:
+                continue
+            rows.append((repo, "?", "?", [("O", "cannot inspect this public repository")]))
+            total_findings += 1
+            continue
+        try:
+            still_public = (api.get(f"repos/{repo}") or {}).get("private") is False
+        except PermissionError:
+            still_public = False
+        if not still_public:
+            continue
         if not info.get("adopted"):
-            rows.append((repo, "—", "not adopted", []))
+            rows.append((repo, "—", "manifest missing", [("SRC-5", "adopted repository has no kavosh.project.json")]))
+            total_findings += 1
             continue
         total_budget += info.get("budget", 0)
         total_findings += len(findings)

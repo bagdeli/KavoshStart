@@ -29,7 +29,8 @@ def api_for(pulls_by_sha=None, runs_by_head=None, parents_by_sha=None):
 
 
 def pr(num, sha, head):
-    return {"number": num, "title": f"feat: pr {num}", "merged_at": "2026-09-26T10:00:00Z", "merge_commit_sha": sha, "head": {"sha": head}}
+    return {"number": num, "title": f"feat: pr {num}", "merged_at": "2026-09-26T10:00:00Z", "merge_commit_sha": sha,
+            "head": {"sha": head}, "base": {"ref": "main"}}
 
 
 def push(*commits, forced=False):
@@ -68,6 +69,21 @@ class MainGuard(unittest.TestCase):
                 check("kavosh / governance")]
         api = api_for({"m1": [pr(5, "m1", "h1")]}, {"h1": runs})
         self.assertEqual(mg.inspect(push(("m1", "feat: x")), REPO, REQ, api), [])
+
+    def test_PR7_negative_queued_rerun_supersedes_old_success(self):
+        runs = [check("required"), {"name": "required", "status": "queued", "conclusion": None,
+                                    "started_at": None, "created_at": None}, check("kavosh / governance")]
+        api = api_for({"m1": [pr(5, "m1", "h1")]}, {"h1": runs})
+        self.assertIn("'required' queued", mg.inspect(push(("m1", "feat: x")), REPO, REQ, api)[0])
+
+    def test_PR7_negative_unrelated_merged_pull_does_not_prove_provenance(self):
+        unrelated = pr(5, "a-different-squash", "old-head")
+        api = api_for({"m1": [unrelated]}, {"old-head": [check("kavosh / governance"), check("required")]})
+        self.assertIn("BR-6 direct push", mg.inspect(push(("m1", "feat: copied")), REPO, REQ, api)[0])
+
+    def test_PR7_negative_required_configuration_cannot_be_empty_or_weakened(self):
+        violation = mg.inspect(push(("m1", "feat: x")), REPO, [], api_for())
+        self.assertTrue(any("configuration error" in v for v in violation))
 
     def test_BR6_negative_direct_push(self):
         v = mg.inspect(push(("d1", "fix: hot")), REPO, REQ, api_for())

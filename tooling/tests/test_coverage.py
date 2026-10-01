@@ -145,11 +145,11 @@ class Manifest(unittest.TestCase):
     def test_UI1_negative_ui_without_kavoshui_pin(self):
         self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "kavoshui": None})))
 
-    def test_CI2_positive_t2_with_two_repo_scoped_runners(self):
-        self.assertEqual(fails_for("CI-2"), [])  # example: T2, runners 2, labels incl. repo slug
+    def test_CI2_positive_runner_capacity_is_not_fixed_by_tier(self):
+        self.assertEqual(fails_for("CI-2"), [])
 
-    def test_CI2_negative_t2_with_a_single_runner(self):
-        m = dict(EXAMPLE, ci=dict(EXAMPLE["ci"], runners=1))
+    def test_CI2_negative_private_runner_labels_are_repo_scoped(self):
+        m = dict(EXAMPLE, ci=dict(EXAMPLE["ci"], runnerLabels=["self-hosted", "linux", "x64", "another-repo"]))
         self.assertTrue(fails_for("CI-2", manifest=m))
 
 

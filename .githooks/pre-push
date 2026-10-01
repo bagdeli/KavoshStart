@@ -19,7 +19,20 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       fi
       echo "KavoshStart BR-6: pushing to $remote_ref is not allowed. Open a pull request." >&2
       exit 1 ;;
-    refs/tags/v*) ;;
+    refs/tags/v*)
+      if ! printf '%s\n' "$remote_ref" | grep -Eq '^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'; then
+        echo "KavoshStart REL-3: malformed release version tag ($remote_ref)." >&2
+        exit 1
+      fi
+      if [ "$local_sha" = "$zero" ]; then
+        echo "KavoshStart REL-3: deleting release tags is not allowed ($remote_ref)." >&2
+        exit 1
+      fi
+      if [ "$remote_sha" != "$zero" ] && [ "$local_sha" != "$remote_sha" ]; then
+        echo "KavoshStart REL-3: changing an existing release tag is not allowed ($remote_ref)." >&2
+        exit 1
+      fi
+      ;;
     refs/tags/*)
       echo "KavoshStart REL-3: only v* version tags are allowed ($remote_ref)." >&2
       exit 1 ;;
