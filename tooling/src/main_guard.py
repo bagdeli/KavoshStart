@@ -24,10 +24,22 @@ def gh_api(path):
 def check_state(runs, required):
     """Newest run per name wins. Returns a list of problems for the required checks."""
     latest = {}
+    pending_runs = {}
     for r in runs:
         name = r.get("name", "")
-        if name not in latest or (r.get("started_at") or "") > (latest[name].get("started_at") or ""):
+        if r.get("status") != "completed":
+            pending_runs[name] = r
+        stamp = r.get("started_at") or r.get("created_at") or ""
+        previous = latest.get(name, {})
+        previous_stamp = previous.get("started_at") or previous.get("created_at") or ""
+        pending = r.get("status") != "completed"
+        previous_pending = previous.get("status") != "completed"
+        if (name not in latest or stamp > previous_stamp or
+                (pending and not previous_pending and (not stamp or stamp == previous_stamp))):
             latest[name] = r
+    # An ambiguous in-flight rerun must never inherit an older green result. Once a
+    # run completes, conclusion and run timestamps determine which result is newest.
+    latest.update(pending_runs)
     problems = []
     for name in required:
         r = latest.get(name)
@@ -42,6 +54,9 @@ def check_state(runs, required):
 
 def inspect(event, repo, required, api):
     violations = []
+    required = list(dict.fromkeys(required or []))
+    if not set(DEFAULT_REQUIRED).issubset(required):
+        violations.append(f"**PR-7 configuration error** required checks must include {', '.join(DEFAULT_REQUIRED)}")
     if event.get("forced"):
         violations.append(f"**BR-7 force-push** to `{event.get('ref')}` by @{(event.get('pusher') or {}).get('name', '?')} "
                           f"(`{(event.get('before') or '')[:7]}` → `{(event.get('after') or '')[:7]}`)")
@@ -52,15 +67,21 @@ def inspect(event, repo, required, api):
     for c in commits[:MAX_COMMITS]:
         sha, msg = c["id"], (c.get("message") or "").splitlines()[0]
         pulls = api(f"repos/{repo}/commits/{sha}/pulls") or []
-        merged = [p for p in pulls if p.get("merged_at") and p.get("merge_commit_sha") == sha] or \
-                 [p for p in pulls if p.get("merged_at")]
+        merged = [p for p in pulls if p.get("merged_at") and p.get("merge_commit_sha") == sha
+                  and p.get("base", {}).get("ref") in ("main", "master")]
         if not merged:
             if msg.startswith(SCAFFOLD_PREFIX) and not (api(f"repos/{repo}/commits/{sha}") or {}).get("parents"):
                 continue  # the initial scaffold of an empty repository is the single allowed direct commit
             violations.append(f"**BR-6 direct push** `{sha[:7]}` “{msg}” — no merged pull request")
             continue
         pr = merged[0]
-        runs = (api(f"repos/{repo}/commits/{pr['head']['sha']}/check-runs?per_page=100") or {}).get("check_runs", [])
+        runs, page = [], 1
+        while True:
+            batch = (api(f"repos/{repo}/commits/{pr['head']['sha']}/check-runs?per_page=100&page={page}") or {}).get("check_runs", [])
+            runs.extend(batch)
+            if len(batch) < 100:
+                break
+            page += 1
         problems = check_state(runs, required)
         if problems:
             violations.append(f"**PR-7 merged without green required checks** #{pr['number']} “{pr['title']}” — {', '.join(problems)}")

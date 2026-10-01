@@ -39,8 +39,14 @@ class Pinning(unittest.TestCase):
         text = f"steps:\n  - uses: actions/checkout@{SHA} # v4.2.2\n" + KAVOSH_OK
         self.assertEqual(g.unpinned_uses({"a.yml": text}, M), [])
 
-    def test_SEC2_positive_local_and_docker(self):
-        self.assertEqual(g.unpinned_uses({"a.yml": "  - uses: ./.github/actions/x\n  - uses: docker://alpine:3\n"}, M), [])
+    def test_SEC2_positive_local_action(self):
+        self.assertEqual(g.unpinned_uses({"a.yml": "  - uses: ./.github/actions/x\n"}, M), [])
+
+    def test_SEC2_negative_mutable_docker_action(self):
+        self.assertEqual(len(g.unpinned_uses({"a.yml": "  - uses: docker://alpine:3\n"}, M)), 1)
+
+    def test_SEC2_positive_docker_action_digest(self):
+        self.assertEqual(g.unpinned_uses({"a.yml": f"  - uses: docker://alpine@sha256:{'a' * 64}\n"}, M), [])
 
     def test_SEC2_negative_tag_or_branch_pin(self):
         for ref in ("actions/checkout@v4", "actions/checkout@main", "actions/checkout"):
@@ -67,7 +73,14 @@ class Wiring(unittest.TestCase):
     def test_AI4_negative_enforce_false_outside_adoption(self):
         text = KAVOSH_OK.replace("enforce: true", "enforce: false")
         self.assertEqual(len(fails(g.wiring_problems(wf(kavosh=text), M))), 1)
-        self.assertEqual(fails(g.wiring_problems(wf(kavosh=text), dict(M, adoptionPhase=True))), [])
+        self.assertEqual(len(fails(g.wiring_problems(wf(kavosh=text), dict(M, adoptionPhase=True)))), 1)
+
+    def test_AI4_negative_consumer_cannot_spoof_kavoshstart_identity(self):
+        own_workflows = wf(
+            kavosh=KAVOSH_OK.replace("bagdeli/KavoshStart/.github/workflows/", "./.github/workflows/").replace("@v1.1.0", ""),
+            rel=REL_OK.replace("bagdeli/KavoshStart/.github/workflows/", "./.github/workflows/").replace("@v1.1.0", ""))
+        findings = fails(g.wiring_problems(own_workflows, M, actual_repo="bagdeli/Demo"))
+        self.assertTrue(any("expected uses: bagdeli/KavoshStart" in r[3] for r in findings))
 
     def test_CI7_negative_no_required_job(self):
         self.assertTrue(any(r[1] == "CI-7" for r in fails(g.wiring_problems(wf(ci="jobs:\n  test:\n"), M))))

@@ -49,7 +49,7 @@
         "private",
         "public"
       ],
-      "description": "Repository visibility. Decides the runner (CI-1): private → self-hosted, public → github-hosted"
+      "description": "Actual repository visibility. Public uses standard GitHub-hosted runners; private defaults to isolated self-hosted (CI-1). A manifest never authorizes shared quota."
     },
     "owner": {
       "type": "string"
@@ -83,7 +83,7 @@
     },
     "adoptionPhase": {
       "type": "boolean",
-      "description": "true only while an existing repo is being adopted; allows governance enforce: false"
+      "description": "Deprecated legacy marker. This field never authorizes enforce:false or a green report-only check."
     },
     "firstRelease": {
       "type": "array",
@@ -289,7 +289,7 @@
             "self-hosted",
             "github-hosted"
           ],
-          "description": "Must match visibility: private → self-hosted, public → github-hosted (CI-1)"
+          "description": "Public: standard GitHub-hosted. Private: isolated self-hosted by default. A private hosted run needs separate direct execution approval (CI-1/CI-3)."
         },
         "runnerLabels": {
           "type": "array",
@@ -303,13 +303,13 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20,
-          "description": "Number of self-hosted runners registered to this repository (T2 ≥ 2)"
+          "description": "Capacity metric for self-hosted runners registered to this repository; size by queue and SLO, not tier."
         },
         "monthlyMinutesBudget": {
           "type": "integer",
           "minimum": 0,
           "maximum": 2000,
-          "description": "GitHub-hosted minutes on private repos (0 under CI-1)"
+          "description": "Legacy estimate only; it cannot grant authorization or stop billing. Keep zero unless separately approved for a bounded run."
         }
       }
     },

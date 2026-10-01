@@ -108,6 +108,11 @@ class GovernanceFiles(unittest.TestCase):
                 "    runs-on: ubuntu-latest  # not self-hosted\n")
         self.assertEqual(g.runs_on_values(text), ["", "ubuntu-latest"])
 
+    def test_CI1_positive_standard_reusable_runner_expression(self):
+        self.assertEqual(g.runner_workflow_problems(
+            {"workflow.yml": "jobs:\n  test:\n    runs-on: ${{ fromJSON(inputs.runs-on) }}\n"},
+            dict(EXAMPLE, visibility="public"))[0][0], "ok")
+
     def test_CI1_negative_runner_does_not_match_visibility(self):
         self.assertTrue(fails_for("CI-1", manifest=dict(EXAMPLE, ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})))
 
@@ -136,6 +141,12 @@ class ReleaseTags(unittest.TestCase):
 
 
 class Manifest(unittest.TestCase):
+    def test_SRC5_negative_manifest_identity_must_match_trusted_repository(self):
+        with scaffolded() as _:
+            g.results.clear()
+            g.check_manifest(actual_repo="another-owner/another-repo")
+            self.assertTrue(failed("SRC-5"))
+
     def test_SRC5_negative_schema_violation(self):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T9")))
 
@@ -145,11 +156,11 @@ class Manifest(unittest.TestCase):
     def test_UI1_negative_ui_without_kavoshui_pin(self):
         self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "kavoshui": None})))
 
-    def test_CI2_positive_t2_with_two_repo_scoped_runners(self):
-        self.assertEqual(fails_for("CI-2"), [])  # example: T2, runners 2, labels incl. repo slug
+    def test_CI2_positive_runner_capacity_is_not_fixed_by_tier(self):
+        self.assertEqual(fails_for("CI-2"), [])
 
-    def test_CI2_negative_t2_with_a_single_runner(self):
-        m = dict(EXAMPLE, ci=dict(EXAMPLE["ci"], runners=1))
+    def test_CI2_negative_private_runner_labels_are_repo_scoped(self):
+        m = dict(EXAMPLE, ci=dict(EXAMPLE["ci"], runnerLabels=["self-hosted", "linux", "x64", "another-repo"]))
         self.assertTrue(fails_for("CI-2", manifest=m))
 
 

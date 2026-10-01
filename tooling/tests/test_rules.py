@@ -86,12 +86,12 @@ class RulesContract(unittest.TestCase):
             RULES = original
             Path(f.name).unlink()
 
-    def test_layer_O_failure_is_visible_but_only_humans_notice_its_absence(self):
+    def test_layer_O_uses_repository_token_without_shared_secret(self):
         """Deliberately 'break' Layer O: without its secret the workflow fails red; if it stops running entirely,
         nothing automated notices — the standard must say so honestly (#7)."""
         wf = (ROOT / ".github" / "workflows" / "kavosh-portfolio.yml").read_text(encoding="utf-8")
-        self.assertIn("secret KAVOSH_PUBLIC_PORTFOLIO_TOKEN is missing", wf)
-        self.assertIn("exit 1", wf)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", wf)
+        self.assertNotIn("KAVOSH_PUBLIC_PORTFOLIO_TOKEN", wf)
         doc = (ROOT / "standard" / "01-free-plan-operating-model.md").read_text(encoding="utf-8")
         self.assertIn("فقط انسان متوجه می‌شود", doc)
 

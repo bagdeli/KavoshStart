@@ -1,5 +1,6 @@
 """Offline tests for DEP rules in templates/runtime/server/deploy/kavosh-deploy.sh (needs bash + git)."""
 import shutil
+import os
 import subprocess
 import tempfile
 import unittest
@@ -44,12 +45,28 @@ class TagSelection(unittest.TestCase):
 
 @unittest.skipUnless(BASH, "bash not available")
 class ScriptContract(unittest.TestCase):
-    def test_DEP6_backup_required_before_migration(self):
+    def test_DEP6_continuous_recovery_checked_and_high_risk_snapshot_before_migration(self):
         text = SCRIPT.read_text(encoding="utf-8")
-        backup, migrate, start = text.index('eval "$BACKUP_CMD"'), text.index('eval "$MIGRATE_CMD"'), text.index('if start "$target"')
-        self.assertLess(backup, migrate)
+        recovery, snapshot, migrate, start = (text.index('eval "$BACKUP_HEALTHCHECK_CMD"'),
+            text.index('eval "$BACKUP_CMD"'), text.index('eval "$MIGRATE_CMD"'), text.index('if start "$target"'))
+        self.assertLess(recovery, snapshot)
+        self.assertLess(snapshot, migrate)
         self.assertLess(migrate, start)
-        self.assertIn("MIGRATE_CMD is set but BACKUP_CMD is empty", text)
+        self.assertIn("MIGRATE_CMD is set but BACKUP_HEALTHCHECK_CMD is empty", text)
+        self.assertIn("high-risk migration requires BACKUP_CMD snapshot", text)
+
+    def test_DEP3_dry_run_is_read_only_and_pin_is_production_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            env = {"PROJECT": "sample", "REPO_URL": "https://example.invalid/repo.git",
+                   "BASE": str(Path(d) / "base"), "CHANNEL": "production"}
+            result = subprocess.run([BASH, str(SCRIPT), "--pin", "v1.2.3", "--dry-run"], env={**os.environ, **env},
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse((Path(d) / "base").exists())
+            env["CHANNEL"] = "test"
+            result = subprocess.run([BASH, str(SCRIPT), "--pin", "v1.2.3", "--dry-run"], env={**os.environ, **env},
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
 
     def test_DEP4_env_outside_release_dirs_and_clean_export(self):
         text = SCRIPT.read_text(encoding="utf-8")

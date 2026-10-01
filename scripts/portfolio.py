@@ -64,7 +64,7 @@ def main():
         rel = gh(f"repos/{name}/releases?per_page=1") or []
         viol = gh(f"repos/{name}/issues?labels=kavosh:violation&state=open") or []
         rows.append((name, m.get("tier"), m.get("runtime"), m.get("kavoshStart"),
-                     f"{used if used is not None else '?'} / {budget}" if r["isPrivate"] else "public (unlimited)",
+                     f"{used if used is not None else '?'} / {budget}" if r["isPrivate"] else "public standard hosted (no Actions-minute charge; storage is separate)",
                      rel[0]["tag_name"] if rel else "none", str(len(viol))))
     print(f"| Repository | Tier | Runtime | KavoshStart | Minutes (month) | Latest release | Violations |")
     print("|---|---|---|---|---|---|---|")

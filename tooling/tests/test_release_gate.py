@@ -28,8 +28,8 @@ def fake_api(runs_seq, head=SHA):
 
 
 class ReleaseGate(unittest.TestCase):
-    def gate(self, runs_seq, head=SHA, wait=0):
-        return rg.gate("o/r", SHA, REQ, api=fake_api(runs_seq, head), wait=wait, interval=0, sleep=lambda s: None)
+    def gate(self, runs_seq, head=SHA, wait=0, api=None):
+        return rg.gate("o/r", SHA, REQ, api=api or fake_api(runs_seq, head), wait=wait, interval=0, sleep=lambda s: None)
 
     def test_REL5_positive_all_required_green(self):
         ok, _ = self.gate([[run("required"), run("main-guard / main-guard"), run("other", conclusion="failure")]])
@@ -67,6 +67,28 @@ class ReleaseGate(unittest.TestCase):
                 run("main-guard / main-guard")]
         ok, _ = self.gate([runs])
         self.assertTrue(ok)
+
+    def test_REL5_negative_queued_rerun_supersedes_old_success(self):
+        runs = [run("required"), {"name": "required", "status": "queued", "conclusion": None,
+                                  "started_at": None, "created_at": None}, run("main-guard / main-guard")]
+        ok, reasons = self.gate([runs])
+        self.assertFalse(ok)
+        self.assertIn("still queued", " ".join(reasons))
+
+    def test_REL5_negative_main_changes_during_check_wait(self):
+        state = {"head_reads": 0, "run_reads": 0}
+
+        def moving_api(path):
+            if "/branches/" in path:
+                state["head_reads"] += 1
+                return {"commit": {"sha": SHA if state["head_reads"] == 1 else "b" * 40}}
+            state["run_reads"] += 1
+            return {"check_runs": [run("required", status="in_progress", conclusion=None), run("main-guard / main-guard")]
+                    if state["run_reads"] == 1 else [run("required"), run("main-guard / main-guard")]}
+
+        ok, reasons = self.gate([], wait=60, api=moving_api)
+        self.assertIsNone(ok)
+        self.assertIn("stopped being the current head", reasons[0])
 
     def test_REL5_negative_not_head_of_main(self):
         ok, reasons = self.gate([[run("required"), run("main-guard / main-guard")]], head="b" * 40)

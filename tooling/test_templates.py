@@ -10,6 +10,10 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+try:
+    import yaml
+except ImportError:  # Installed by the repository self-check; local scaffold checks stay stdlib-friendly.
+    yaml = None
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE = json.loads((ROOT / "intake" / "kavosh.project.example.json").read_text(encoding="utf-8"))
@@ -24,15 +28,18 @@ COMBOS = [
 
 def manifest(tier, runtime, method, ui, envs):
     m = json.loads(json.dumps(EXAMPLE))
+    m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "kavoshui": None if ui == "none" else "1.0.0", "locales": ["fa-IR"]}
-    m["ci"]["monthlyMinutesBudget"] = {"T0": 100, "T1": 300, "T2": 700}[tier]
+    m["ci"]["monthlyMinutesBudget"] = 0
     if tier == "T0":  # a public tool: GitHub-hosted runners (CI-1)
         m["visibility"] = "public"
-        m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 100}
+        m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
         m["data"] = {"sensitivity": "none", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 1, "lifetime": "weeks", "parallelStreams": 1}
+    else:
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
     if tier == "T1":
         m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
@@ -59,6 +66,17 @@ def main():
                 print(f"FAIL scaffold {combo}:\n{r.stdout}{r.stderr}")
                 failures += 1
                 continue
+            if yaml is not None:
+                try:
+                    for path in repo.rglob("*"):
+                        if path.is_file() and path.suffix in (".yml", ".yaml"):
+                            yaml.safe_load(path.read_text(encoding="utf-8"))
+                        elif path.is_file() and path.suffix == ".json":
+                            json.loads(path.read_text(encoding="utf-8"))
+                except Exception as e:
+                    print(f"FAIL rendered YAML/JSON {combo}: {path}: {e}")
+                    failures += 1
+                    continue
             # REL-4/5/6: gated release in every repo, exact KavoshStart pins, package only for artifact runtimes
             pin = EXAMPLE["kavoshStart"]
             rel = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
@@ -101,7 +119,7 @@ def main():
             (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
             wf = repo / ".github" / "workflows" / "ci.yml"
             text = wf.read_text(encoding="utf-8")
-            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, kavoshsms]", "runs-on: ubuntu-latest"), encoding="utf-8")
+            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, example]", "runs-on: ubuntu-latest"), encoding="utf-8")
             (repo / ".githooks" / "pre-push").unlink()
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8")
