@@ -29,8 +29,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2)
    and **Runtime** (none/static/server/desktop). Show the owner which criterion triggered the result.
-2. Show the CI minute budget from the classification table and the current account usage
-   (`python3 scripts/portfolio.py bagdeli --minutes`, if available). If the budget does not fit, say so before continuing.
+2. Explain that private hosted CI consumes the account's shared Free allowance. Do not run it without direct owner
+   approval for one named execution; labels and a zero budget field are not authorization. Public standard hosted
+   CI may run only where GitHub does not charge or draw on the shared allowance.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
 
 ### Step 3 — Manifest
@@ -57,15 +58,17 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** private repository → ask the owner to register the self-hosted runner(s) with
-   `scripts/install-runner.sh` (the owner creates the registration token; you never handle it). Verify:
+8. **Runner (CI-1):** private repositories default to an existing runner dedicated to that repository. A non-root
+   service user in the rootful Docker group still has root-equivalent host access; this installer accepts rootless
+   Docker only. A separately provisioned disposable worker VM must be destroyed after each job. The owner creates
+   the registration token. Verify:
    `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`. Public repository → nothing to do.
 
 ### Step 5 — Backlog
 1. Create milestone `v0.1.0` (first usable release).
 2. Create issues with the repository's issue forms: epics (T2), features (T1/T2), tasks. Every issue gets a
    `type:*` label (`WK-1`), acceptance criteria, and — for tasks — "Where to look".
-3. Tasks must be ≤ 1 day and ≤ 400 changed lines (`PR-3`). If you cannot size it, split it.
+3. Prefer tasks small enough for focused review. Split work when that improves review or risk control (`WK-6`, `PR-3`).
 4. Post the backlog summary to the owner (issue links only; do not write the backlog into a file — `SRC-1`).
 
 ### Step 6 — Hand over
@@ -80,7 +83,7 @@ manually (e.g. the Actions access setting). Stop.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
    `*.kavosh-new` next to them for you to merge in a PR.
-5. Governance starts with `enforce: false` (report-only) and switches to `true` when the audit is clean.
+5. Governance remains `enforce: true`. If the audit finds legacy failures, fix or document their scope; `enforce: false` is not a green-check shortcut.
 6. Destructive steps (deleting branches, closing issues, rewriting docs) only with explicit owner approval, one phase at a time.
 
 ## §3 UPGRADE
@@ -92,14 +95,18 @@ manually (e.g. the Actions access setting). Stop.
 ## §4 WORK on an issue (every day)
 1. `gh issue view <n>`; read its parent; read the project's `AGENTS.md`. Nothing else unless the issue points to it.
 2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).
-3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template.
-4. Implement; run focused tests; run `make check`; push once.
+3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template. Draft stacks may be deep;
+   health warns until the Ready stack is normalized.
+4. Implement; run focused tests; run `make check`; push once. Heavy CI is off by default on Draft; early CI still
+   needs direct approval if it consumes shared quota.
 5. Update the PR body: Done / Remaining (as new issues) / Decisions / How verified / AI involvement.
-6. Mark ready for review. **Never merge** (`AI-5`). If the `kavosh` check is red, fix it — never work around it.
+6. Mark ready for review. An explicit owner authorization for this PR and current head permits an ordinary green
+   squash merge after fresh preflight checks. It never permits `--admin`, protection bypass or a red/missing check.
 7. If the branch is older than 3 days or `main` moved significantly: rebase on `origin/main` before asking for review (`BR-3`).
 
 ## Hard stops — ask the owner, do nothing else
 - Creating/deleting repositories, deleting branches or tags, closing issues you did not create.
-- Anything touching production data or credentials; SETAD/Moadian/bank credentials (never handle them at all).
+- Production data changes and credentials require direct authorization scoped to one action; SETAD/Moadian/bank
+  credentials, OTP/CAPTCHA and signing keys are never handled by agents.
 - A rule in `standard/RULES.md` would have to be broken to finish the task.
-- The CI minute budget of the project would be exceeded this month.
+- A CI dispatch would consume shared quota without direct, bounded owner approval.
