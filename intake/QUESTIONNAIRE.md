@@ -15,8 +15,8 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 ## B. Runtime and deployment
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
-| B0 | R | ریپو خصوصی باشد یا عمومی؟ | `visibility`, `ci.runner` | private → self-hosted runner for this repo (owner registers it); public → GitHub-hosted. Default private |
-| B0b | R* | برای private: runner روی کدام ماشین و چند عدد؟ | `ci.runnerLabels`, `ci.runners` | *if private. Default labels `[self-hosted, linux, x64, <repo-slug>]`; T2 ≥ 2 |
+| B0 | R | ریپو خصوصی باشد یا عمومی؟ | `visibility`, `ci.runner` | private → existing isolated self-hosted by default; hosted run only with direct bounded owner approval; public → standard GitHub-hosted. Default private |
+| B0b | R* | برای private: runner اختصاصی موجود کجاست و مرز isolation آن چیست؟ | `ci.runnerLabels`, `ci.runners` | rootless Docker or dedicated disposable VM; labels `[self-hosted, linux, x64, <repo-slug>]`. Capacity follows queue/SLO. |
 | B1 | R | آیا برنامه باید روی سرور همیشه روشن اجرا شود؟ | `runtime` | No → `none` (library/CLI/script) or `desktop`; only static files → `static`; yes → `server` |
 | B2 | R* | سرور کجاست؟ ایران / خارج / هر دو؟ | `deploy.location` | *if runtime=server |
 | B3 | R* | سرور به github.com و ghcr.io دسترسی پایدار دارد؟ | `deploy.method` | yes → `pull-image` or `pull-build`; no → `pull-build` via mirror/relay (KavoshRepo) |

@@ -1,6 +1,8 @@
 # AGENTS.md — KavoshStart
 
 ## Project
+Canonical GitHub repository: https://github.com/bagdeli/KavoshStart (public).
+Local chat context, when present: `.codex/PROJECT_CONTEXT.md` (untracked notes; refresh live state from GitHub).
 KavoshStart is the engineering standard for all Kavosh repositories: intake, classification, rules, templates and
 reusable GitHub workflows. It contains no product code. It follows itself (tier T1, runtime none — see `kavosh.project.json`).
 Using KavoshStart for another project? Read `START.md`, not this file.
@@ -37,6 +39,6 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 - Persian for explanations (`standard/`, `README.md`), English for anything agents execute (`START.md`, templates, ADRs).
 
 ## Boundaries
-**Never:** push to `main` · merge · run `bootstrap-repo.sh --apply` or any GitHub-mutating command against another repository
+**Never:** push to `main` · use `--admin` or bypass checks/protection · run `bootstrap-repo.sh --apply` or any GitHub-mutating command against another repository
 without the owner's explicit request · put live status (SHAs, current issue numbers) in files.
 **Ask first:** changing default limits or tier budgets · renaming workflow jobs or inputs · deleting a rule.

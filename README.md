@@ -32,7 +32,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`standard/RULES.md`](standard/RULES.md) | **فهرست مرجع همه‌ی قواعد** با شناسه، سطح، Tier و مکانیزم اجرا | FA |
 | [`standard/`](standard/) | توضیح قواعد: مدل پلن رایگان، شاخه/PR، CI و دقیقه‌ها، AI، استقرار، KavoshUI … | FA |
 | [`templates/`](templates/) | فایل‌های آماده: `common/` + `tier/T0..T2` + `runtime/server` | EN |
-| [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با `@v1` فرا می‌خوانند | — |
+| [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با tag دقیق `@vX.Y.Z` و نسخهٔ مانیفست فرا می‌خوانند | — |
 | [`scripts/`](scripts/) | scaffold، راه‌اندازی ریپو، نصب محافظ‌های عامل، ممیزی، گزارش پرتفوی | — |
 | [`docs/decisions/`](docs/decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
 | [`adoption/`](adoption/) | راهنمای عمومی پذیرش پروژه‌های موجود | FA |

@@ -44,12 +44,14 @@ main ── release-please ── tag v1.4.0-rc.1        systemd timer (هر 5 �
 ## دیتابیس: آنچه خودکار است و آنچه نیست (DEP-4…6)
 | مرحله | خودکار؟ | توضیح |
 |---|---|---|
-| backup قبل از migration | ✅ | `BACKUP_CMD`؛ اگر شکست بخورد، هیچ تغییری اعمال نمی‌شود |
+| recovery قبل از migration | طبق ریسک | continuous backup/PITR سالم + restore test تازه، مبناست؛ برای migration مخرب، rewrite یا high-risk snapshot تازه لازم است |
 | migration | ✅ | `MIGRATE_CMD`؛ فقط expand (اضافه کردن) در همان نسخه |
 | بازگشت برنامه به نسخه‌ی قبل | ✅ | چون migrationها expand-only هستند، نسخه‌ی قبل روی schema جدید کار می‌کند |
 | بازگرداندن دیتابیس | ❌ | عمداً دستی (runbook)؛ بازگرداندن خودکار می‌تواند داده‌ی ثبت‌شده بعد از backup را پاک کند |
 
-قاعده‌ی expand/contract: حذف ستون در نسخه‌ی N+1، فقط وقتی نسخه‌ی N دیگر از آن استفاده نمی‌کند. این تنها چیزی است که «بازگشت خودکار» را واقعاً امن می‌کند.
+قاعده‌ی production T2 همان expand/contract است: حذف ستون در نسخه‌ی N+1 فقط وقتی نسخه‌ی N دیگر از آن استفاده نمی‌کند. برای T1 کم‌ریسک، maintenance window با downtime فقط وقتی مجاز است که مالک همان اجرا را تأیید کند و backup/restore آن را آزموده باشند.
+
+`BACKUP_CMD` برای هر migration الزام دائمی نیست؛ snapshot پیش از migration لازم است اگر destructive/high-risk، schema rewrite، یا continuous recovery اثبات‌نشده باشد. نوشتن `PITR enabled` به‌تنهایی recovery را اثبات نمی‌کند: تازگی، retention و restore test باید ثبت باشند. بازگرداندن دیتابیس همچنان فقط دستی و با مجوز جداست.
 
 ## ساختار روی سرور
 هر نسخه در `releases/vX.Y.Z/` با `git archive` استخراج می‌شود (بدون فایل‌های مانده از قبل)، `.env` در `shared/` و بیرون از نسخه‌هاست، و `current` به نسخه‌ی در حال اجرا اشاره می‌کند. سه نسخه‌ی آخر نگه داشته می‌شود.
