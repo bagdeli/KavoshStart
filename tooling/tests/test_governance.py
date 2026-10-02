@@ -97,6 +97,59 @@ class Wiring(unittest.TestCase):
         self.assertEqual(fails(g.wiring_problems(wf(kavosh=text, rel=rel), own)), [])
 
 
+class WorkflowTimeoutChecks(unittest.TestCase):
+    def test_CI3_positive_reusable_caller_without_timeout(self):
+        text = """on:
+  workflow_call:
+    inputs:
+      runs-on:
+        type: string
+jobs:
+  governance:
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v1.2.0
+    with:
+      runs-on: ${{ inputs.runs-on }}
+"""
+        self.assertEqual(g.jobs_without_timeout(text), [])
+
+    def test_CI3_positive_local_job_with_timeout(self):
+        text = """jobs:
+  required:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: true
+"""
+        self.assertEqual(g.jobs_without_timeout(text), [])
+
+    def test_CI3_negative_local_job_without_timeout(self):
+        text = """jobs:
+  required:
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+"""
+        self.assertEqual(g.jobs_without_timeout(text), ["required"])
+
+    def test_CI3_negative_mixed_only_flags_unbounded_local_job(self):
+        text = """jobs:
+  reusable:
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-health.yml@v1.2.0
+    with:
+      runs-on: '["self-hosted","linux","x64","demo"]'
+  bounded:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: true
+  unbounded:
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+"""
+        self.assertEqual(g.jobs_without_timeout(text), ["unbounded"])
+
+
 TEMPLATE_BODY = """Closes #1
 
 ## AI involvement
