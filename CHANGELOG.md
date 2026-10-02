@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/bagdeli/KavoshStart/compare/v1.4.0...v1.5.0) (2026-10-02)
+
+
+### Features
+
+* **policy:** finish bounded free-only authorization controls ([#47](https://github.com/bagdeli/KavoshStart/issues/47)) ([8f2dd43](https://github.com/bagdeli/KavoshStart/commit/8f2dd435b886a84feac929cf6aeca0f63058c58b))
+
 ## [1.4.0](https://github.com/bagdeli/KavoshStart/compare/v1.3.1...v1.4.0) (2026-10-02)
 
 
