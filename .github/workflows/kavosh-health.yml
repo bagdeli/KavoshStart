@@ -86,10 +86,14 @@ jobs:
               return stale, old, ahead
 
 
+          IMMUTABLE_LEGACY_RELEASE_TAGS = {"KavoshStart-v1.1.0"}
+
+
           def non_version_tags(tags):
-              """REL-3: only vX.Y.Z[-rc.N] tags (and the frozen historic v1) are allowed."""
+              """REL-3: require canonical tags, preserving this published immutable legacy release."""
               import re
-              return [t for t in tags if not re.match(r"^v[0-9]+([.][0-9]+[.][0-9]+(-rc[.][0-9]+)?)?$", t)]
+              return [t for t in tags if t not in IMMUTABLE_LEGACY_RELEASE_TAGS and
+                      not re.match(r"^v[0-9]+([.][0-9]+[.][0-9]+(-rc[.][0-9]+)?)?$", t)]
 
 
           AUTOMATION_LABELS = {"kavosh:health", "kavosh:violation", "kavosh:portfolio"}

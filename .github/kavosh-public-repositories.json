@@ -1,6 +1,0 @@
-{
-  "description": "Independently maintained public-only Layer O inventory. Add a repository only after its owner approves public monitoring; private projects belong in a separate private control surface.",
-  "repositories": [
-    "bagdeli/KavoshStart"
-  ]
-}

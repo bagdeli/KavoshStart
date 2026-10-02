@@ -1,9 +1,0 @@
-# Keeps the SHA-pinned actions used by KavoshStart's own and generated workflows up to date (SEC-2, SEC-4).
-# Note: pins inside tooling/templates/*.yml and templates/** are updated by hand in the same PR as the Dependabot bump.
-version: 2
-updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule: { interval: weekly }
-    groups:
-      actions: { patterns: ["*"] }

@@ -19,7 +19,7 @@
 | commitهای main با `Co-Authored-By` (30 روز) | اطلاعاتی | AI-3 |
 | مصرف دقیقه‌ی ماه جاری / بودجه | ≤ 100٪ (هشدار از 80٪) | CI-3 |
 | آخرین Release | وجود دارد؛ T1/T2: ≤ 30 روز | REL-1 |
-| tagهای غیر `v*` | 0 | REL-3 |
+| tagهای غیر `v*` (به‌جز tag تاریخی immutable با allowlist صریح) | 0 | REL-3 |
 
 ## سطح پرتفوی
 `python3 scripts/portfolio.py bagdeli --minutes` (محلی، با `gh`): همه‌ی ریپوهای دارای `kavosh.project.json`، tier، بودجه، مصرف تخمینی ماه، آخرین release، تعداد تخلف باز — و جمع بودجه‌ها در برابر 1,600.

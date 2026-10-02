@@ -1,8 +1,0 @@
-# Owner review for governance, agent instructions and risky areas (advisory on GitHub Free).
-*                    @{{OWNER}}
-/.github/            @{{OWNER}}
-/.githooks/          @{{OWNER}}
-/.claude/            @{{OWNER}}
-/AGENTS.md           @{{OWNER}}
-/kavosh.project.json @{{OWNER}}
-/docs/decisions/     @{{OWNER}}

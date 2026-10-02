@@ -1,5 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: How work is organised (KavoshStart)
-    url: https://github.com/bagdeli/KavoshStart/blob/main/standard/02-source-of-truth-and-work.md
-    about: One issue = one PR-sized task. Status lives in GitHub, not in files.
