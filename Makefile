@@ -4,6 +4,7 @@ setup:
 	@python3 --version
 
 lint:
+	python3 tooling/sync_pins.py --check
 	python3 tooling/build_workflows.py --check
 	python3 -c "import json,glob; [json.load(open(f,encoding='utf-8')) for f in glob.glob('**/*.json',recursive=True)]"
 	for f in scripts/*.sh templates/common/.githooks/* templates/runtime/server/deploy/*.sh; do bash -n "$$f" || exit 1; done
