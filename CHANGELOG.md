@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/bagdeli/KavoshStart/compare/v1.3.1...v1.4.0) (2026-10-02)
+
+
+### Features
+
+* **ci:** add local-only T1 static validation ([9fe44f6](https://github.com/bagdeli/KavoshStart/commit/9fe44f66db71d0803c6255ed21b1a05b52f6c5ea)), closes [#32](https://github.com/bagdeli/KavoshStart/issues/32)
+
+
+### Bug Fixes
+
+* **health:** close green status reports ([737adc6](https://github.com/bagdeli/KavoshStart/commit/737adc65ae52383721c52265731fdb061f547c6b))
+
 ## [1.3.1](https://github.com/bagdeli/KavoshStart/compare/v1.3.0...v1.3.1) (2026-10-02)
 
 
