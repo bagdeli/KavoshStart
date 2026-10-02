@@ -104,11 +104,13 @@ def inspect_repo(api, repo, branch, private):
         if not any(r.get("name") == "main-guard / main-guard" for r in runs):
             findings.append(("M", f"no main-guard check on the head of {branch} — the guard is not running"))
 
-    issues = api.get(f"repos/{repo}/issues?labels=kavosh:health&state=open") or []
-    if not issues:
-        findings.append(("H", "no open `kavosh:health` issue — weekly health is not running"))
-    elif days_since(issues[0]["updated_at"]) > HEALTH_MAX_AGE_DAYS:
-        findings.append(("H", f"health issue not updated for {days_since(issues[0]['updated_at'])} days — weekly health stopped"))
+    issues = api.get(f"repos/{repo}/issues?labels=kavosh:health&state=all&per_page=100") or []
+    latest_health = max(issues, key=lambda item: item["updated_at"], default=None)
+    if latest_health is None:
+        findings.append(("H", "no `kavosh:health` report — weekly health has not run"))
+    elif days_since(latest_health["updated_at"]) > HEALTH_MAX_AGE_DAYS:
+        age = days_since(latest_health["updated_at"])
+        findings.append(("H", f"health report not updated for {age} days — weekly health stopped"))
     viol = api.get(f"repos/{repo}/issues?labels=kavosh:violation&state=open") or []
     if viol:
         findings.append(("PR-7", f"{len(viol)} open violation issue(s): " + ", ".join(f"#{i['number']}" for i in viol)))

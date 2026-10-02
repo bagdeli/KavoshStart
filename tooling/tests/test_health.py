@@ -45,6 +45,15 @@ class DirectPushes(unittest.TestCase):
         self.assertEqual(h.trailer_ratio(cs), (1, 2))
 
 
+class ReportLifecycle(unittest.TestCase):
+    def test_healthy_report_can_close(self):
+        self.assertTrue(h.report_is_green([("✅", "CI-1", "runner", "ok", "ok")]))
+
+    def test_warning_or_failure_keeps_report_open(self):
+        self.assertFalse(h.report_is_green([("⚠️", "REL-1", "release", "old", "fresh")]))
+        self.assertFalse(h.report_is_green([("❌", "SRC-5", "manifest", "missing", "present")]))
+
+
 class MinuteBudget(unittest.TestCase):
     def test_CI3_positive_below_budget(self):
         self.assertEqual(h.minute_budget_level(50, 100), (True, 50))
