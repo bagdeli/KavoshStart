@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/bagdeli/KavoshStart/compare/v1.3.0...v1.3.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **health:** clear legacy tag and stale branch findings ([cdb1699](https://github.com/bagdeli/KavoshStart/commit/cdb16998087f3fd889b62849f9905f1325222572))
+
 ## [1.3.0](https://github.com/bagdeli/KavoshStart/compare/v1.2.0...v1.3.0) (2026-10-01)
 
 
