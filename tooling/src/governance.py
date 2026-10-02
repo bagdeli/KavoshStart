@@ -112,14 +112,33 @@ def check_manifest(actual_repo=None):
     else:
         add("ok", "SRC-5", "Tier consistent with CLASSIFICATION.md", f"{m['tier']} (classified {exp})")
     rt, method = m["runtime"], m["deploy"]["method"]
-    if rt in ("server", "static") and method not in ("pull-build", "pull-image"):
-        add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs pull-build or pull-image, got {method}")
+    if rt in ("server", "static") and method not in ("pull-build", "pull-image", "custom"):
+        add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs pull-build, pull-image or ADR-backed custom, got {method}")
     elif rt in ("none", "desktop") and method not in ("none", "release-artifact"):
         add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs none or release-artifact, got {method}")
+    elif method == "custom":
+        problem = decision_adr_problem(m.get("deploy", {}).get("authorizationADR"),
+                                       ("safety and release gates", "rel-5", "least privilege", "tag", "rollback", "database"))
+        add("fail" if problem else "ok", "DEP-1", "Custom deploy preserves equivalent gates",
+            problem or m["deploy"]["authorizationADR"])
     else:
         add("ok", "DEP-1", "Deploy method fits runtime", f"{rt} → {method}")
-    if m["ui"]["kind"] != "none" and not m["ui"].get("kavoshui"):
-        add("fail", "UI-1", "KavoshUI version pinned", "ui.kind is set but ui.kavoshui is empty")
+    migration_mode = m.get("deploy", {}).get("migrationMode", "expand-contract")
+    if migration_mode == "maintenance-window":
+        problem = decision_adr_problem(m.get("deploy", {}).get("migrationADR"),
+                                       ("migration and recovery", "maintenance window", "backup", "restore test", "rollback"))
+        if m.get("tier") != "T1" or rt != "server":
+            problem = "maintenance-window is limited to T1 server projects"
+        add("fail" if problem else "ok", "DEP-5", "Maintenance-window migration is T1 and ADR-backed",
+            problem or m["deploy"]["migrationADR"])
+    else:
+        add("ok", "DEP-5", "Migration strategy", "expand-contract (default)")
+    ui = m.get("ui", {})
+    if ui.get("kind") != "none" and not ui.get("kavoshui"):
+        problem = decision_adr_problem(ui.get("exceptionADR"),
+                                       ("ui exception", "scope", "rtl", "accessibility", "tests"))
+        add("fail" if problem else "ok", "UI-1", "KavoshUI pin or approved exception ADR",
+            problem or ui["exceptionADR"])
     budget = m["ci"]["monthlyMinutesBudget"]
     if m["visibility"] == "private" and budget > 0:
         add("fail", "CI-3", "Shared hosted quota disabled by default on private repos",
@@ -129,13 +148,41 @@ def check_manifest(actual_repo=None):
     return m
 
 
+def decision_adr_problem(ref, required_terms):
+    """Require an in-repository decision record with the stated safety evidence, not a free-form exemption flag."""
+    if not isinstance(ref, str) or not re.fullmatch(r"docs/decisions/[0-9]{4}-[a-z0-9-]+\.md", ref):
+        return "an ADR path under docs/decisions/ is required"
+    path = Path(ref)
+    if not path.is_file():
+        return f"ADR does not exist: {ref}"
+    body = path.read_text(encoding="utf-8", errors="replace").lower()
+    missing = [term for term in required_terms if term.lower() not in body]
+    return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None
+
+
+def runner_trust_adr_problem(ref, visibility):
+    """Self-hosted runners need a documented isolation choice; public ADRs must also address forks."""
+    if not isinstance(ref, str) or not re.fullmatch(r"docs/decisions/[0-9]{4}-[a-z0-9-]+\.md", ref):
+        return "an ADR path under docs/decisions/ is required"
+    path = Path(ref)
+    if not path.is_file():
+        return f"ADR does not exist: {ref}"
+    body = path.read_text(encoding="utf-8", errors="replace").lower()
+    missing = [term for term in ("runner trust model", "isolation") if term not in body]
+    if not any(term in body for term in ("rootless", "disposable")):
+        missing.append("rootless or disposable VM isolation")
+    if visibility == "public" and not any(term in body for term in ("fork", "untrusted")):
+        missing.append("fork/untrusted PR boundary")
+    return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None
+
+
 def runner_labels(m):
     slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
     return m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: enforce runner, cost and local-only eligibility."""
+    """CI-1 / CI-2: runner choice follows trust and cost; private hosted runs are manual and scoped."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
@@ -147,21 +194,23 @@ def runner_manifest_problems(m):
                      f"got tier={m.get('tier')}, runtime={m.get('runtime')}, monthlyMinutesBudget={m.get('ci', {}).get('monthlyMinutesBudget')}")]
         return [("ok", "CI-1", "Local-only T1/static validation profile",
                  "no GitHub Actions workflows; make check runs locally and its result is recorded in the PR")]
+    if runner not in ("github-hosted", "self-hosted"):
+        return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
+    out = [("ok", "CI-1", "Runner selected by trust/cost policy", f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
-        return [("fail", "CI-1", "Private hosted execution requires direct authorization",
-                 "private GitHub-hosted CI is disabled by default; manifest configuration is not authorization")]
-    want = "github-hosted" if vis == "public" else "self-hosted"
-    if runner != want:
-        return [("fail", "CI-1", "Runner matches cost and visibility policy", f"{vis} repository needs ci.runner = {want}, got {runner}")]
-    out = [("ok", "CI-1", "Runner matches cost and visibility policy", f"{vis} → {runner}")]
+        out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
+                    "workflow_dispatch must name an open PR and its exact current head SHA"))
     if runner == "self-hosted":
+        problem = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
+        out.append(("fail" if problem else "ok", "CI-2", "Self-hosted runner has an isolated trust model",
+                    problem or m["ci"]["trustModelADR"]))
         labels = runner_labels(m)
         slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
         expected = ["self-hosted", "linux", "x64", slug]
-        if not slug or any(label not in labels for label in expected) or len(set(labels)) != len(labels):
-            out.append(("fail", "CI-2", "Self-hosted labels match this repository", f"expected {expected}; got {labels}"))
+        if not slug or labels != expected:
+            out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
         else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels {labels} include {expected}"))
+            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
     return out
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
@@ -177,35 +226,50 @@ def is_hosted(value):
 
 
 def runner_workflow_problems(workflows, m):
-    """CI-1 in workflow files: no hosted runs-on in private repos, no self-hosted in public repos;
-    callers of KavoshStart reusable workflows in private repos pass a self-hosted runs-on input."""
-    vis = m.get("visibility")
-    if vis == "public":
-        allowed = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "windows-latest", "windows-2025",
-                   "windows-2022", "macos-latest", "macos-15", "macos-14", "macos-13"}
-        def standard_hosted(value):
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                value = value[1:-1]
-            if value in allowed or value.startswith("$" + "{{"):
-                return True
-            try:
-                labels = json.loads(value)
-                return isinstance(labels, list) and bool(labels) and all(x in allowed for x in labels)
-            except (ValueError, TypeError):
-                return False
-        bad = [f"{f}: {v}" for f, t in workflows.items() for v in runs_on_values(t)
-               if v and not standard_hosted(v)]
-        return [("fail" if bad else "ok", "CI-1", "Public repository uses standard GitHub-hosted runners only", ", ".join(bad) or "ok")]
-    if vis == "private":
-        bad = [f"{f}: {v}" for f, t in workflows.items() for v in runs_on_values(t)
-               if "self-hosted" not in v]
-        callers = [f for f, t in workflows.items()
-                   if KAVOSH_WF in t and not any("self-hosted" in v for v in runs_on_values(t))]
-        out = [("fail" if bad else "ok", "CI-1", "Private repository never uses GitHub-hosted runners", ", ".join(bad) or "ok")]
-        if callers:
-            out.append(("fail", "CI-1", "KavoshStart workflows get a self-hosted runs-on input", ", ".join(callers)))
-        return out
-    return []
+    """CI-1: check every workflow runner against the manifest and fail closed for private hosted automation."""
+    vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
+    if vis not in ("public", "private"):
+        return []
+    hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "windows-latest", "windows-2025",
+              "windows-2022", "macos-latest", "macos-15", "macos-14", "macos-13"}
+    bad = []
+    for f, text in workflows.items():
+        for value in runs_on_values(text):
+            value = value.strip("\"'")
+            if not value or value.startswith("$"):
+                continue
+            if value.startswith("[") and value.endswith("]"):
+                labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
+            else:
+                try:
+                    labels = json.loads(value)
+                except (ValueError, TypeError):
+                    labels = [value]
+            labels = labels if isinstance(labels, list) else [value]
+            is_self = "self-hosted" in labels
+            is_standard = bool(labels) and all(x in hosted for x in labels)
+            if runner == "github-hosted" and not is_standard:
+                bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
+            elif runner == "self-hosted" and not is_self:
+                bad.append(f"{f}: {value} (manifest selects self-hosted)")
+    out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
+    if vis == "private" and runner == "github-hosted":
+        required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")
+        absent = [f for f in required if f not in workflows]
+        unsafe = [f for f in required if f in workflows and
+                  (not re.search(r"^  workflow_dispatch\s*:", workflows[f], re.M)
+                   or "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in workflows[f]
+                   or "github.event_name == 'workflow_dispatch'" not in workflows[f]
+                   or "!true" not in workflows[f])]
+        problem = absent + unsafe
+        out.append(("fail" if problem else "ok", "CI-3", "Private hosted jobs require an owner-initiated scoped dispatch",
+                    ", ".join(problem) or "ci, governance/health, and release dispatch guards are present"))
+    if runner == "self-hosted":
+        unsafe = [f for f, text in workflows.items() if "pull_request:" in text and
+                  "github.event.pull_request.head.repo.full_name == github.repository" not in text]
+        out.append(("fail" if unsafe else "ok", "CI-2", "Self-hosted PR jobs exclude fork code",
+                    ", ".join(unsafe) or "fork pull requests cannot reach self-hosted runners"))
+    return out
 
 
 # ---------------------------------------------------------------- repository files
@@ -387,6 +451,20 @@ def gh(*args):
     return json.loads(out) if out.strip() else None
 
 
+def ui_render_files(files):
+    """Paths that can affect rendered UI; dependency/API-only changes do not require screenshots."""
+    visual_suffixes = (".css", ".scss", ".sass", ".less", ".html", ".svg", ".vue", ".svelte")
+    visual_suffixes += (".tsx", ".jsx")
+    out = []
+    for item in files:
+        name = item.get("filename", "") if isinstance(item, dict) else str(item)
+        lower = name.lower()
+        parts = lower.split("/")
+        if lower.endswith(visual_suffixes) or any(part in ("ui", "components", "styles", "views") for part in parts):
+            out.append(name)
+    return out
+
+
 def check_pr(m, event, repo):
     pr = event["pull_request"]
     default = event["repository"]["default_branch"]
@@ -426,6 +504,14 @@ def check_pr(m, event, repo):
             (r.get("user") or {}).get("login", "").lower() == owner
             and r.get("state") == "APPROVED" and r.get("commit_id") == pr["head"].get("sha")
             for r in reviews))
+    visual_files = ui_render_files(files)
+    if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
+        evidence = re.search(r"(?im)^ui evidence:\s*(https?://\S+|\S.+)$", body)
+        add("ok" if evidence else "fail", "UI-2", "Render evidence for visual UI changes",
+            evidence.group(1) if evidence else f"required for {len(visual_files)} visual file(s)")
+    else:
+        add("ok", "UI-2", "No render evidence needed", "PR has no visual UI changes")
+
     if (lines > hard or len(counted) > 50) and not approved_size:
         add("fail", "PR-3", "PR size", f"{lines} lines / {len(counted)} files > {hard} / 50 — split it")
     elif exception_requested and (lines > max_lines) and not approved_size:

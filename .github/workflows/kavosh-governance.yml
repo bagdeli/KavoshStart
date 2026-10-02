@@ -18,6 +18,14 @@ on:
         description: Post/update a sticky PR comment with the report
         type: boolean
         default: true
+      authorization-pr:
+        description: PR number for an owner-initiated private hosted dispatch
+        type: string
+        default: ""
+      authorization-head:
+        description: Exact PR head SHA approved for this one dispatch
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -33,8 +41,32 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ inputs.authorization-head || github.sha }}
           fetch-depth: 1
           persist-credentials: false
+      - name: Validate private hosted dispatch scope
+        if: github.event_name == 'workflow_dispatch' && inputs.authorization-pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.authorization-pr }}
+          EXPECTED_HEAD: ${{ inputs.authorization-head }}
+        run: |
+          set -euo pipefail
+          [ -n "$EXPECTED_HEAD" ] && [ "$EXPECTED_HEAD" = "$GITHUB_SHA" ]
+          gh api "repos/$REPO/pulls/$PR_NUMBER" > "$RUNNER_TEMP/kavosh-pr.json"
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+          pr = json.load(open(os.environ["RUNNER_TEMP"] + "/kavosh-pr.json", encoding="utf-8"))
+          if pr.get("state") != "open" or pr.get("head", {}).get("sha") != os.environ["EXPECTED_HEAD"]:
+              sys.exit("authorization expired: PR is closed or its head changed")
+          event = {"action": "opened", "number": pr["number"], "pull_request": pr,
+                   "repository": pr["base"]["repo"]}
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "kavosh-event.json"
+          path.write_text(json.dumps(event), encoding="utf-8")
+          print(f"one-run authorization: @{os.environ['GITHUB_ACTOR']} for PR #{pr['number']} @ {pr['head']['sha']}")
+          PY
+          echo "GITHUB_EVENT_PATH=$RUNNER_TEMP/kavosh-event.json" >> "$GITHUB_ENV"
       - name: Check KavoshStart rules
         id: check
         env:
@@ -55,7 +87,7 @@ jobs:
           import sys
           from pathlib import Path
 
-          _SCHEMA_SRC = r"""{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json","title":"Kavosh project manifest","description":"Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.","type":"object","additionalProperties":false,"required":["kavoshStart","name","repo","summary","visibility","tier","runtime","users","data","size","ui","stack","deploy","ci","agents"],"properties":{"$schema":{"type":"string"},"kavoshStart":{"type":"string","pattern":"^v[0-9]+[.][0-9]+[.][0-9]+$","description":"Exact KavoshStart release the project follows"},"name":{"type":"string","minLength":2},"repo":{"type":"string","pattern":"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},"summary":{"type":"string","minLength":10,"maxLength":300},"visibility":{"enum":["private","public"],"description":"Actual repository visibility. Public uses standard GitHub-hosted runners; private defaults to isolated self-hosted (CI-1). A manifest never authorizes shared quota."},"owner":{"type":"string"},"tier":{"enum":["T0","T1","T2"]},"tierOverride":{"type":"string","description":"ADR path if tier differs from CLASSIFICATION.md result"},"runtime":{"enum":["none","static","server","desktop"]},"projectKind":{"enum":["application","library","tool"],"description":"library = consumed by other Kavosh repositories (classifies at least T1)"},"adoptionPhase":{"type":"boolean","description":"Deprecated legacy marker. This field never authorizes enforce:false or a green report-only check."},"firstRelease":{"type":"array","items":{"type":"string"}},"outOfScope":{"type":"array","items":{"type":"string"}},"users":{"type":"object","additionalProperties":false,"required":["audience","scale"],"properties":{"audience":{"enum":["internal","customers","public"]},"scale":{"enum":["1-10","10-100","100-1000","1000+"]}}},"data":{"type":"object","additionalProperties":false,"required":["sensitivity","regulatedIntegrations","multiTenant"],"properties":{"sensitivity":{"enum":["none","internal","personal","financial"]},"regulatedIntegrations":{"type":"array","items":{"type":"string"}},"multiTenant":{"type":"boolean"}}},"size":{"type":"object","additionalProperties":false,"required":["domains","lifetime","parallelStreams"],"properties":{"domains":{"type":"integer","minimum":1},"lifetime":{"enum":["weeks","months","years"]},"parallelStreams":{"type":"integer","minimum":1}}},"ui":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"enum":["none","web","admin","desktop"]},"kavoshui":{"type":["string","null"],"pattern":"^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$"},"locales":{"type":"array","items":{"type":"string"}}}},"stack":{"type":"object","additionalProperties":false,"required":["languages"],"properties":{"languages":{"type":"array","items":{"type":"string"},"minItems":1},"frameworks":{"type":"array","items":{"type":"string"}},"database":{"enum":["postgresql","sqlite","mysql","none"]}}},"deploy":{"type":"object","additionalProperties":false,"required":["method","environments"],"properties":{"method":{"enum":["none","release-artifact","pull-build","pull-image"]},"location":{"enum":["iran","abroad","both"]},"environments":{"type":"array","items":{"enum":["test","production"]}},"urls":{"type":"object","additionalProperties":{"type":"string"}}}},"ci":{"type":"object","additionalProperties":false,"required":["runner","monthlyMinutesBudget"],"properties":{"runner":{"enum":["self-hosted","github-hosted","none"],"description":"Public: standard GitHub-hosted by default. Private: isolated self-hosted by default. T1 static projects may select none for the local-only validation profile; private hosted runs need separate direct approval (CI-1/CI-3)."},"runnerLabels":{"type":"array","items":{"type":"string"},"minItems":1,"description":"Self-hosted labels; default [self-hosted, linux, x64, <repo-slug>] (CI-2)"},"runners":{"type":"integer","minimum":1,"maximum":20,"description":"Capacity metric for self-hosted runners registered to this repository; size by queue and SLO, not tier."},"monthlyMinutesBudget":{"type":"integer","minimum":0,"maximum":2000,"description":"Legacy estimate only; it cannot grant authorization or stop billing. Keep zero unless separately approved for a bounded run."}}},"limits":{"type":"object","additionalProperties":false,"properties":{"prMaxLines":{"type":"integer","minimum":100,"maximum":2000},"maxOpenReadyPRs":{"type":"integer","minimum":1,"maximum":10},"branchMaxAgeDays":{"type":"integer","minimum":1,"maximum":14}}},"agents":{"type":"array","items":{"enum":["claude","codex","copilot","gemini","human-only"]},"minItems":1},"dependsOn":{"type":"array","items":{"type":"string"}}}}"""
+          _SCHEMA_SRC = r"""{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json","title":"Kavosh project manifest","description":"Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.","type":"object","additionalProperties":false,"required":["kavoshStart","name","repo","summary","visibility","tier","runtime","users","data","size","ui","stack","deploy","ci","agents"],"properties":{"$schema":{"type":"string"},"kavoshStart":{"type":"string","pattern":"^v[0-9]+[.][0-9]+[.][0-9]+$","description":"Exact KavoshStart release the project follows"},"name":{"type":"string","minLength":2},"repo":{"type":"string","pattern":"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},"summary":{"type":"string","minLength":10,"maxLength":300},"visibility":{"enum":["private","public"],"description":"Actual repository visibility. Public defaults to standard GitHub-hosted. Private runner choice follows trust, billing, network and workload; private hosted runs require a one-run workflow_dispatch authorization and a manifest never grants it."},"owner":{"type":"string"},"tier":{"enum":["T0","T1","T2"]},"tierOverride":{"type":"string","description":"ADR path if tier differs from CLASSIFICATION.md result"},"runtime":{"enum":["none","static","server","desktop"]},"projectKind":{"enum":["application","library","tool"],"description":"library = consumed by other Kavosh repositories (classifies at least T1)"},"adoptionPhase":{"type":"boolean","description":"Deprecated legacy marker. This field never authorizes enforce:false or a green report-only check."},"firstRelease":{"type":"array","items":{"type":"string"}},"outOfScope":{"type":"array","items":{"type":"string"}},"users":{"type":"object","additionalProperties":false,"required":["audience","scale"],"properties":{"audience":{"enum":["internal","customers","public"]},"scale":{"enum":["1-10","10-100","100-1000","1000+"]}}},"data":{"type":"object","additionalProperties":false,"required":["sensitivity","regulatedIntegrations","multiTenant"],"properties":{"sensitivity":{"enum":["none","internal","personal","financial"]},"regulatedIntegrations":{"type":"array","items":{"type":"string"}},"multiTenant":{"type":"boolean"}}},"size":{"type":"object","additionalProperties":false,"required":["domains","lifetime","parallelStreams"],"properties":{"domains":{"type":"integer","minimum":1},"lifetime":{"enum":["weeks","months","years"]},"parallelStreams":{"type":"integer","minimum":1}}},"ui":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"enum":["none","web","admin","desktop"]},"kavoshui":{"type":["string","null"],"pattern":"^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$"},"locales":{"type":"array","items":{"type":"string"}},"exceptionADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"ADR required when a project opts out of KavoshUI."}}},"stack":{"type":"object","additionalProperties":false,"required":["languages"],"properties":{"languages":{"type":"array","items":{"type":"string"},"minItems":1},"frameworks":{"type":"array","items":{"type":"string"}},"database":{"enum":["postgresql","sqlite","mysql","none"]}}},"deploy":{"type":"object","additionalProperties":false,"required":["method","environments"],"properties":{"method":{"enum":["none","release-artifact","pull-build","pull-image","custom"]},"location":{"enum":["iran","abroad","both"]},"environments":{"type":"array","items":{"enum":["test","production"]}},"urls":{"type":"object","additionalProperties":{"type":"string"}},"authorizationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for method=custom; proves equivalent release/security gates."},"migrationMode":{"enum":["expand-contract","maintenance-window"],"description":"Defaults to expand-contract. maintenance-window is limited to T1 with a migration ADR and per-run owner authorization."},"migrationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"ci":{"type":"object","additionalProperties":false,"required":["runner","monthlyMinutesBudget"],"properties":{"runner":{"enum":["self-hosted","github-hosted","none"],"description":"Public defaults to standard GitHub-hosted; self-hosted on any visibility requires trustModelADR and same-repository PR gates. Private may choose hosted or isolated self-hosted. Private hosted workflow jobs run only through an owner-initiated workflow_dispatch scoped to an open PR and exact current head; manifest choice alone never authorizes shared quota."},"runnerLabels":{"type":"array","items":{"type":"string"},"minItems":1,"description":"Exact self-hosted labels for this repo: [self-hosted, linux, x64, <repo-slug>] (CI-2)"},"runners":{"type":"integer","minimum":1,"maximum":20,"description":"Capacity metric for self-hosted runners registered to this repository; size by queue and SLO, not tier."},"monthlyMinutesBudget":{"type":"integer","minimum":0,"maximum":2000,"description":"Legacy estimate only; it cannot grant authorization or stop billing. Keep zero unless separately approved for a bounded run."},"trustModelADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for any self-hosted runner; must establish rootless or disposable-VM isolation. Public use must address fork/untrusted code."}}},"limits":{"type":"object","additionalProperties":false,"properties":{"prMaxLines":{"type":"integer","minimum":100,"maximum":2000},"maxOpenReadyPRs":{"type":"integer","minimum":1,"maximum":10},"branchMaxAgeDays":{"type":"integer","minimum":1,"maximum":14}}},"agents":{"type":"array","items":{"enum":["claude","codex","copilot","gemini","human-only"]},"minItems":1},"dependsOn":{"type":"array","items":{"type":"string"}}}}"""
           # Embedded by build_workflows.py; when imported from the repo (tests) read the schema file instead.
           SCHEMA = (json.loads(_SCHEMA_SRC) if not _SCHEMA_SRC.startswith("__") else
                     json.loads((Path(__file__).resolve().parents[2] / "intake" / "kavosh.project.schema.json").read_text(encoding="utf-8")))
@@ -158,14 +190,33 @@ jobs:
               else:
                   add("ok", "SRC-5", "Tier consistent with CLASSIFICATION.md", f"{m['tier']} (classified {exp})")
               rt, method = m["runtime"], m["deploy"]["method"]
-              if rt in ("server", "static") and method not in ("pull-build", "pull-image"):
-                  add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs pull-build or pull-image, got {method}")
+              if rt in ("server", "static") and method not in ("pull-build", "pull-image", "custom"):
+                  add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs pull-build, pull-image or ADR-backed custom, got {method}")
               elif rt in ("none", "desktop") and method not in ("none", "release-artifact"):
                   add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs none or release-artifact, got {method}")
+              elif method == "custom":
+                  problem = decision_adr_problem(m.get("deploy", {}).get("authorizationADR"),
+                                                 ("safety and release gates", "rel-5", "least privilege", "tag", "rollback", "database"))
+                  add("fail" if problem else "ok", "DEP-1", "Custom deploy preserves equivalent gates",
+                      problem or m["deploy"]["authorizationADR"])
               else:
                   add("ok", "DEP-1", "Deploy method fits runtime", f"{rt} → {method}")
-              if m["ui"]["kind"] != "none" and not m["ui"].get("kavoshui"):
-                  add("fail", "UI-1", "KavoshUI version pinned", "ui.kind is set but ui.kavoshui is empty")
+              migration_mode = m.get("deploy", {}).get("migrationMode", "expand-contract")
+              if migration_mode == "maintenance-window":
+                  problem = decision_adr_problem(m.get("deploy", {}).get("migrationADR"),
+                                                 ("migration and recovery", "maintenance window", "backup", "restore test", "rollback"))
+                  if m.get("tier") != "T1" or rt != "server":
+                      problem = "maintenance-window is limited to T1 server projects"
+                  add("fail" if problem else "ok", "DEP-5", "Maintenance-window migration is T1 and ADR-backed",
+                      problem or m["deploy"]["migrationADR"])
+              else:
+                  add("ok", "DEP-5", "Migration strategy", "expand-contract (default)")
+              ui = m.get("ui", {})
+              if ui.get("kind") != "none" and not ui.get("kavoshui"):
+                  problem = decision_adr_problem(ui.get("exceptionADR"),
+                                                 ("ui exception", "scope", "rtl", "accessibility", "tests"))
+                  add("fail" if problem else "ok", "UI-1", "KavoshUI pin or approved exception ADR",
+                      problem or ui["exceptionADR"])
               budget = m["ci"]["monthlyMinutesBudget"]
               if m["visibility"] == "private" and budget > 0:
                   add("fail", "CI-3", "Shared hosted quota disabled by default on private repos",
@@ -175,13 +226,41 @@ jobs:
               return m
 
 
+          def decision_adr_problem(ref, required_terms):
+              """Require an in-repository decision record with the stated safety evidence, not a free-form exemption flag."""
+              if not isinstance(ref, str) or not re.fullmatch(r"docs/decisions/[0-9]{4}-[a-z0-9-]+\.md", ref):
+                  return "an ADR path under docs/decisions/ is required"
+              path = Path(ref)
+              if not path.is_file():
+                  return f"ADR does not exist: {ref}"
+              body = path.read_text(encoding="utf-8", errors="replace").lower()
+              missing = [term for term in required_terms if term.lower() not in body]
+              return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None
+
+
+          def runner_trust_adr_problem(ref, visibility):
+              """Self-hosted runners need a documented isolation choice; public ADRs must also address forks."""
+              if not isinstance(ref, str) or not re.fullmatch(r"docs/decisions/[0-9]{4}-[a-z0-9-]+\.md", ref):
+                  return "an ADR path under docs/decisions/ is required"
+              path = Path(ref)
+              if not path.is_file():
+                  return f"ADR does not exist: {ref}"
+              body = path.read_text(encoding="utf-8", errors="replace").lower()
+              missing = [term for term in ("runner trust model", "isolation") if term not in body]
+              if not any(term in body for term in ("rootless", "disposable")):
+                  missing.append("rootless or disposable VM isolation")
+              if visibility == "public" and not any(term in body for term in ("fork", "untrusted")):
+                  missing.append("fork/untrusted PR boundary")
+              return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None
+
+
           def runner_labels(m):
               slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
               return m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
 
 
           def runner_manifest_problems(m):
-              """CI-1 / CI-2: enforce runner, cost and local-only eligibility."""
+              """CI-1 / CI-2: runner choice follows trust and cost; private hosted runs are manual and scoped."""
               vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
               if vis not in ("public", "private"):
                   return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
@@ -193,21 +272,23 @@ jobs:
                                f"got tier={m.get('tier')}, runtime={m.get('runtime')}, monthlyMinutesBudget={m.get('ci', {}).get('monthlyMinutesBudget')}")]
                   return [("ok", "CI-1", "Local-only T1/static validation profile",
                            "no GitHub Actions workflows; make check runs locally and its result is recorded in the PR")]
+              if runner not in ("github-hosted", "self-hosted"):
+                  return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
+              out = [("ok", "CI-1", "Runner selected by trust/cost policy", f"{vis} → {runner}")]
               if vis == "private" and runner == "github-hosted":
-                  return [("fail", "CI-1", "Private hosted execution requires direct authorization",
-                           "private GitHub-hosted CI is disabled by default; manifest configuration is not authorization")]
-              want = "github-hosted" if vis == "public" else "self-hosted"
-              if runner != want:
-                  return [("fail", "CI-1", "Runner matches cost and visibility policy", f"{vis} repository needs ci.runner = {want}, got {runner}")]
-              out = [("ok", "CI-1", "Runner matches cost and visibility policy", f"{vis} → {runner}")]
+                  out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
+                              "workflow_dispatch must name an open PR and its exact current head SHA"))
               if runner == "self-hosted":
+                  problem = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
+                  out.append(("fail" if problem else "ok", "CI-2", "Self-hosted runner has an isolated trust model",
+                              problem or m["ci"]["trustModelADR"]))
                   labels = runner_labels(m)
                   slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
                   expected = ["self-hosted", "linux", "x64", slug]
-                  if not slug or any(label not in labels for label in expected) or len(set(labels)) != len(labels):
-                      out.append(("fail", "CI-2", "Self-hosted labels match this repository", f"expected {expected}; got {labels}"))
+                  if not slug or labels != expected:
+                      out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
                   else:
-                      out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels {labels} include {expected}"))
+                      out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
               return out
 
           RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
@@ -223,35 +304,50 @@ jobs:
 
 
           def runner_workflow_problems(workflows, m):
-              """CI-1 in workflow files: no hosted runs-on in private repos, no self-hosted in public repos;
-              callers of KavoshStart reusable workflows in private repos pass a self-hosted runs-on input."""
-              vis = m.get("visibility")
-              if vis == "public":
-                  allowed = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "windows-latest", "windows-2025",
-                             "windows-2022", "macos-latest", "macos-15", "macos-14", "macos-13"}
-                  def standard_hosted(value):
-                      if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                          value = value[1:-1]
-                      if value in allowed or value.startswith("$" + "{{"):
-                          return True
-                      try:
-                          labels = json.loads(value)
-                          return isinstance(labels, list) and bool(labels) and all(x in allowed for x in labels)
-                      except (ValueError, TypeError):
-                          return False
-                  bad = [f"{f}: {v}" for f, t in workflows.items() for v in runs_on_values(t)
-                         if v and not standard_hosted(v)]
-                  return [("fail" if bad else "ok", "CI-1", "Public repository uses standard GitHub-hosted runners only", ", ".join(bad) or "ok")]
-              if vis == "private":
-                  bad = [f"{f}: {v}" for f, t in workflows.items() for v in runs_on_values(t)
-                         if "self-hosted" not in v]
-                  callers = [f for f, t in workflows.items()
-                             if KAVOSH_WF in t and not any("self-hosted" in v for v in runs_on_values(t))]
-                  out = [("fail" if bad else "ok", "CI-1", "Private repository never uses GitHub-hosted runners", ", ".join(bad) or "ok")]
-                  if callers:
-                      out.append(("fail", "CI-1", "KavoshStart workflows get a self-hosted runs-on input", ", ".join(callers)))
-                  return out
-              return []
+              """CI-1: check every workflow runner against the manifest and fail closed for private hosted automation."""
+              vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
+              if vis not in ("public", "private"):
+                  return []
+              hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "windows-latest", "windows-2025",
+                        "windows-2022", "macos-latest", "macos-15", "macos-14", "macos-13"}
+              bad = []
+              for f, text in workflows.items():
+                  for value in runs_on_values(text):
+                      value = value.strip("\"'")
+                      if not value or value.startswith("$"):
+                          continue
+                      if value.startswith("[") and value.endswith("]"):
+                          labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
+                      else:
+                          try:
+                              labels = json.loads(value)
+                          except (ValueError, TypeError):
+                              labels = [value]
+                      labels = labels if isinstance(labels, list) else [value]
+                      is_self = "self-hosted" in labels
+                      is_standard = bool(labels) and all(x in hosted for x in labels)
+                      if runner == "github-hosted" and not is_standard:
+                          bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
+                      elif runner == "self-hosted" and not is_self:
+                          bad.append(f"{f}: {value} (manifest selects self-hosted)")
+              out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
+              if vis == "private" and runner == "github-hosted":
+                  required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")
+                  absent = [f for f in required if f not in workflows]
+                  unsafe = [f for f in required if f in workflows and
+                            (not re.search(r"^  workflow_dispatch\s*:", workflows[f], re.M)
+                             or "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in workflows[f]
+                             or "github.event_name == 'workflow_dispatch'" not in workflows[f]
+                             or "!true" not in workflows[f])]
+                  problem = absent + unsafe
+                  out.append(("fail" if problem else "ok", "CI-3", "Private hosted jobs require an owner-initiated scoped dispatch",
+                              ", ".join(problem) or "ci, governance/health, and release dispatch guards are present"))
+              if runner == "self-hosted":
+                  unsafe = [f for f, text in workflows.items() if "pull_request:" in text and
+                            "github.event.pull_request.head.repo.full_name == github.repository" not in text]
+                  out.append(("fail" if unsafe else "ok", "CI-2", "Self-hosted PR jobs exclude fork code",
+                              ", ".join(unsafe) or "fork pull requests cannot reach self-hosted runners"))
+              return out
 
 
           # ---------------------------------------------------------------- repository files
@@ -433,6 +529,20 @@ jobs:
               return json.loads(out) if out.strip() else None
 
 
+          def ui_render_files(files):
+              """Paths that can affect rendered UI; dependency/API-only changes do not require screenshots."""
+              visual_suffixes = (".css", ".scss", ".sass", ".less", ".html", ".svg", ".vue", ".svelte")
+              visual_suffixes += (".tsx", ".jsx")
+              out = []
+              for item in files:
+                  name = item.get("filename", "") if isinstance(item, dict) else str(item)
+                  lower = name.lower()
+                  parts = lower.split("/")
+                  if lower.endswith(visual_suffixes) or any(part in ("ui", "components", "styles", "views") for part in parts):
+                      out.append(name)
+              return out
+
+
           def check_pr(m, event, repo):
               pr = event["pull_request"]
               default = event["repository"]["default_branch"]
@@ -472,6 +582,14 @@ jobs:
                       (r.get("user") or {}).get("login", "").lower() == owner
                       and r.get("state") == "APPROVED" and r.get("commit_id") == pr["head"].get("sha")
                       for r in reviews))
+              visual_files = ui_render_files(files)
+              if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
+                  evidence = re.search(r"(?im)^ui evidence:\s*(https?://\S+|\S.+)$", body)
+                  add("ok" if evidence else "fail", "UI-2", "Render evidence for visual UI changes",
+                      evidence.group(1) if evidence else f"required for {len(visual_files)} visual file(s)")
+              else:
+                  add("ok", "UI-2", "No render evidence needed", "PR has no visual UI changes")
+
               if (lines > hard or len(counted) > 50) and not approved_size:
                   add("fail", "PR-3", "PR size", f"{lines} lines / {len(counted)} files > {hard} / 50 — split it")
               elif exception_requested and (lines > max_lines) and not approved_size:
@@ -546,11 +664,11 @@ jobs:
               main()
           PY
       - name: Sticky PR comment
-        if: always() && inputs.comment && github.event_name == 'pull_request'
+        if: always() && inputs.comment && (github.event_name == 'pull_request' || inputs.authorization-pr != '')
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
+          PR: ${{ inputs.authorization-pr || github.event.pull_request.number }}
           REPORT: ${{ runner.temp }}/kavosh-report.md
         run: |
           [ -f "$REPORT" ] || exit 0

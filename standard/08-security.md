@@ -18,9 +18,10 @@
 | Reusable workflow از KavoshStart | دسترسی «repositories owned by bagdeli» — outside collaborator ندارید؛ اگر اضافه شد، بدانید لاگ‌ها را می‌بیند | All |
 
 ## سیاست runner خودمیزبان (CI-1، CI-2)
-- فقط برای ریپوهای **private**؛ روی ریپوی public ممنوع (PRهای fork).
-- ثبت روی **یک** ریپو؛ Docker روت‌فل دسترسی root-equivalent می‌دهد. از Docker روت‌لس یا VM اختصاصی disposable استفاده کن و بعد هر job میزبان را نابود کن؛ `--ephemeral` به‌تنهایی host isolation نیست.
-- اگر ریپویی public شود، runner خودمیزبان آن در همان تغییر حذف و workflowها به GitHub-hosted برمی‌گردند.
+- برای public، GitHub-hosted پیش‌فرض است؛ self-hosted فقط با ADR ایزولیشن و طوری که کد fork/نامطمئن روی آن اجرا نشود.
+- برای private، GitHub-hosted یا self-hosted بر اساس اعتماد/هزینه/شبکه انتخاب می‌شود؛ hosted فقط با مجوز همان اجرا و ref/SHA دقیق.
+- ثبت روی **یک** ریپو؛ Docker روت‌فل دسترسی root-equivalent می‌دهد. installer روت‌فل را رد می‌کند و Docker روت‌لس می‌خواهد. VM اختصاصی disposable باید پس از هر job توسط provisioner حذف شود؛ `--ephemeral` به‌تنهایی host isolation نیست.
+- تغییر visibility باعث بازبینی runner و trust ADR در PR می‌شود؛ self-hosted عمومی بدون ایزولیشن و کنترل fork قابل قبول نیست.
 
 
 ## مرز اطلاعاتی public/private (SEC-5)

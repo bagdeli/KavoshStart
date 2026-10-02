@@ -1,6 +1,6 @@
 # 0009 — Human-authorized operations and Free-only execution
 
-- Status: proposed for vNext; merge into main only with its enforcement and test changes
+- Status: accepted; enforced by the rules, templates and regression checks listed below
 - Deciders: bagdeli
 - Issue: bagdeli/KavoshStart#33
 

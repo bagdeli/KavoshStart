@@ -49,7 +49,7 @@
         "private",
         "public"
       ],
-      "description": "Actual repository visibility. Public uses standard GitHub-hosted runners; private defaults to isolated self-hosted (CI-1). A manifest never authorizes shared quota."
+      "description": "Actual repository visibility. Public defaults to standard GitHub-hosted. Private runner choice follows trust, billing, network and workload; private hosted runs require a one-run workflow_dispatch authorization and a manifest never grants it."
     },
     "owner": {
       "type": "string"
@@ -203,6 +203,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "exceptionADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+          "description": "ADR required when a project opts out of KavoshUI."
         }
       }
     },
@@ -249,7 +254,8 @@
             "none",
             "release-artifact",
             "pull-build",
-            "pull-image"
+            "pull-image",
+            "custom"
           ]
         },
         "location": {
@@ -273,6 +279,22 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "authorizationADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+          "description": "Required for method=custom; proves equivalent release/security gates."
+        },
+        "migrationMode": {
+          "enum": [
+            "expand-contract",
+            "maintenance-window"
+          ],
+          "description": "Defaults to expand-contract. maintenance-window is limited to T1 with a migration ADR and per-run owner authorization."
+        },
+        "migrationADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"
         }
       }
     },
@@ -290,7 +312,7 @@
             "github-hosted",
             "none"
           ],
-          "description": "Public: standard GitHub-hosted by default. Private: isolated self-hosted by default. T1 static projects may select none for the local-only validation profile; private hosted runs need separate direct approval (CI-1/CI-3)."
+          "description": "Public defaults to standard GitHub-hosted; self-hosted on any visibility requires trustModelADR and same-repository PR gates. Private may choose hosted or isolated self-hosted. Private hosted workflow jobs run only through an owner-initiated workflow_dispatch scoped to an open PR and exact current head; manifest choice alone never authorizes shared quota."
         },
         "runnerLabels": {
           "type": "array",
@@ -298,7 +320,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Self-hosted labels; default [self-hosted, linux, x64, <repo-slug>] (CI-2)"
+          "description": "Exact self-hosted labels for this repo: [self-hosted, linux, x64, <repo-slug>] (CI-2)"
         },
         "runners": {
           "type": "integer",
@@ -311,6 +333,11 @@
           "minimum": 0,
           "maximum": 2000,
           "description": "Legacy estimate only; it cannot grant authorization or stop billing. Keep zero unless separately approved for a bounded run."
+        },
+        "trustModelADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+          "description": "Required for any self-hosted runner; must establish rootless or disposable-VM isolation. Public use must address fork/untrusted code."
         }
       }
     },

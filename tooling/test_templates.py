@@ -64,7 +64,7 @@ def main():
             subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
             (repo / "kavosh.project.json").write_text(json.dumps(manifest(*combo), indent=2), encoding="utf-8")
             r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
-                               capture_output=True, text=True, encoding="utf-8")
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
             if r.returncode != 0:
                 print(f"FAIL scaffold {combo}:\n{r.stdout}{r.stderr}")
                 failures += 1
@@ -99,7 +99,7 @@ def main():
             (repo / "gov.py").write_text(gov, encoding="utf-8")
             env = dict(os.environ, REPO="bagdeli/Example", ENFORCE="true", GITHUB_EVENT_PATH="",
                        KAVOSH_REPORT=str(repo / "report.md"), GITHUB_STEP_SUMMARY="", PYTHONIOENCODING="utf-8")
-            r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8")
+            r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
             report = (repo / "report.md").read_text(encoding="utf-8") if (repo / "report.md").exists() else r.stderr
             fails = [l for l in report.splitlines() if l.startswith("| ❌")]
             status = "ok  " if r.returncode == 0 and not fails else "FAIL"
@@ -119,13 +119,15 @@ def main():
             (repo / "big.md").write_text("a" * 70000, encoding="utf-8")
             m = json.loads((repo / "kavosh.project.json").read_text(encoding="utf-8"))
             m["tier"] = "T0"
+            m["ci"] = {"runner": "self-hosted", "runnerLabels": ["self-hosted", "linux", "x64", "example"],
+                       "monthlyMinutesBudget": 0}
             (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
             wf = repo / ".github" / "workflows" / "ci.yml"
             text = wf.read_text(encoding="utf-8")
             wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, example]", "runs-on: ubuntu-latest"), encoding="utf-8")
             (repo / ".githooks" / "pre-push").unlink()
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
-            r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8")
+            r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
             report = (repo / "report.md").read_text(encoding="utf-8")
             expected = ["SRC-3", "SRC-2", "AI-1", "DOC-1", "SRC-5", "CI-1", "AI-4"]
             caught = [rid for rid in expected if any(l.startswith("| ❌") and f"| {rid} |" in l for l in report.splitlines())]
@@ -140,7 +142,7 @@ def main():
         local_manifest = manifest("T1", "static", "pull-build", "admin", ["production"], runner="none")
         (repo / "kavosh.project.json").write_text(json.dumps(local_manifest, indent=2), encoding="utf-8")
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
-                           capture_output=True, text=True, encoding="utf-8")
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         workflows = list((repo / ".github" / "workflows").glob("*.yml")) if (repo / ".github" / "workflows").exists() else []
         if r.returncode != 0 or workflows:
             print(f"FAIL T1/static local-only scaffold: return={r.returncode}, workflows={workflows}\\n{r.stdout}{r.stderr}")
@@ -151,13 +153,50 @@ def main():
             env = dict(os.environ, REPO="bagdeli/Example", ENFORCE="true", GITHUB_EVENT_PATH="",
                        KAVOSH_REPORT=str(repo / "report.md"), GITHUB_STEP_SUMMARY="", PYTHONIOENCODING="utf-8")
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env,
-                               capture_output=True, text=True, encoding="utf-8")
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
             report = (repo / "report.md").read_text(encoding="utf-8") if (repo / "report.md").exists() else r.stderr
             if r.returncode != 0 or any(line.startswith("| ❌") for line in report.splitlines()):
                 print(f"FAIL T1/static local-only governance:\\n{report}")
                 failures += 1
             else:
                 print("ok  T1/static local-only scaffold has no Actions workflows; local governance PASS")
+    # Private GitHub-hosted CI must be opted in per run and bind the dispatch to the current PR head.
+    with tempfile.TemporaryDirectory() as d:
+        repo = Path(d)
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        private_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="github-hosted")
+        (repo / "kavosh.project.json").write_text(json.dumps(private_manifest, indent=2), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode != 0:
+            print(f"FAIL private hosted scaffold:\n{r.stdout}{r.stderr}")
+            failures += 1
+        else:
+            for name in ("ci.yml", "kavosh.yml", "release.yml"):
+                text = (repo / ".github/workflows" / name).read_text(encoding="utf-8")
+                if "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in text or "workflow_dispatch" not in text:
+                    print(f"FAIL private hosted dispatch guard missing in {name}")
+                    failures += 1
+            ci_text = (repo / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+            if "(github.event_name == 'push' && !true)" not in ci_text or "github.event_name == 'workflow_dispatch'" not in ci_text:
+                print("FAIL private hosted CI dispatch is not the only runner path")
+                failures += 1
+            if (repo / "deploy/kavosh-deploy.sh").exists() is False:
+                print("FAIL default pull deploy scaffold missing")
+                failures += 1
+    # Custom deployment is opt-in by ADR and must not ship the pull-based deployer as if it matched that method.
+    with tempfile.TemporaryDirectory() as d:
+        repo = Path(d)
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="self-hosted")
+        custom_manifest["deploy"]["method"] = "custom"
+        custom_manifest["deploy"]["authorizationADR"] = "docs/decisions/0002-custom-deploy.md"
+        (repo / "kavosh.project.json").write_text(json.dumps(custom_manifest, indent=2), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode != 0 or (repo / "deploy/kavosh-deploy.sh").exists():
+            print(f"FAIL custom deploy scaffold kept the pull deployer:\n{r.stdout}{r.stderr}")
+            failures += 1
     return 1 if failures else 0
 
 

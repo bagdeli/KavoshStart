@@ -78,6 +78,12 @@ def type_label_problems(issues):
     return out
 
 
+def draft_stack_warnings(prs, default_branch="main"):
+    """BR-4: Draft stacks may be deep during development, but should be normalized before Ready."""
+    return [f"#{p['number']}→{p['base']['ref']}" for p in prs
+            if p.get("draft") and p.get("base", {}).get("ref") != default_branch]
+
+
 def direct_pushes(commits, pulls_for, default_branch="main"):
     """BR-6: commits on the default branch that no merged PR produced (the initial scaffold root is allowed)."""
     out = []
@@ -167,10 +173,12 @@ def main():
     ready = [p for p in prs if not p["draft"] and p["user"]["type"] != "Bot"]
     max_ready = int(limits.get("maxOpenReadyPRs", 3))
     drafts = [f"#{p['number']}" for p in prs if p["draft"] and days(p["updated_at"]) > 7]
-    off = [f"#{p['number']}→{p['base']['ref']}" for p in prs if p["base"]["ref"] != default]
+    ready_off = [f"#{p['number']}→{p['base']['ref']}" for p in ready if p["base"]["ref"] != default]
+    draft_stacks = draft_stack_warnings(prs, default)
     add(len(ready) <= max_ready, "PR-8", "Open ready PRs", len(ready), f"≤ {max_ready}")
     add(not drafts, "PR-9", "Drafts idle > 7 days", ", ".join(drafts) or 0, "0")
-    add(len(off) <= 1, "BR-4", f"Open PRs not targeting {default}", ", ".join(off) or 0, "≤ 1")
+    add(len(ready_off) <= 1, "BR-4", f"Ready PRs not targeting {default}", ", ".join(ready_off) or 0, "≤ 1 immediately mergeable parent")
+    add("warn" if draft_stacks else True, "BR-4", "Draft PR stacks", ", ".join(draft_stacks) or 0, "normalize before Ready")
 
     # Issues
     issues = [i for i in paged(f"repos/{repo}/issues?state=open") if "pull_request" not in i]

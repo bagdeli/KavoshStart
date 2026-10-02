@@ -39,6 +39,23 @@ def push(*commits, forced=False):
 
 
 class MainGuard(unittest.TestCase):
+    def test_PR7_positive_owner_dispatch_binds_exact_current_main_sha(self):
+        sha = "m1"
+        def api(path):
+            if path.endswith("/branches/main"):
+                return {"commit": {"sha": sha}}
+            return {"commit": {"message": "feat: verified"}, "parents": [{"sha": "p1"}]}
+        event = mg.manual_dispatch_event(REPO, sha, "bagdeli", api)
+        self.assertEqual(event["after"], sha)
+        self.assertEqual(event["commits"][0]["id"], sha)
+        self.assertEqual(event["pusher"]["name"], "bagdeli")
+
+    def test_PR7_negative_owner_dispatch_rejects_stale_head(self):
+        def api(path):
+            return {"commit": {"sha": "current"}}
+        with self.assertRaisesRegex(RuntimeError, "authorization expired"):
+            mg.manual_dispatch_event(REPO, "old", "bagdeli", api)
+
     def test_PR7_positive_squash_merge_all_green(self):
         """Covers: BR-7, BR-6 (positive)"""
         api = api_for({"m1": [pr(5, "m1", "h1")]}, {"h1": [check("kavosh / governance"), check("required")]})

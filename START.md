@@ -58,11 +58,12 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** private repositories default to an existing runner dedicated to that repository. A non-root
-   service user in the rootful Docker group still has root-equivalent host access; this installer accepts rootless
-   Docker only. A separately provisioned disposable worker VM must be destroyed after each job. The owner creates
-   the registration token. Verify:
-   `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`. Public repository → nothing to do.
+8. **Runner (CI-1):** public repositories default to standard GitHub-hosted. Private repositories may choose hosted or
+   isolated self-hosted based on trust, billing, network and workload. With this Free account, do not use private
+   hosted Actions without the owner's direct approval for this run; run the `ci` and `kavosh` workflows by
+   `workflow_dispatch`, naming the open PR and exact current head SHA. Stale heads fail closed. Self-hosted is optional;
+   rootful Docker is root-equivalent, so use rootless Docker or a disposable VM destroyed after each job. The owner
+   creates the registration token. Verify: `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`.
    For T1/static, the owner may select `ci.runner: none`: scaffold omits all workflows. Run `make check` locally and
    attach its successful output to every PR. Bootstrap selects a PR-protected ruleset without CI status checks for
    this profile. Never merge a red result or bypass an actual required check.
@@ -104,7 +105,9 @@ manually (e.g. the Actions access setting). Stop.
    needs direct approval if it consumes shared quota.
 5. Update the PR body: Done / Remaining (as new issues) / Decisions / How verified / AI involvement.
 6. Mark ready for review. An explicit owner authorization for this PR and current head permits an ordinary green
-   squash merge after fresh preflight checks. It never permits `--admin`, protection bypass or a red/missing check.
+   squash merge after fresh preflight checks. Recheck base, mergeability, required green checks and unresolved review
+   threads immediately before merge; bind it to the same SHA with `gh pr merge <number> --squash --match-head-commit <sha>`.
+   It never permits `--admin`, protection bypass or a red/missing check.
 7. If the branch is older than 3 days or `main` moved significantly: rebase on `origin/main` before asking for review (`BR-3`).
 
 ## Hard stops — ask the owner, do nothing else

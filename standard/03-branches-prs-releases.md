@@ -16,7 +16,7 @@ main   ●────●────●────●────●───�
 2. Draft PR زود (برنامه در بدنه). stack عمیق مجاز است و health هشدار می‌دهد؛ پیش از Ready به main یا یک والد بلافاصله قابل‌ادغام normalize می‌شود. CI سنگین روی Draft خاموش است؛ dispatch زودهنگام مجوز quota نیست.
 3. کد + تست + `make check` محلی ← یک push.
 4. Ready for review ← `kavosh` و `required` سبز، شاخه shallow، threadها resolved.
-5. مالک برای PR و head فعلی مجوز merge می‌دهد؛ عامل preflight تازه می‌کند و **Squash merge** عادی انجام می‌دهد. `--admin` ممنوع است.
+5. مالک برای PR و head فعلی مجوز merge می‌دهد؛ عامل بلافاصله پیش از merge، base، mergeability، checkهای سبز و threadهای حل‌نشده را دوباره بررسی می‌کند و **Squash merge** عادی را با تطبیق همان SHA انجام می‌دهد: `gh pr merge <number> --squash --match-head-commit <sha>`. `--admin` و bypass مطلقاً ممنوع‌اند.
 
 ## اندازه
 | | هدف | هشدار | قرمز |
