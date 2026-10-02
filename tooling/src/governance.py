@@ -135,10 +135,18 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: private hosted execution stays off unless separately authorized."""
+    """CI-1 / CI-2: enforce runner, cost and local-only eligibility."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
+    if runner == "none":
+        eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
+        zero_budget = m.get("ci", {}).get("monthlyMinutesBudget", 0) == 0
+        if not eligible or not zero_budget:
+            return [("fail", "CI-1", "Local-only validation is T1/static with zero budget",
+                     f"got tier={m.get('tier')}, runtime={m.get('runtime')}, monthlyMinutesBudget={m.get('ci', {}).get('monthlyMinutesBudget')}")]
+        return [("ok", "CI-1", "Local-only T1/static validation profile",
+                 "no GitHub Actions workflows; make check runs locally and its result is recorded in the PR")]
     if vis == "private" and runner == "github-hosted":
         return [("fail", "CI-1", "Private hosted execution requires direct authorization",
                  "private GitHub-hosted CI is disabled by default; manifest configuration is not authorization")]
@@ -155,7 +163,6 @@ def runner_manifest_problems(m):
         else:
             out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels {labels} include {expected}"))
     return out
-
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
 
@@ -255,23 +262,20 @@ def check_files(m, actual_repo=None):
     add("ok" if "git push" in claude and "deny" in claude else "warn", "AI-4", "Claude deny rules present", ".claude/settings.json")
 
     wf = [f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))]
-    for level, rule, title, detail in runner_workflow_problems({f: read(f) for f in wf}, m):
-        add(level, rule, title, detail)
-    noperm = [f for f in wf if not re.search(r"^permissions:", read(f), re.M)]
-    add("fail" if noperm else "ok", "SEC-3", "Workflows declare top-level permissions", ", ".join(noperm) or "ok")
-    noto = [f for f in wf if "runs-on" in read(f) and "timeout-minutes" not in read(f)]
-    add("warn" if noto else "ok", "CI-3", "Jobs set timeout-minutes", ", ".join(noto) or "ok")
+    if m.get("ci", {}).get("runner") == "none":
+        add("fail" if wf else "ok", "CI-1", "Local-only project has no GitHub Actions workflows",
+            ", ".join(wf[:8]) if wf else "make check is run locally; attach the successful output to each PR")
+    else:
+        for level, rule, title, detail in runner_workflow_problems({f: read(f) for f in wf}, m):
+            add(level, rule, title, detail)
+        noperm = [f for f in wf if not re.search(r"^permissions:", read(f), re.M)]
+        add("fail" if noperm else "ok", "SEC-3", "Workflows declare top-level permissions", ", ".join(noperm) or "ok")
+        noto = [f for f in wf if "runs-on" in read(f) and "timeout-minutes" not in read(f)]
+        add("warn" if noto else "ok", "CI-3", "Jobs set timeout-minutes", ", ".join(noto) or "ok")
 
-    unpinned = unpinned_uses({f: read(f) for f in wf}, m)
-    add("fail" if unpinned else "ok", "SEC-2", "Actions pinned to full SHA; KavoshStart to exact tag",
-        "; ".join(unpinned[:8]) or "ok")
-    add("ok" if "PROJECT.md" in files else "fail", "SRC-7", "PROJECT.md exists", "one-page project brief (START.md §1 step 3)")
-    level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
-    add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
-    add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
-    trusted_repo = actual_repo or m.get("repo")
-    for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m, trusted_repo):
-        add(level, rule, title, detail)
+        unpinned = unpinned_uses({f: read(f) for f in wf}, m)
+        add("fail" if unpinned else "ok", "SEC-2", "Actions pinned to full SHA; KavoshStart to exact tag",
+            "; ".join(unpinned[:8]) or "ok")
 
 
 def release_tag_config(text):

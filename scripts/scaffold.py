@@ -86,7 +86,10 @@ def main() -> int:
         if base.exists():
             for f in sorted(base.rglob("*")):
                 if f.is_file():
-                    plan[f.relative_to(base).as_posix()] = f
+                    rel = f.relative_to(base).as_posix()
+                    if m.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
+                        continue
+                    plan[rel] = f
 
     created, conflicts = [], []
     for rel, src in sorted(plan.items()):

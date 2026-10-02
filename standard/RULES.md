@@ -70,7 +70,7 @@
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| CI-1 | public از runner استاندارد GitHub استفاده می‌کند؛ private پیش‌فرض از runner خودمیزبانِ همان ریپو (`self-hosted, linux, x64, <repo-slug>`) استفاده می‌کند. اجرای hosted خصوصی فقط با مجوز مستقیم مالک برای یک اجرای محدود؛ `visibility` و `ci.runner` با repo واقعی منطبق‌اند. | MUST | All | P, R |
+| CI-1 | public پیش‌فرض runner استاندارد GitHub دارد؛ private پیش‌فرض runner خودمیزبانِ همان ریپو (`self-hosted, linux, x64, <repo-slug>`). فقط T1/static می‌تواند `ci.runner: none` و بودجه صفر انتخاب کند: scaffold هیچ workflowی نمی‌سازد، `make check` محلی و خروجی سبز در PR لازم است. runner hosted خصوصی فقط با مجوز مستقیم و محدود؛ `visibility` و runner با repo واقعی منطبق‌اند. | MUST | T1/static exception; otherwise All | P, S, R |
 | CI-2 | runner خصوصی فقط برای یک ریپو ثبت می‌شود؛ rootful Docker معادل دسترسی root است. میزبان باید Docker روت‌لس یا VM اختصاصیِ یک‌بارمصرف با حذف پس از job باشد؛ راز production روی آن نیست. تعداد runner با ظرفیت و SLO تعیین می‌شود، نه Tier ثابت. | MUST | All (private) | P, R |
 | CI-3 | سهمیهٔ مشترک Actions/storage/cache/Packages بدون مجوز مستقیم مالک برای اجرای مشخص مصرف نمی‌شود. برآورد دقیقه یا بودجهٔ manifest توقف billing را اثبات نمی‌کند؛ مسیر عادی باید Free و بدون overage باشد. | MUST | All | P, H, R |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
