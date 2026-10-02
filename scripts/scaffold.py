@@ -87,7 +87,7 @@ def main() -> int:
             for f in sorted(base.rglob("*")):
                 if f.is_file():
                     rel = f.relative_to(base).as_posix()
-                    if m.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
+                    if manifest.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
                         continue
                     plan[rel] = f
 
