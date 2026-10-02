@@ -35,8 +35,9 @@ def layers(manifest: dict) -> list:
 def values(m: dict) -> dict:
     ui = m.get("ui", {})
     slug = re.sub(r"[^a-z0-9]+", "-", m["repo"].split("/")[-1].lower()).strip("-")
-    # CI-1: private → self-hosted runner registered to this repository; public → GitHub-hosted
-    if m.get("visibility", "private") == "private":
+    # CI-1: the manifest selects the runner; private hosted callers are gated to one owner-initiated dispatch.
+    runner = m.get("ci", {}).get("runner", "github-hosted")
+    if runner == "self-hosted":
         labels = m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
     else:
         labels = ["ubuntu-latest"]
@@ -47,6 +48,7 @@ def values(m: dict) -> dict:
         "OWNER": m.get("owner") or m["repo"].split("/")[0],
         "SUMMARY": m["summary"],
         "TIER": m["tier"],
+        "CI_TIMEOUT": {"T0": "10", "T1": "15", "T2": "20"}.get(m.get("tier"), "10"),
         "RUNTIME": m["runtime"],
         "KAVOSHSTART": m["kavoshStart"],
         "KAVOSHUI": ui.get("kavoshui") or "(not used)",
@@ -57,6 +59,8 @@ def values(m: dict) -> dict:
         "PACKAGE": "true" if m["runtime"] in ("none", "desktop") else "false",
         "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")),
         "RUNS_ON_YAML": ("[" + ", ".join(labels) + "]") if labels != ["ubuntu-latest"] else "ubuntu-latest",
+        "PRIVATE_HOSTED": "true" if m.get("visibility") == "private" and m.get("ci", {}).get("runner") == "github-hosted" else "false",
+        "SELF_HOSTED": "true" if m.get("ci", {}).get("runner") == "self-hosted" else "false",
     }
 
 
@@ -88,6 +92,8 @@ def main() -> int:
                 if f.is_file():
                     rel = f.relative_to(base).as_posix()
                     if manifest.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
+                        continue
+                    if manifest.get("deploy", {}).get("method") == "custom" and layer == "runtime/server" and rel.startswith("deploy/"):
                         continue
                     plan[rel] = f
 

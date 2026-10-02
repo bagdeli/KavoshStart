@@ -42,3 +42,7 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 **Never:** push to `main` · use `--admin` or bypass checks/protection · run `bootstrap-repo.sh --apply` or any GitHub-mutating command against another repository
 without the owner's explicit request · put live status (SHAs, current issue numbers) in files.
 **Ask first:** changing default limits or tier budgets · renaming workflow jobs or inputs · deleting a rule.
+
+After the owner explicitly authorizes a named PR and current head SHA, recheck its base, mergeability, required green
+checks, and unresolved review threads immediately before a normal squash merge. Bind the merge to that SHA with
+`gh pr merge <number> --squash --match-head-commit <sha>`. This authorization never permits `--admin` or bypass.

@@ -47,13 +47,25 @@ class TagSelection(unittest.TestCase):
 class ScriptContract(unittest.TestCase):
     def test_DEP6_continuous_recovery_checked_and_high_risk_snapshot_before_migration(self):
         text = SCRIPT.read_text(encoding="utf-8")
-        recovery, snapshot, migrate, start = (text.index('eval "$BACKUP_HEALTHCHECK_CMD"'),
-            text.index('eval "$BACKUP_CMD"'), text.index('eval "$MIGRATE_CMD"'), text.index('if start "$target"'))
-        self.assertLess(recovery, snapshot)
+        recovery, restore_test, snapshot, migrate, start = (text.index('eval "$BACKUP_HEALTHCHECK_CMD"'),
+            text.index('eval "$RESTORE_TEST_CHECK_CMD"'), text.index('eval "$BACKUP_CMD"'),
+            text.index('eval "$MIGRATE_CMD"'), text.index('if start "$target"'))
+        self.assertLess(recovery, restore_test)
+        self.assertLess(restore_test, snapshot)
         self.assertLess(snapshot, migrate)
         self.assertLess(migrate, start)
         self.assertIn("MIGRATE_CMD is set but BACKUP_HEALTHCHECK_CMD is empty", text)
+        self.assertIn("MIGRATE_CMD is set but RESTORE_TEST_CHECK_CMD is empty", text)
         self.assertIn("high-risk migration requires BACKUP_CMD snapshot", text)
+
+    def test_DEP5_maintenance_window_is_T1_direct_per_tag_authorized(self):
+        text = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("--authorize-maintenance-window", text)
+        self.assertIn('[ "$manifest_tier" = T1 ]', text)
+        self.assertIn('[ "${MAINTENANCE_AUTH_TAG:-}" = "$target" ]', text)
+        self.assertIn('eval "$MAINTENANCE_STOP_CMD"', text)
+        self.assertIn("service remains stopped for manual recovery", text)
+        self.assertIn('MIGRATION_RISK="${MIGRATION_RISK:-low}"', text)
 
     def test_DEP3_dry_run_is_read_only_and_pin_is_production_only(self):
         with tempfile.TemporaryDirectory() as d:

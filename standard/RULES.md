@@ -70,8 +70,8 @@
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| CI-1 | public پیش‌فرض runner استاندارد GitHub دارد؛ private پیش‌فرض runner خودمیزبانِ همان ریپو (`self-hosted, linux, x64, <repo-slug>`). فقط T1/static می‌تواند `ci.runner: none` و بودجه صفر انتخاب کند: scaffold هیچ workflowی نمی‌سازد، `make check` محلی و خروجی سبز در PR لازم است. runner hosted خصوصی فقط با مجوز مستقیم و محدود؛ `visibility` و runner با repo واقعی منطبق‌اند. | MUST | T1/static exception; otherwise All | P, S, R |
-| CI-2 | runner خصوصی فقط برای یک ریپو ثبت می‌شود؛ rootful Docker معادل دسترسی root است. میزبان باید Docker روت‌لس یا VM اختصاصیِ یک‌بارمصرف با حذف پس از job باشد؛ راز production روی آن نیست. تعداد runner با ظرفیت و SLO تعیین می‌شود، نه Tier ثابت. | MUST | All (private) | P, R |
+| CI-1 | runner بر اساس visibility، trust، شبکه و هزینه انتخاب می‌شود: public پیش‌فرض GitHub-hosted است و self-hosted فقط با ADR ایزولیشن و بدون PR کد نامطمئن؛ private می‌تواند GitHub-hosted یا self-hosted باشد. هر private hosted run که سهمیهٔ مشترک مصرف کند فقط با dispatch مستقیم مالک برای PR/ref/SHA مشخص مجاز است؛ trigger خودکار آن خاموش است. `none` فقط برای T1/static با بودجهٔ صفر است. | MUST | All | P, S, R |
+| CI-2 | هر runner خودمیزبان فقط برای یک ریپو ثبت می‌شود؛ rootful Docker معادل دسترسی root است. میزبان باید Docker روت‌لس یا VM اختصاصیِ یک‌بارمصرف با حذف پس از job باشد؛ PR کد fork/نامطمئن اجرا نمی‌شود و راز production روی runner نیست. تعداد runner با ظرفیت و SLO تعیین می‌شود، نه Tier ثابت. | MUST | All | P, R |
 | CI-3 | سهمیهٔ مشترک Actions/storage/cache/Packages بدون مجوز مستقیم مالک برای اجرای مشخص مصرف نمی‌شود. برآورد دقیقه یا بودجهٔ manifest توقف billing را اثبات نمی‌کند؛ مسیر عادی باید Free و بدون overage باشد. | MUST | All | P, H, R |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
 | CI-5 | jobهای سنگین (rehearsal، e2e کامل، migration کامل) فقط روی `main`، tag، یا برچسب `ci:full`. | MUST | T1, T2 | R |
@@ -110,18 +110,18 @@
 ## DEP — استقرار (فقط runtime = server/static)
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| DEP-1 | استقرار pull-based است: سرور نسخه را از GitHub می‌کشد؛ GitHub به سرور وصل نمی‌شود. | MUST | All | R |
+| DEP-1 | pull-based پیش‌فرض است. معماری دیگر فقط با ADR، حداقل‌دسترسی credential و اثبات دروازه‌های معادل REL-5، tag تغییرناپذیر، rollback برنامه و عدم restore خودکار DB مجاز است. | MUST | All | R |
 | DEP-2 | فقط tagهای SemVer مستقر می‌شوند: test ← بالاترین نسخه طبق SemVer (`v1.2.0` > `v1.2.0-rc.3`)، production ← نسخه‌ای که مالک روی سرور پین کرده. | MUST | All | R (منطق انتخاب: آزمون آفلاین) |
 | DEP-3 | endpoint یا فایل `/version` نسخه و SHA در حال اجرا را برمی‌گرداند. | MUST | T1, T2 | R |
 | DEP-4 | اسکریپت استقرار health-check و بازگشت خودکار **برنامه** به نسخه‌ی قبل دارد؛ هر نسخه در پوشه‌ی تمیز خودش و `.env` بیرون از آن. **دیتابیس خودکار برنمی‌گردد.** | MUST | T1, T2 | R |
-| DEP-5 | migrationها expand/contract‌اند: هر نسخه فقط اضافه می‌کند؛ حذف/تغییر نام چیزی که نسخه‌ی قبل استفاده می‌کند فقط در نسخه‌ی بعدی. پس نسخه‌ی قبلی برنامه روی schema جدید کار می‌کند. | MUST | T1, T2 | R |
+| DEP-5 | production T2 از expand/contract استفاده می‌کند. T1 می‌تواند maintenance window محدود با downtime داشته باشد، فقط با ADR و مجوز همان اجرا، backup/restore آزموده و runbook بازگشت برنامه. | MUST | T1, T2 | R |
 | DEP-6 | پیش از migration سلامت continuous backup/PITR بررسی می‌شود؛ snapshot تازه برای migration مخرب/high-risk یا rewrite لازم است. failure استقرار را متوقف می‌کند؛ restore فقط با runbook و مجوز جدا انجام می‌شود. | MUST | T1, T2 | R (اسکریپت قالب اجرا می‌کند) |
 
 ## UI — KavoshUI
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| UI-1 | پروژه‌ی دارای UI از KavoshUI با نسخه‌ی دقیق پین‌شده (`ui.kavoshui`) استفاده می‌کند؛ کپی کامپوننت ممنوع. | MUST | All | P, R |
-| UI-2 | ارتقای KavoshUI در PR جدا با شواهد رندر (RTL + موبایل). | MUST | All | R |
+| UI-1 | KavoshUI با نسخهٔ دقیق پین‌شده پیش‌فرض است. استثنا با ADR پروژه، دلیل، دامنهٔ اجزا، دسترس‌پذیری و RTL مجاز است؛ کپی کامپوننت‌های KavoshUI ممنوع می‌ماند. | MUST | All | P, R |
+| UI-2 | ارتقای KavoshUI در PR جداست؛ شواهد رندر RTL/موبایل فقط وقتی لازم است که diff بتواند ظاهر یا تعامل را تغییر دهد. تغییر API/بستهٔ غیرنمایشی به‌تنهایی نیازمند screenshot نیست. | MUST | All | P, R |
 | UI-3 | قواعد مصرف‌کننده‌ی KavoshUI (`docs/architecture/CONSUMER_CONFORMANCE_STANDARD_FA.md` در KavoshUI) رعایت می‌شود. | MUST | All | R |
 
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)

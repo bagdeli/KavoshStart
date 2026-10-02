@@ -1,5 +1,5 @@
-# Gated release (REL-4, REL-5) after CI succeeded on main. Logic lives in KavoshStart {{KAVOSHSTART}}.
-# Release PRs are opened by GITHUB_TOKEN: approve their CI with "Approve and run" (see KavoshStart standard/03).
+# Gated release (REL-4, REL-5). Private GitHub-hosted runs need a direct manual dispatch on exact main.
+# PRIVATE_HOSTED_DISPATCH_REQUIRED: workflow_run is disabled for private hosted runner selections.
 name: release
 
 on:
@@ -7,6 +7,13 @@ on:
     workflows: [ci]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      authorization-confirmed:
+        description: Confirm this one release-gate run on the selected main SHA
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -16,7 +23,10 @@ permissions:
 
 jobs:
   release:
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && !{{PRIVATE_HOSTED}}) ||
+      (github.event_name == 'workflow_dispatch' && inputs.authorization-confirmed && github.ref == 'refs/heads/main')
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-release.yml@{{KAVOSHSTART}}
     with:
       runs-on: '{{RUNS_ON_JSON}}'
-      package: {{PACKAGE}}   # true for runtime none/desktop: `make package` → dist/* attached to the release
+      package: {{PACKAGE}}

@@ -63,14 +63,7 @@
     }
   },
   "ci": {
-    "runner": "self-hosted",
-    "runnerLabels": [
-      "self-hosted",
-      "linux",
-      "x64",
-      "kavoshsms"
-    ],
-    "runners": 2,
+    "runner": "github-hosted",
     "monthlyMinutesBudget": 0
   },
   "limits": {

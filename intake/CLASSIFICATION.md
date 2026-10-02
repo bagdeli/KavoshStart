@@ -34,13 +34,12 @@ The owner may move a project **up** freely. Moving **down** requires an ADR in t
 | AI review workflow | no | optional (`ai-review.yml`) | yes |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated release-please (REL-5) | + rc on test | + rc → UAT → final |
-| Runner (by visibility, CI-1) | private: existing isolated self-hosted · public: standard hosted | private: existing isolated self-hosted · public: standard hosted | capacity based on queue/SLO; same privacy/cost rules |
+| Runner (by visibility, CI-1) | private: hosted with per-run authorization or isolated self-hosted · public: standard hosted | private: hosted with per-run authorization or isolated self-hosted · public: standard hosted | capacity based on queue/SLO; same privacy/cost rules |
 | **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
 ## Budget rule (CI-3)
-Private repositories default to isolated self-hosted runners (CI-1); public repositories use standard hosted runners,
-which are free for public repos. Every manifest keeps `monthlyMinutesBudget` at **0**: that field never authorizes
-shared quota. Any private hosted exception needs direct owner authorization for one bounded run and may not rely
-on the shared Free allowance without the same explicit approval. Keep pushes per PR low anyway (CI-6): self-hosted
+Runner choice is not determined by visibility alone: public defaults to standard hosted; private may use hosted or isolated self-hosted.
+Private hosted runs use shared quota and therefore require a direct, one-run authorization and manual dispatch. Every manifest keeps `monthlyMinutesBudget` at **0**: that field never authorizes
+shared quota. A private hosted run needs direct owner authorization for one bounded dispatch; the shared Free allowance is never consumed automatically. Keep pushes per PR low anyway (CI-6): self-hosted
 capacity is finite too.

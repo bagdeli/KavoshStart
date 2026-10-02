@@ -40,7 +40,10 @@ KEEP_RELEASES="${KEEP_RELEASES:-3}"
 MIGRATE_CMD="${MIGRATE_CMD:-}"   # e.g. "docker compose -p $PROJECT run --rm app alembic upgrade head"
 BACKUP_CMD="${BACKUP_CMD:-}"     # e.g. "/usr/local/bin/kavosh-pg-backup $PROJECT" — must exit non-zero on failure
 BACKUP_HEALTHCHECK_CMD="${BACKUP_HEALTHCHECK_CMD:-}" # verify healthy PITR/continuous backup before migration
-MIGRATION_RISK="${MIGRATION_RISK:-high}" # low | high | destructive; high/destructive requires a fresh snapshot
+RESTORE_TEST_CHECK_CMD="${RESTORE_TEST_CHECK_CMD:-}" # verify a recent successful restore rehearsal before migration
+MIGRATION_MODE="${MIGRATION_MODE:-expand-contract}" # expand-contract | maintenance-window
+MIGRATION_RISK="${MIGRATION_RISK:-low}" # low | high | destructive; high/destructive requires a fresh snapshot
+MAINTENANCE_STOP_CMD="${MAINTENANCE_STOP_CMD:-}" # required for T1 maintenance-window migrations
 STATE_DIR="/etc/kavosh/$PROJECT"
 LOG_FILE="/var/log/kavosh/$PROJECT-deploy.log"
 LOCK_FILE="/run/lock/kavosh-deploy-$PROJECT.lock"
@@ -51,6 +54,9 @@ while [ $# -gt 0 ]; do
     --pin)
       [ $# -ge 2 ] && [ -n "$2" ] || { echo "--pin requires a version" >&2; exit 2; }
       PIN_OVERRIDE="$2"; shift 2 ;;
+    --authorize-maintenance-window)
+      [ $# -ge 2 ] && [ -n "$2" ] || { echo "--authorize-maintenance-window requires the exact target tag" >&2; exit 2; }
+      MAINTENANCE_AUTH_TAG="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
@@ -62,6 +68,7 @@ if [ -n "${PIN_OVERRIDE:-}" ] && [ "$CHANNEL" != production ]; then
   exit 2
 fi
 case "$MIGRATION_RISK" in low|high|destructive) ;; *) echo "unknown MIGRATION_RISK=$MIGRATION_RISK" >&2; exit 2 ;; esac
+case "$MIGRATION_MODE" in expand-contract|maintenance-window) ;; *) echo "unknown MIGRATION_MODE=$MIGRATION_MODE" >&2; exit 2 ;; esac
 
 if [ -n "${PIN_OVERRIDE:-}" ]; then
   echo "$PIN_OVERRIDE" | grep -Eq "$SEMVER_RE" || { echo "pin '$PIN_OVERRIDE' is not a SemVer tag" >&2; exit 2; }
@@ -148,17 +155,58 @@ except (ValueError,TypeError): sys.exit(1)'; then return 0; fi
 prepare "$target"
 
 if [ -n "$MIGRATE_CMD" ]; then
+  manifest_mode=$(python3 - "$BASE/releases/$target/kavosh.project.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    print(json.load(f).get("deploy", {}).get("migrationMode", "expand-contract"))
+PY
+  )
+  [ "$MIGRATION_MODE" = "$manifest_mode" ] || { log "ABORT: MIGRATION_MODE does not match the release manifest"; exit 1; }
+  if [ "$MIGRATION_MODE" = maintenance-window ]; then
+    manifest_tier=$(python3 - "$BASE/releases/$target/kavosh.project.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    print(json.load(f).get("tier", ""))
+PY
+    )
+    migration_adr=$(python3 - "$BASE/releases/$target/kavosh.project.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    print(json.load(f).get("deploy", {}).get("migrationADR", ""))
+PY
+    )
+    [ "$manifest_tier" = T1 ] || { log "ABORT: maintenance-window migrations are T1-only"; exit 1; }
+    [ "${MAINTENANCE_AUTH_TAG:-}" = "$target" ] || { log "ABORT: direct per-run authorization requires --authorize-maintenance-window $target"; exit 1; }
+    [ -n "$MAINTENANCE_STOP_CMD" ] || { log "ABORT: MAINTENANCE_STOP_CMD is required to enter the downtime window"; exit 1; }
+    [ -n "$migration_adr" ] && [ -f "$BASE/releases/$target/$migration_adr" ] || { log "ABORT: release migration ADR is missing"; exit 1; }
+    python3 - "$BASE/releases/$target/$migration_adr" <<'PY'
+import pathlib, sys
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").lower()
+required = ("migration and recovery", "maintenance window", "backup", "restore test", "rollback")
+missing = [term for term in required if term not in text]
+if missing:
+    sys.exit("migration ADR missing required evidence: " + ", ".join(missing))
+PY
+    log "maintenance-window authorized by ${DEPLOY_ACTOR:-$(id -un)} for exact tag $target; stopping service after backup checks"
+  fi
   [ -n "$BACKUP_HEALTHCHECK_CMD" ] || { log "ABORT: MIGRATE_CMD is set but BACKUP_HEALTHCHECK_CMD is empty (DEP-6)"; exit 1; }
   log "verify continuous backup/PITR before migration"
   (cd "$BASE/releases/$target" && eval "$BACKUP_HEALTHCHECK_CMD") || { log "ABORT: continuous backup/PITR is unhealthy — nothing changed (DEP-6)"; exit 1; }
+  [ -n "$RESTORE_TEST_CHECK_CMD" ] || { log "ABORT: MIGRATE_CMD is set but RESTORE_TEST_CHECK_CMD is empty (DEP-6)"; exit 1; }
+  log "verify recent successful restore rehearsal before migration"
+  (cd "$BASE/releases/$target" && eval "$RESTORE_TEST_CHECK_CMD") || { log "ABORT: latest restore rehearsal is missing, stale, or failed — nothing changed (DEP-6)"; exit 1; }
   if [ "$MIGRATION_RISK" = high ] || [ "$MIGRATION_RISK" = destructive ]; then
     [ -n "$BACKUP_CMD" ] || { log "ABORT: high-risk migration requires BACKUP_CMD snapshot (DEP-6)"; exit 1; }
     log "take risk-based snapshot before migration"
     (cd "$BASE/releases/$target" && eval "$BACKUP_CMD") || { log "ABORT: snapshot failed — nothing changed (DEP-6)"; exit 1; }
   fi
+  if [ "$MIGRATION_MODE" = maintenance-window ]; then
+    log "enter planned maintenance window"
+    (cd "$BASE/releases/$target" && eval "$MAINTENANCE_STOP_CMD") || { log "ABORT: could not stop service for maintenance window"; exit 1; }
+  fi
   log "migrate to $target"
   (cd "$BASE/releases/$target" && export KAVOSH_VERSION="$target" && eval "$MIGRATE_CMD") \
-    || { log "ABORT: migration failed — app still on $current; inspect the database, restore the backup if needed (runbook)"; exit 1; }
+    || { log "ABORT: migration failed — inspect the database; service may be stopped in a maintenance window; restore only with separate authorization (runbook)"; exit 1; }
 fi
 
 target_sha=$(git -C "$BASE/repo.git" rev-parse "refs/tags/$target^{commit}")
@@ -169,6 +217,11 @@ if start "$target" && healthy "$target" "$target_sha"; then
     [ "$(readlink "$BASE/current")" = "$old" ] || rm -rf "$old"
   done
   exit 0
+fi
+
+if [ "${MIGRATION_MODE:-expand-contract}" = maintenance-window ] && [ -n "$MIGRATE_CMD" ]; then
+  log "FAILED $target — maintenance-window migration is not assumed backward-compatible; service remains stopped for manual recovery (runbook)"
+  exit 1
 fi
 
 log "FAILED $target — rolling the APP back to $current (database stays migrated; DEP-5 keeps $current compatible)"

@@ -14,6 +14,10 @@ on:
         description: Check names that must exist and succeed on the head of every merged PR
         type: string
         default: "kavosh / governance,required"
+      authorization-sha:
+        description: Exact current main SHA for an owner-initiated manual audit
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -32,6 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           REQUIRED: ${{ inputs.required-checks }}
+          AUTHORIZED_SHA: ${{ inputs.authorization-sha }}
         run: |
           python3 - <<'PY'
 __PYTHON__

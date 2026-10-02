@@ -78,17 +78,25 @@ class GovernanceFiles(unittest.TestCase):
     def test_DOC1_negative_oversized_markdown(self):
         self.assertTrue(fails_for("DOC-1", lambda d: (d / "big.md").write_text("a" * 70000, encoding="utf-8")))
 
-    def test_CI1_negative_private_repo_on_github_hosted(self):
+    def test_CI3_negative_private_hosted_without_scoped_dispatch_guard(self):
         def mutate(d):
             f = d / ".github/workflows/ci.yml"
-            f.write_text(f.read_text(encoding="utf-8").replace("runs-on: [self-hosted, linux, x64, kavoshsms]", "runs-on: ubuntu-latest"), encoding="utf-8")
-        self.assertTrue(fails_for("CI-1", mutate))
+            f.write_text(f.read_text(encoding="utf-8").replace("PRIVATE_HOSTED_DISPATCH_REQUIRED", ""), encoding="utf-8")
+        self.assertTrue(fails_for("CI-3", mutate))
 
-    def test_CI1_negative_private_caller_without_self_hosted_input(self):
+    def test_CI3_negative_private_hosted_with_automatic_job_gate_enabled(self):
         def mutate(d):
-            f = d / ".github/workflows/kavosh.yml"
-            f.write_text(f.read_text(encoding="utf-8").replace('"self-hosted",', ""), encoding="utf-8")
-        self.assertTrue(fails_for("CI-1", mutate))
+            for name in ("ci.yml", "kavosh.yml", "release.yml"):
+                f = d / ".github/workflows" / name
+                f.write_text(f.read_text(encoding="utf-8").replace("!true", "!false"), encoding="utf-8")
+        self.assertTrue(fails_for("CI-3", mutate))
+
+    def test_CI3_negative_private_hosted_without_dispatch(self):
+        def mutate(d):
+            for name in ("ci.yml", "kavosh.yml", "release.yml"):
+                f = d / ".github/workflows" / name
+                f.write_text(f.read_text(encoding="utf-8").replace("workflow_dispatch:", "manual_run_disabled:"), encoding="utf-8")
+        self.assertTrue(fails_for("CI-3", mutate))
 
     def test_CI1_positive_public_repo_on_github_hosted(self):
         m = dict(EXAMPLE, visibility="public", tier="T2", ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})
@@ -113,8 +121,23 @@ class GovernanceFiles(unittest.TestCase):
             {"workflow.yml": "jobs:\n  test:\n    runs-on: ${{ fromJSON(inputs.runs-on) }}\n"},
             dict(EXAMPLE, visibility="public"))[0][0], "ok")
 
-    def test_CI1_negative_runner_does_not_match_visibility(self):
-        self.assertTrue(fails_for("CI-1", manifest=dict(EXAMPLE, ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})))
+    def test_CI1_positive_self_hosted_yaml_label_list(self):
+        m = dict(EXAMPLE, ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
+                             "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"]})
+        workflows = {"ci.yml": "jobs:\n  test:\n    runs-on: [self-hosted, linux, x64, kavoshsms]\n"}
+        self.assertEqual(g.runner_workflow_problems(workflows, m)[0][0], "ok")
+
+    def test_CI1_positive_private_hosted_is_allowed_with_per_run_scope(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
+        self.assertEqual(g.runner_manifest_problems(m)[0][0], "ok")
+        self.assertEqual(fails_for("CI-1", manifest=m), [])
+
+    def test_CI2_negative_public_self_hosted_without_trust_ADR(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["visibility"] = "public"
+        m["ci"] = {"runner": "self-hosted", "runnerLabels": ["self-hosted", "linux", "x64", "example"], "monthlyMinutesBudget": 0}
+        self.assertEqual(g.runner_manifest_problems(m)[1][0], "fail")
 
     def test_CI1_positive_local_only_T1_static(self):
         self.assertEqual(fails_for("CI-1", manifest=local_only_static_manifest()), [])
@@ -180,12 +203,82 @@ class Manifest(unittest.TestCase):
     def test_UI1_negative_ui_without_kavoshui_pin(self):
         self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "kavoshui": None})))
 
+    def test_UI1_positive_ui_exception_with_safety_ADR(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["ui"] = {"kind": "admin", "kavoshui": None, "locales": ["fa-IR"],
+                   "exceptionADR": "docs/decisions/0002-ui-exception.md"}
+        def setup(d):
+            path=d / m["ui"]["exceptionADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# UI exception\nscope RTL accessibility tests", encoding="utf-8")
+        self.assertEqual(fails_for("UI-1", setup, manifest=m), [])
+
+    def test_UI1_negative_ui_exception_missing_evidence(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["ui"] = {"kind": "admin", "kavoshui": None, "locales": ["fa-IR"],
+                   "exceptionADR": "docs/decisions/0002-ui-exception.md"}
+        self.assertTrue(fails_for("UI-1", manifest=m))
+
+    def test_DEP1_positive_custom_deploy_with_equivalent_gates_ADR(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["deploy"]["method"] = "custom"
+        m["deploy"]["authorizationADR"] = "docs/decisions/0003-custom-deploy.md"
+        def setup(d):
+            path=d / m["deploy"]["authorizationADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Safety and release gates\nREL-5 least privilege tag rollback database", encoding="utf-8")
+        self.assertEqual(fails_for("DEP-1", setup, manifest=m), [])
+
+    def test_DEP1_negative_custom_deploy_without_ADR(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["deploy"]["method"] = "custom"
+        self.assertTrue(fails_for("DEP-1", manifest=m))
+
+    def test_DEP5_positive_T1_maintenance_window_with_ADR(self):
+        m = json.loads(json.dumps(EXAMPLE)); m["tier"] = "T1"
+        m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
+        m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
+        m["deploy"]["migrationMode"] = "maintenance-window"
+        m["deploy"]["migrationADR"] = "docs/decisions/0004-maintenance.md"
+        def setup(d):
+            path=d / m["deploy"]["migrationADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Migration and recovery\nmaintenance window backup restore test rollback", encoding="utf-8")
+        self.assertEqual(fails_for("DEP-5", setup, manifest=m), [])
+
+    def test_DEP5_negative_T2_maintenance_window(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["deploy"]["migrationMode"] = "maintenance-window"
+        m["deploy"]["migrationADR"] = "docs/decisions/0004-maintenance.md"
+        def setup(d):
+            path=d / m["deploy"]["migrationADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Migration and recovery\nmaintenance window backup restore test rollback", encoding="utf-8")
+        self.assertTrue(fails_for("DEP-5", setup, manifest=m))
+
     def test_CI2_positive_runner_capacity_is_not_fixed_by_tier(self):
         self.assertEqual(fails_for("CI-2"), [])
 
     def test_CI2_negative_private_runner_labels_are_repo_scoped(self):
-        m = dict(EXAMPLE, ci=dict(EXAMPLE["ci"], runnerLabels=["self-hosted", "linux", "x64", "another-repo"]))
-        self.assertTrue(fails_for("CI-2", manifest=m))
+        m = dict(EXAMPLE, ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
+                             "runnerLabels": ["self-hosted", "linux", "x64", "another-repo"],
+                             "trustModelADR": "docs/decisions/0002-runner.md"})
+        def setup(d):
+            path=d / m["ci"]["trustModelADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Runner trust model\nIsolation uses rootless Docker.", encoding="utf-8")
+        self.assertTrue(fails_for("CI-2", setup, manifest=m))
+
+    def test_CI2_positive_private_rootless_runner_with_exact_repo_labels(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
+                   "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
+                   "trustModelADR": "docs/decisions/0002-runner.md"}
+        def setup(d):
+            path=d / m["ci"]["trustModelADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Runner trust model\nIsolation uses rootless Docker.", encoding="utf-8")
+        self.assertEqual(fails_for("CI-2", setup, manifest=m), [])
 
 
 def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main", body="Closes #12", labels=(), private=True):
@@ -194,11 +287,11 @@ def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main", body="
                              "user": {"type": "User"}, "labels": [{"name": l} for l in labels]}}
 
 
-def fake_gh(lines=100, parent_base=None):
+def fake_gh(lines=100, parent_base=None, filename="src/a.py"):
     def gh(*args):
         path = args[1]
         if "/files" in path:
-            return [{"filename": "src/a.py", "additions": lines, "deletions": 0}] if "page=1" in path else []
+            return [{"filename": filename, "additions": lines, "deletions": 0}] if "page=1" in path else []
         if "head=" in path:
             return [{"base": {"ref": parent_base}}] if parent_base else []
         return []
@@ -206,11 +299,12 @@ def fake_gh(lines=100, parent_base=None):
 
 
 def run_pr(visibility="private", **kw):
-    gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base") if k in kw}
+    gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base", "filename") if k in kw}
     g.results.clear()
     original, g.gh = g.gh, fake_gh(**gh_kw)
     try:
-        g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility}, pr_event(**kw), "o/r")
+        g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility,
+                    "ui": {"kind": "admin", "kavoshui": "1.0.0"}}, pr_event(**kw), "o/r")
     finally:
         g.gh = original
     return {r[1]: r[0] for r in g.results}
@@ -231,6 +325,16 @@ class PullRequest(unittest.TestCase):
 
     def test_PR3_negative_too_large(self):
         self.assertEqual(run_pr(lines=1500)["PR-3"], "fail")
+
+    def test_UI2_positive_no_visual_change_needs_no_evidence(self):
+        self.assertEqual(run_pr().get("UI-2"), "ok")
+
+    def test_UI2_negative_visual_change_needs_render_evidence(self):
+        self.assertEqual(run_pr(filename="src/components/button.tsx").get("UI-2"), "fail")
+
+    def test_UI2_positive_visual_change_with_evidence(self):
+        body = "Closes #12\n\nUI evidence: https://example.test/rendered.png"
+        self.assertEqual(run_pr(filename="src/components/button.tsx", body=body).get("UI-2"), "ok")
 
     def test_BR2_negative_branch_name(self):
         self.assertEqual(run_pr(head="agent/lccg-reconcile-20260925")["BR-2"], "fail")

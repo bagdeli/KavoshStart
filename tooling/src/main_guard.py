@@ -52,6 +52,22 @@ def check_state(runs, required):
     return problems
 
 
+def manual_dispatch_event(repo, expected_sha, actor, api):
+    """Build a bounded main-push audit only if the owner dispatched against the current main SHA."""
+    if not expected_sha:
+        raise RuntimeError("manual main-guard dispatch needs an exact authorized SHA")
+    branch = api(f"repos/{repo}/branches/main") or {}
+    current = (branch.get("commit") or {}).get("sha", "")
+    if current != expected_sha:
+        raise RuntimeError(f"authorization expired: main is {current or '<unavailable>'}, expected {expected_sha}")
+    commit = api(f"repos/{repo}/commits/{expected_sha}") or {}
+    message = (commit.get("commit") or {}).get("message", "")
+    parents = commit.get("parents") or []
+    return {"ref": "refs/heads/main", "before": (parents[0] if parents else {}).get("sha", "0" * 40),
+            "after": expected_sha, "forced": False, "pusher": {"name": actor or "?"},
+            "commits": [{"id": expected_sha, "message": message}]}
+
+
 def inspect(event, repo, required, api):
     violations = []
     required = list(dict.fromkeys(required or []))
@@ -113,6 +129,13 @@ def main():
     repo = os.environ["REPO"]
     required = [x.strip() for x in os.environ.get("REQUIRED", ",".join(DEFAULT_REQUIRED)).split(",") if x.strip()]
     event = json.load(open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8"))
+    if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+        try:
+            event = manual_dispatch_event(repo, os.environ.get("AUTHORIZED_SHA", ""),
+                                          os.environ.get("GITHUB_ACTOR", "?"), gh_api)
+        except RuntimeError as e:
+            print(str(e))
+            return 1
     try:
         violations = inspect(event, repo, required, gh_api)
     except RuntimeError as e:
