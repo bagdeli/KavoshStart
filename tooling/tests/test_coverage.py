@@ -231,10 +231,13 @@ class HealthPure(unittest.TestCase):
         self.assertEqual(h.branch_problems({"vnext/integration": cmp(1, 537)}, 3)[2], ["vnext/integration (+537)"])
 
     def test_REL3_positive_version_tags(self):
-        self.assertEqual(h.non_version_tags(["v1.0.0", "v1.1.0-rc.2", "v1"]), [])
+        self.assertEqual(h.non_version_tags(["v1.0.0", "v1.1.0-rc.2", "v1",
+                                             "KavoshStart-v1.1.0"]), [])
 
     def test_REL3_negative_other_tags(self):
-        self.assertEqual(h.non_version_tags(["develop", "v1.0.0", "release-1"]), ["develop", "release-1"])
+        self.assertEqual(h.non_version_tags(["develop", "v1.0.0", "release-1",
+                                             "KavoshStart-v1.2.0"]),
+                         ["develop", "release-1", "KavoshStart-v1.2.0"])
 
 
 @unittest.skipUnless(BASH, "bash not available")

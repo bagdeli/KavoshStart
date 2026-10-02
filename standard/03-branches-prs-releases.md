@@ -38,6 +38,7 @@ push به main → ci (required) + kavosh (main-guard) → ci موفق → relea
 - **Approve and run:** Release PR را `GITHUB_TOKEN` می‌سازد؛ اگر workflow action-required شد، فقط پس از مشاهدهٔ commit و هزینهٔ احتمالی اجرای مشخص را مجاز کنید، سپس سبز شدن را ببینید.
 - اگر CI قرمز است یا اجرا نشده (مثلاً قفل Billing)، هیچ نسخه‌ای ساخته نمی‌شود (REL-5). دور زدن این دروازه با tag دستی تخلف است.
 - tag `v1` قدیمی منجمد است و هرگز جابه‌جا نمی‌شود؛ پروژه‌ها فقط `@vX.Y.Z` دقیق (REL-6).
+- نام tag برای انتشارهای جدید فقط `vX.Y.Z` یا `vX.Y.Z-rc.N` است. انتشار تاریخیِ immutable با نام `KavoshStart-v1.1.0` حفظ می‌شود: health فقط همین tag موجود را grandfather می‌کند، اما هیچ tag نام‌دار تازه‌ای مجاز نیست. هر tag تاریخی را حذف یا جابه‌جا نکنید.
 - پیش‌انتشار: `vX.Y.Z-rc.N` ← سرور test خودکار آن را می‌کشد ← UAT ← نسخه‌ی نهایی ← مالک روی production پین می‌کند.
 - hotfix نسخه‌ی قدیمی: شاخه‌ی `release/X.Y` **از روی tag** و فقط برای همان hotfix؛ بعد حذف.
 
