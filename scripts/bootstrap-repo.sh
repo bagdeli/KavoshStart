@@ -36,12 +36,20 @@ run gh api -X POST "repos/$REPO/milestones" -f title=v0.1.0 -f description="Firs
 
 if [ "$RULESETS" = 1 ]; then
   echo "== Rulesets (paid plan or public repository only)"
+  CI_RUNNER="$(gh api "repos/$REPO/contents/kavosh.project.json" --jq '.content' | base64 --decode | python3 -c 'import json,sys; print(json.load(sys.stdin)["ci"]["runner"])')"
+  MAIN_RULESET=main
+  if [ "$CI_RUNNER" = "none" ]; then
+    MAIN_RULESET=main-local-only
+    echo "Local-only validation: retain PR and branch protections without CI status checks."
+  fi
   for f in main tags; do
+    template="$HERE/templates/rulesets/$f.json"
+    [ "$f" != "main" ] || template="$HERE/templates/rulesets/$MAIN_RULESET.json"
     if [ "$APPLY" = 1 ]; then
-      gh api -X POST "repos/$REPO/rulesets" --input "$HERE/templates/rulesets/$f.json" >/dev/null && echo "ruleset $f applied" \
+      gh api -X POST "repos/$REPO/rulesets" --input "$template" >/dev/null && echo "ruleset $f applied" \
         || echo "ruleset $f NOT applied (GitHub Free + private?) — see standard/01-free-plan-operating-model.md"
     else
-      echo "DRY-RUN: gh api -X POST repos/$REPO/rulesets --input templates/rulesets/$f.json"
+      echo "DRY-RUN: gh api -X POST repos/$REPO/rulesets --input $template"
     fi
   done
 fi

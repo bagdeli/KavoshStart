@@ -5,8 +5,15 @@
 ## runner و هزینه (CI-1…3 — ADR-0009)
 | ریپو | پیش‌فرض | شرط |
 |---|---|---|
-| **private** | runner خودمیزبانِ همان repo یا آماده‌سازی محلی | private hosted فقط با اجازهٔ مستقیم مالک برای اجرای محدود و مشخص؛ نبود CI معتبر، merge/release را می‌بندد |
+| **private** | runner خودمیزبانِ همان repo | hosted خصوصی فقط با اجازهٔ مستقیم مالک برای اجرای محدود و مشخص |
 | **public** | runner استاندارد GitHub، مانند `ubuntu-latest` | runner خودمیزبان و runner بزرگ/custom ممنوع؛ اجرای استاندارد عمومی نباید سهمیهٔ مشترک یا هزینه بسازد |
+| **T1/static, هر visibility** | انتخاب اختیاری `ci.runner: none`، بودجهٔ ماهانه صفر | فقط حالت local-only است؛ scaffold هیچ workflowی نمی‌سازد و خروجی موفق `make check` باید در PR ثبت شود |
+
+### حالت local-only برای T1/static
+
+مالک می‌تواند در intake، `ci.runner: "none"` را برای پروژهٔ T1/static انتخاب کند. این حالت هیچ فایل workflowی تولید نمی‌کند و هیچ دقیقهٔ GitHub Actions مصرف نمی‌کند. بودجه باید صفر باشد. عامل پیش از درخواست merge، `make setup` و `make check` را محلی اجرا می‌کند و در PR دستورها، کد خروجی، خلاصهٔ نتیجه و محیط اجرا را می‌نویسد. نتیجهٔ قرمز یا نبود شواهد مانع merge است. اگر یک status check واقعاً قرمز است، دورزدن آن ممنوع می‌ماند؛ این حالت فقط برای مخزنی است که عمداً CI status check ندارد و قواعد branch آن PR را همچنان الزامی می‌کنند.
+
+برای smoke test مرورگر، Chromium/Chrome headless نصب‌شدهٔ محلی را استفاده کنید؛ اگر موجود نیست، تست را با `SKIP` روشن گزارش کنید. خروجی هر فایل تست را در مسیر جداگانه‌ای مانند `artifacts/smoke/<test-name>/` بنویسید. در Windows، پردازهٔ برنامه و همهٔ فرزندانش را در Job Object مدیریت کنید و در مسیر cleanup کل درخت پردازه را ببندید. وابستگی یا مرورگر را هنگام اعتبارسنجی آفلاین دانلود نکنید.
 
 قواعد runner خودمیزبان (یک runner مشترک می‌تواند به صف و لغوهای زیاد منجر شود):
 - **برای هر ریپو** ثبت می‌شود، نه برای کل حساب؛ labelهای `self-hosted, linux, x64, <repo-slug>` دقیق‌اند.
@@ -33,7 +40,7 @@
 | فایل | رویداد | Tier |
 |---|---|---|
 | `kavosh.yml` | PR، push به main، هفتگی ← فراخوانی workflowهای KavoshStart با tag دقیق | All |
-| `ci.yml` | PR (غیر Draft)، push به main ← `make check` + job `required` | All |
+| `ci.yml` | PR (غیر Draft)، push به main ← `make check` + job `required` | All به جز local-only |
 | `release.yml` | پس از موفقیت ci روی main ← `kavosh-release` (دروازه‌ی REL-5 + release-please + فایل‌های انتشار) | All |
 | `ai-review.yml` | PR ready ← بازبینی AI (نیاز به کلید API) | T2 (T1 اختیاری) |
 

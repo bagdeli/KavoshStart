@@ -116,6 +116,19 @@ class GovernanceFiles(unittest.TestCase):
     def test_CI1_negative_runner_does_not_match_visibility(self):
         self.assertTrue(fails_for("CI-1", manifest=dict(EXAMPLE, ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})))
 
+    def test_CI1_positive_local_only_T1_static(self):
+        self.assertEqual(fails_for("CI-1", manifest=local_only_static_manifest()), [])
+
+    def test_CI1_negative_local_only_runner_outside_T1_static(self):
+        m = local_only_static_manifest()
+        m["runtime"] = "server"
+        self.assertTrue(fails_for("CI-1", manifest=m))
+
+    def test_CI1_negative_local_only_runner_with_nonzero_budget(self):
+        m = local_only_static_manifest()
+        m["ci"]["monthlyMinutesBudget"] = 1
+        self.assertTrue(fails_for("CI-1", manifest=m))
+
     def test_SEC3_negative_no_permissions(self):
         def mutate(d):
             f = d / ".github/workflows/ci.yml"
@@ -138,6 +151,17 @@ class ReleaseTags(unittest.TestCase):
 
     def test_REL3_positive_plain_version_tags(self):
         self.assertEqual(g.release_tag_config('{"include-v-in-tag": true, "include-component-in-tag": false}')[0], "ok")
+
+
+def local_only_static_manifest():
+    m = json.loads(json.dumps(EXAMPLE))
+    m.update(tier="T1", runtime="static", visibility="private")
+    m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
+    m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
+    m["ui"] = {"kind": "admin", "kavoshui": "1.0.0", "locales": ["fa-IR"]}
+    m["deploy"] = {"method": "pull-build", "environments": []}
+    m["ci"] = {"runner": "none", "monthlyMinutesBudget": 0}
+    return m
 
 
 class Manifest(unittest.TestCase):

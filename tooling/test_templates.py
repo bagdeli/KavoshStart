@@ -26,7 +26,7 @@ COMBOS = [
 ]
 
 
-def manifest(tier, runtime, method, ui, envs):
+def manifest(tier, runtime, method, ui, envs, runner=None):
     m = json.loads(json.dumps(EXAMPLE))
     m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
@@ -43,6 +43,9 @@ def manifest(tier, runtime, method, ui, envs):
     if tier == "T1":
         m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
+    if runner is not None:
+        m["ci"]["runner"] = runner
+        m["ci"].pop("runnerLabels", None)
     return m
 
 
@@ -130,6 +133,31 @@ def main():
             print(f"{'ok  ' if not missed and r.returncode == 1 else 'FAIL'} negative test caught {len(caught)}/{len(expected)} {missed or ''}")
             if missed or r.returncode != 1:
                 failures += 1
+    # CI-1: a T1/static local-only project must scaffold no Actions workflows and pass governance locally.
+    with tempfile.TemporaryDirectory() as d:
+        repo = Path(d)
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        local_manifest = manifest("T1", "static", "pull-build", "admin", ["production"], runner="none")
+        (repo / "kavosh.project.json").write_text(json.dumps(local_manifest, indent=2), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
+                           capture_output=True, text=True, encoding="utf-8")
+        workflows = list((repo / ".github" / "workflows").glob("*.yml")) if (repo / ".github" / "workflows").exists() else []
+        if r.returncode != 0 or workflows:
+            print(f"FAIL T1/static local-only scaffold: return={r.returncode}, workflows={workflows}\\n{r.stdout}{r.stderr}")
+            failures += 1
+        else:
+            subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+            (repo / "gov.py").write_text(gov, encoding="utf-8")
+            env = dict(os.environ, REPO="bagdeli/Example", ENFORCE="true", GITHUB_EVENT_PATH="",
+                       KAVOSH_REPORT=str(repo / "report.md"), GITHUB_STEP_SUMMARY="", PYTHONIOENCODING="utf-8")
+            r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env,
+                               capture_output=True, text=True, encoding="utf-8")
+            report = (repo / "report.md").read_text(encoding="utf-8") if (repo / "report.md").exists() else r.stderr
+            if r.returncode != 0 or any(line.startswith("| ❌") for line in report.splitlines()):
+                print(f"FAIL T1/static local-only governance:\\n{report}")
+                failures += 1
+            else:
+                print("ok  T1/static local-only scaffold has no Actions workflows; local governance PASS")
     return 1 if failures else 0
 
 

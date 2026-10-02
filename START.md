@@ -29,9 +29,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2)
    and **Runtime** (none/static/server/desktop). Show the owner which criterion triggered the result.
-2. Explain that private hosted CI consumes the account's shared Free allowance. Do not run it without direct owner
-   approval for one named execution; labels and a zero budget field are not authorization. Public standard hosted
-   CI may run only where GitHub does not charge or draw on the shared allowance.
+2. Explain the GitHub Free cost boundary. Do not run private hosted CI without direct owner approval for one named
+   execution; labels and a zero budget field are not authorization. Public standard hosted CI may run only where it
+   draws on no shared allowance. A T1/static project may choose `ci.runner: none` to use the local-only profile.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
 
 ### Step 3 — Manifest
@@ -63,6 +63,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    Docker only. A separately provisioned disposable worker VM must be destroyed after each job. The owner creates
    the registration token. Verify:
    `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`. Public repository → nothing to do.
+   For T1/static, the owner may select `ci.runner: none`: scaffold omits all workflows. Run `make check` locally and
+   attach its successful output to every PR. Bootstrap selects a PR-protected ruleset without CI status checks for
+   this profile. Never merge a red result or bypass an actual required check.
 
 ### Step 5 — Backlog
 1. Create milestone `v0.1.0` (first usable release).

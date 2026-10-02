@@ -287,9 +287,10 @@
         "runner": {
           "enum": [
             "self-hosted",
-            "github-hosted"
+            "github-hosted",
+            "none"
           ],
-          "description": "Public: standard GitHub-hosted. Private: isolated self-hosted by default. A private hosted run needs separate direct execution approval (CI-1/CI-3)."
+          "description": "Public: standard GitHub-hosted by default. Private: isolated self-hosted by default. T1 static projects may select none for the local-only validation profile; private hosted runs need separate direct approval (CI-1/CI-3)."
         },
         "runnerLabels": {
           "type": "array",

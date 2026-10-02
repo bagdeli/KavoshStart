@@ -37,6 +37,8 @@ make check    # lint + test + build — run before your single push
 2. Open a **draft PR early** with your plan. Title = Conventional Commit (`feat(scope): …`). Body from the template with `Closes #<n>`.
 3. Keep the PR focused and reviewable. `prMaxLines` is a target, not an automatic stop; an exception beyond the hard cap needs a reason and owner approval on the current PR head.
 4. Run `make check` locally, then push **once**. Heavy CI defaults off on Draft; explicit early CI never authorizes shared quota use by itself.
+   If `ci.runner` is `none`, this must be a T1/static project with no workflow files: run `make check` locally and put
+   its command, exit code and summary in the PR body. A red or missing result blocks merge; never bypass a real check.
 5. Update the PR body (Done / Remaining / Decisions / How verified / AI involvement with `Co-Authored-By:`), then mark ready.
 6. If `kavosh / governance` or `required` is red, fix the cause. Never work around a check.
 
