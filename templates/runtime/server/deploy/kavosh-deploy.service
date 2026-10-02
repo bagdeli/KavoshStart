@@ -1,0 +1,10 @@
+[Unit]
+Description=Kavosh pull-based deploy for {{SLUG}}
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/kavosh/{{SLUG}}/deploy.env
+# Installed once from the repository (runbook step 5); updated deliberately, never by the running deploy.
+ExecStart=/usr/local/bin/kavosh-deploy-{{SLUG}}

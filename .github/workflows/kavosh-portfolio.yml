@@ -1,0 +1,48 @@
+# Layer O — PUBLIC portfolio supervisor. Thin wrapper around scripts/portfolio_guard.py.
+# It inspects and reports public repositories only; private repositories are ignored before inspection/reporting.
+# Uses the repository-scoped GITHUB_TOKEN; no PAT or shared account secret is required.
+name: kavosh-portfolio
+
+on:
+  schedule:
+    - cron: "0 4 * * *"   # daily 07:30 Tehran; standard hosted jobs on public repos are free
+  workflow_dispatch:
+
+concurrency:
+  group: kavosh-portfolio
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  portfolio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Inspect public portfolio (repository-scoped read)
+        id: inspect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" > report.md
+          echo "findings=$?" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Update the kavosh:portfolio issue (write with this repo's token)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create kavosh:portfolio -R "${{ github.repository }}" --color 5319E7 --description "Layer O portfolio findings" --force
+          n=$(gh issue list -R "${{ github.repository }}" --label kavosh:portfolio --state open --json number -q '.[0].number')
+          if [ -n "$n" ]; then gh issue edit "$n" -R "${{ github.repository }}" --body-file report.md
+          else gh issue create -R "${{ github.repository }}" --title "Portfolio supervisor (Layer O)" --label kavosh:portfolio --body-file report.md; fi
+      - name: Fail when there are findings
+        if: steps.inspect.outputs.findings != '0'
+        run: exit 1

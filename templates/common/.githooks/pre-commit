@@ -1,0 +1,17 @@
+#!/bin/sh
+# KavoshStart agent guard (layer A) — SEC-1. Blocks commits of env/key files and obvious secrets.
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+for f in $staged; do
+  case "$f" in
+    *.example|*.sample) ;;
+    .env|.env.*|*/.env|*/.env.*) echo "KavoshStart SEC-1: refusing to commit $f" >&2; exit 1 ;;
+    *.pem|*.key|*.p12|*.pfx) echo "KavoshStart SEC-1: refusing to commit key file $f" >&2; exit 1 ;;
+  esac
+done
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner || { echo "KavoshStart SEC-1: gitleaks found a secret" >&2; exit 1; }
+elif git diff --cached -U0 | grep -Eiq "(api[_-]?key|secret|password|passwd|token)[\"' ]*[:=][\"' ]*[A-Za-z0-9/+_-]{16,}"; then
+  echo "KavoshStart SEC-1: possible secret in staged changes (install gitleaks for accurate scanning)" >&2
+  exit 1
+fi
+exit 0

@@ -1,0 +1,27 @@
+name: Epic
+description: A business capability delivered over 1–6 weeks, split into features (sub-issues).
+title: "epic: "
+labels: ["type:epic"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What changes for users or the business when this is done?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope / out of scope
+    validations:
+      required: true
+  - type: textarea
+    id: measure
+    attributes:
+      label: How we will know it worked
+  - type: input
+    id: milestone
+    attributes:
+      label: Target release (milestone)
+      placeholder: v1.3.0

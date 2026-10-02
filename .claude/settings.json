@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push origin main:*)",
+      "Bash(git push origin HEAD:main:*)",
+      "Bash(git push -u origin main:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --no-verify:*)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(git config core.hooksPath:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git push origin --delete:*)",
+      "Bash(git tag -d:*)",
+      "Bash(gh pr merge --admin:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(gh release delete:*)",
+      "Read(./**/secrets/**)"
+    ],
+    "ask": [
+      "Bash(gh pr merge:*)",
+      "Bash(gh issue close:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh api -X DELETE:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}

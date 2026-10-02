@@ -1,0 +1,88 @@
+{
+  "$schema": "https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json",
+  "kavoshStart": "v1.0.0",
+  "name": "Kavosh SMS",
+  "repo": "bagdeli/KavoshSMS",
+  "summary": "Internal service that sends and tracks transactional SMS for Kavosh products through Iranian SMS providers.",
+  "visibility": "private",
+  "owner": "bagdeli",
+  "tier": "T2",
+  "runtime": "server",
+  "firstRelease": [
+    "Send a single SMS through one provider via REST API",
+    "Delivery status stored and queryable",
+    "Admin page listing last 1000 messages"
+  ],
+  "outOfScope": [
+    "Marketing campaigns",
+    "Customer self-service portal"
+  ],
+  "users": {
+    "audience": "internal",
+    "scale": "1-10"
+  },
+  "data": {
+    "sensitivity": "personal",
+    "regulatedIntegrations": [
+      "sms-provider"
+    ],
+    "multiTenant": false
+  },
+  "size": {
+    "domains": 1,
+    "lifetime": "years",
+    "parallelStreams": 1
+  },
+  "ui": {
+    "kind": "admin",
+    "kavoshui": "1.0.0",
+    "locales": [
+      "fa-IR"
+    ]
+  },
+  "stack": {
+    "languages": [
+      "python",
+      "typescript"
+    ],
+    "frameworks": [
+      "fastapi",
+      "nextjs"
+    ],
+    "database": "postgresql"
+  },
+  "deploy": {
+    "method": "pull-build",
+    "location": "iran",
+    "environments": [
+      "test",
+      "production"
+    ],
+    "urls": {
+      "test": "https://sms-test.example.ir"
+    }
+  },
+  "ci": {
+    "runner": "self-hosted",
+    "runnerLabels": [
+      "self-hosted",
+      "linux",
+      "x64",
+      "kavoshsms"
+    ],
+    "runners": 2,
+    "monthlyMinutesBudget": 0
+  },
+  "limits": {
+    "prMaxLines": 400,
+    "maxOpenReadyPRs": 3,
+    "branchMaxAgeDays": 3
+  },
+  "agents": [
+    "claude",
+    "codex"
+  ],
+  "dependsOn": [
+    "bagdeli/KavoshUI"
+  ]
+}

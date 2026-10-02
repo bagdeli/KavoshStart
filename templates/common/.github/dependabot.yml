@@ -1,0 +1,8 @@
+# Keeps pinned actions AND the KavoshStart reusable-workflow refs up to date via PRs (SEC-2, SEC-4).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ["*"] }
