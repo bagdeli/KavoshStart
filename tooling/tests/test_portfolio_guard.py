@@ -42,7 +42,7 @@ class FakeApi:
         self.settings = {"allow_squash_merge": True, "allow_merge_commit": False, "allow_rebase_merge": False,
                          "delete_branch_on_merge": True}
         self.head_checks = ["main-guard / main-guard", "required"]
-        self.health = [{"number": 9, "updated_at": RECENT}]
+        self.health = [{"number": 9, "updated_at": RECENT, "state": "closed"}]
         self.violations = []
         self.private = False
         self.__dict__.update(over)

@@ -126,6 +126,11 @@ def minute_budget_level(used, budget):
     return (True if pct < 80 else "warn" if pct <= 100 else False), pct
 
 
+def report_is_green(rows):
+    """A health report is green only when no check failed or warned."""
+    return all(status == "✅" for status, *_ in rows)
+
+
 def main():
     repo = os.environ["REPO"]
     rows = []
@@ -234,7 +239,11 @@ def main():
             return subprocess.run(["gh", *a], capture_output=True, text=True, encoding="utf-8")
         run("label", "create", "kavosh:health", "-R", repo, "--color", "0E8A16", "--description", "KavoshStart weekly repository health", "--force")
         found = json.loads(run("issue", "list", "-R", repo, "--label", "kavosh:health", "--state", "open", "--json", "number").stdout or "[]")
-        if found:
+        if report_is_green(rows):
+            if found:
+                run("issue", "close", str(found[0]["number"]), "-R", repo, "--reason", "completed",
+                    "--comment", "Latest weekly health report is fully green; reopening a new issue if a future report finds a problem.")
+        elif found:
             run("issue", "edit", str(found[0]["number"]), "-R", repo, "--body", text)
         else:
             run("issue", "create", "-R", repo, "--title", "Repository health (KavoshStart)", "--label", "kavosh:health", "--body", text)

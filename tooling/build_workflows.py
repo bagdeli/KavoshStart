@@ -18,11 +18,14 @@ PAIRS = {
     "kavosh-main-guard.yml": "main_guard.py",
     "kavosh-health.yml": "health.py",
     "kavosh-release.yml": "release_gate.py",
+    "kavosh-portfolio.yml": None,  # static wrapper; its logic is scripts/portfolio_guard.py
 }
 INDENT = " " * 10
 
 
-def build(template: str, source: str) -> str:
+def build(template: str, source) -> str:
+    if source is None:
+        return (ROOT / "tooling" / "templates" / template).read_text(encoding="utf-8")
     code = (ROOT / "tooling" / "src" / source).read_text(encoding="utf-8")
     if "__SCHEMA_JSON__" in code:
         schema = json.loads((ROOT / "intake" / "kavosh.project.schema.json").read_text(encoding="utf-8"))
