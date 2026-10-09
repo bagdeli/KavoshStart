@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/bagdeli/KavoshStart/compare/v1.7.0...v1.7.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **standard:** make self-hosting identity unambiguous ([#70](https://github.com/bagdeli/KavoshStart/issues/70)) ([ba3e81e](https://github.com/bagdeli/KavoshStart/commit/ba3e81e18d3f19e6568d45fc5c438d00cd147eb2))
+
 ## [1.7.0](https://github.com/bagdeli/KavoshStart/compare/v1.6.0...v1.7.0) (2026-10-09)
 
 
