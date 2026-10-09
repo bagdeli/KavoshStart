@@ -24,6 +24,23 @@ class StandardPin(unittest.TestCase):
                 with self.assertRaisesRegex(SystemExit, "exact release tag"):
                     scaffold.validate_standard_pin({"repo": "bagdeli/KavoshERP", "kavoshStart": pin})
 
+    def test_package_job_follows_release_artifact_deploy_outcome(self):
+        base = {
+            "name": "Example",
+            "repo": "bagdeli/Example",
+            "summary": "Example project for scaffold adapter tests",
+            "tier": "T1",
+            "runtime": "server",
+            "kavoshStart": "v2.0.5",
+            "ui": {"kind": "none"},
+            "deploy": {"method": "release-artifact"},
+            "ci": {"runner": "github-hosted", "monthlyMinutesBudget": 0},
+        }
+        self.assertEqual(scaffold.values(base)["PACKAGE"], "true")
+        base["deploy"]["method"] = "pull-build"
+        base["runtime"] = "desktop"
+        self.assertEqual(scaffold.values(base)["PACKAGE"], "false")
+
     def test_standard_version_pin_is_rejected(self):
         with self.assertRaisesRegex(SystemExit, "must use kavoshStart 'self'"):
             scaffold.validate_standard_pin({"repo": "bagdeli/KavoshStart", "kavoshStart": "v1.7.0"})
