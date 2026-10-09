@@ -4,7 +4,8 @@
 #   2. release-please: keeps the Release PR up to date; merging it creates tag vX.Y.Z + GitHub Release.
 #   3. package (deploy.method=release-artifact): resolves the repository release.artifact adapter (or compatible Make default),
 #      builds declared assets and uploads them to that Release in the SAME run because GITHUB_TOKEN releases do not trigger other workflows.
-# Release PRs are created with GITHUB_TOKEN: their CI runs need "Approve and run" by the owner (GitHub rule).
+# Release PRs created with GITHUB_TOKEN get approval-required pull_request runs. This workflow immediately dispatches
+# the repository's real CI + Kavosh governance on the exact trusted release-please head, preserving PR-7 without an owner click.
 name: kavosh-release
 
 on:
@@ -22,6 +23,14 @@ on:
         description: Build and attach release artifacts using kavosh.project.json release.artifact (or the default Make adapter)
         type: boolean
         default: false
+      required-workflow:
+        description: Repository workflow path that exposes the stable required job
+        type: string
+        default: ".github/workflows/ci.yml"
+      kavosh-workflow:
+        description: Repository Kavosh workflow path used for the pr-check dispatch
+        type: string
+        default: ".github/workflows/kavosh.yml"
     outputs:
       release-created:
         value: ${{ jobs.release.outputs.created }}
@@ -33,7 +42,7 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
-  actions: read
+  actions: write
 
 jobs:
   release:
@@ -77,30 +86,93 @@ jobs:
           import sys
           import urllib.error
           import urllib.request
+          import urllib.parse
           import time
 
           DEFAULT_REQUIRED = ["required", "main-guard / main-guard"]
           PENDING = {"queued", "in_progress", "waiting", "requested", "pending"}
 
 
-          def gh_api(path):
+          def gh_api(path, method="GET", payload=None):
               base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
               token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
               if not token:
                   raise RuntimeError("GitHub API token is unavailable")
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
               request = urllib.request.Request(
-                  f"{base}/{path.lstrip('/')}",
+                  f"{base}/{path.lstrip('/')}", data=data, method=method,
                   headers={"Authorization": f"Bearer {token}",
                            "Accept": "application/vnd.github+json",
-                           "X-GitHub-Api-Version": "2022-11-28"},
+                           "X-GitHub-Api-Version": "2022-11-28",
+                           "Content-Type": "application/json"},
               )
               try:
                   with urllib.request.urlopen(request, timeout=30) as response:
                       raw = response.read().decode("utf-8")
               except urllib.error.HTTPError as exc:
                   detail = exc.read().decode("utf-8", errors="replace")
-                  raise RuntimeError(f"GitHub API GET {path}: HTTP {exc.code} {detail}") from exc
+                  raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
               return json.loads(raw) if raw.strip() else {}
+
+
+          RELEASE_PR_BRANCH_RE = re.compile(r"^release-please--branches--.+--components--.+$")
+
+
+          def release_pr(repo, base="main", api=None):
+              """Return the single trusted open release-please PR for base, or None."""
+              api = api or gh_api
+              encoded_base = urllib.parse.quote(base, safe="")
+              pulls = api(f"repos/{repo}/pulls?state=open&base={encoded_base}&per_page=100") or []
+              candidates = []
+              for pr in pulls:
+                  head = pr.get("head") or {}
+                  user = pr.get("user") or {}
+                  if (
+                      (pr.get("base") or {}).get("ref") == base
+                      and head.get("repo", {}).get("full_name") == repo
+                      and RELEASE_PR_BRANCH_RE.fullmatch(head.get("ref") or "")
+                      and user.get("type") == "Bot"
+                  ):
+                      candidates.append(pr)
+              if len(candidates) > 1:
+                  raise RuntimeError(f"multiple trusted release-please PRs target {base}: {[p.get('number') for p in candidates]}")
+              return candidates[0] if candidates else None
+
+
+          def dispatch_release_pr_checks(repo, base, required_workflow, kavosh_workflow, api=None):
+              """Dispatch the repository's real CI/governance workflows on the exact trusted release PR head."""
+              api = api or gh_api
+              pr = release_pr(repo, base, api)
+              if not pr:
+                  return None
+              number = pr.get("number")
+              head = pr.get("head") or {}
+              head_sha, head_ref = head.get("sha"), head.get("ref")
+              if not isinstance(number, int) or not re.fullmatch(r"[0-9a-f]{40}", head_sha or "") or not head_ref:
+                  raise RuntimeError("trusted release PR is missing number/head identity")
+
+              dispatches = [
+                  (required_workflow, {
+                      "pr-number": str(number),
+                      "expected-head": head_sha,
+                      "ci-full": False,
+                  }),
+                  (kavosh_workflow, {
+                      "mode": "pr-check",
+                      "pr-number": str(number),
+                      "expected-head": head_sha,
+                  }),
+              ]
+              for workflow, inputs in dispatches:
+                  if not isinstance(workflow, str) or not re.fullmatch(r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml", workflow):
+                      raise RuntimeError(f"invalid workflow adapter path: {workflow!r}")
+                  workflow_id = urllib.parse.quote(workflow, safe="")
+                  api(
+                      f"repos/{repo}/actions/workflows/{workflow_id}/dispatches",
+                      method="POST",
+                      payload={"ref": head_ref, "inputs": inputs},
+                  )
+              return {"number": number, "head_sha": head_sha, "head_ref": head_ref}
 
 
           def check_runs(repo, sha, api=None):
@@ -290,11 +362,34 @@ jobs:
           def main(argv=None):
               p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
               p.add_argument("--repo", required=True)
-              p.add_argument("--sha", required=True)
+              p.add_argument("--sha")
               p.add_argument("--branch", default="main")
               p.add_argument("--required", default=",".join(DEFAULT_REQUIRED))
               p.add_argument("--wait", type=int, default=300, help="seconds to wait for pending required checks")
+              p.add_argument("--dispatch-release-pr", action="store_true")
+              p.add_argument("--required-workflow", default=".github/workflows/ci.yml")
+              p.add_argument("--kavosh-workflow", default=".github/workflows/kavosh.yml")
               a = p.parse_args(argv)
+
+              if a.dispatch_release_pr:
+                  try:
+                      dispatched = dispatch_release_pr_checks(
+                          a.repo, a.branch, a.required_workflow, a.kavosh_workflow
+                      )
+                  except RuntimeError as e:
+                      print(f"Release PR verification dispatch FAILED: {e}")
+                      return 1
+                  if dispatched is None:
+                      print(f"No trusted open release-please PR targets {a.branch}; nothing to dispatch")
+                      return 0
+                  print(
+                      f"Dispatched required CI and Kavosh governance for release PR "
+                      f"#{dispatched['number']} @ {dispatched['head_sha']}"
+                  )
+                  return 0
+
+              if not a.sha:
+                  p.error("--sha is required unless --dispatch-release-pr is used")
               required = [x.strip() for x in a.required.split(",") if x.strip()]
               if not required:
                   print("REL-5: no required checks configured — refusing to open the gate")
@@ -343,6 +438,382 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      - name: Dispatch exact-head verification for the release PR
+        if: steps.gate.outputs.open == 'true' && steps.rp.outputs.release_created != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.repository.default_branch }}
+          REQUIRED_WORKFLOW: ${{ inputs.required-workflow }}
+          KAVOSH_WORKFLOW: ${{ inputs.kavosh-workflow }}
+        run: |
+          python3 - --dispatch-release-pr --repo "$REPO" --branch "$BASE" \
+            --required-workflow "$REQUIRED_WORKFLOW" --kavosh-workflow "$KAVOSH_WORKFLOW" <<'PY'
+          #!/usr/bin/env python3
+          """Release gate (REL-5): a release may be created only from a `main` commit whose required checks
+          exist AND succeeded. Missing, pending (after the wait), failed, cancelled or skipped = no release.
+          CI being unavailable (e.g. billing) is never permission to release.
+
+              python3 tooling/src/release_gate.py --repo owner/name --sha <commit>
+                  [--required "required,main-guard / main-guard"] [--wait 300] [--branch main]
+
+          Exit 0 = gate open, or the commit was superseded by a newer main head (nothing to do, not an error).
+          Exit 1 = gate closed (reason printed). Writes open=true|false to $GITHUB_OUTPUT when available.
+          Needs Python stdlib and GITHUB_TOKEN only. Embedded into kavosh-release.yml by build_workflows.py.
+          """
+          import argparse
+          import base64
+          import json
+          import re
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+          import urllib.parse
+          import time
+
+          DEFAULT_REQUIRED = ["required", "main-guard / main-guard"]
+          PENDING = {"queued", "in_progress", "waiting", "requested", "pending"}
+
+
+          def gh_api(path, method="GET", payload=None):
+              base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+              token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+              if not token:
+                  raise RuntimeError("GitHub API token is unavailable")
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
+              request = urllib.request.Request(
+                  f"{base}/{path.lstrip('/')}", data=data, method=method,
+                  headers={"Authorization": f"Bearer {token}",
+                           "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2022-11-28",
+                           "Content-Type": "application/json"},
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      raw = response.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
+              return json.loads(raw) if raw.strip() else {}
+
+
+          RELEASE_PR_BRANCH_RE = re.compile(r"^release-please--branches--.+--components--.+$")
+
+
+          def release_pr(repo, base="main", api=None):
+              """Return the single trusted open release-please PR for base, or None."""
+              api = api or gh_api
+              encoded_base = urllib.parse.quote(base, safe="")
+              pulls = api(f"repos/{repo}/pulls?state=open&base={encoded_base}&per_page=100") or []
+              candidates = []
+              for pr in pulls:
+                  head = pr.get("head") or {}
+                  user = pr.get("user") or {}
+                  if (
+                      (pr.get("base") or {}).get("ref") == base
+                      and head.get("repo", {}).get("full_name") == repo
+                      and RELEASE_PR_BRANCH_RE.fullmatch(head.get("ref") or "")
+                      and user.get("type") == "Bot"
+                  ):
+                      candidates.append(pr)
+              if len(candidates) > 1:
+                  raise RuntimeError(f"multiple trusted release-please PRs target {base}: {[p.get('number') for p in candidates]}")
+              return candidates[0] if candidates else None
+
+
+          def dispatch_release_pr_checks(repo, base, required_workflow, kavosh_workflow, api=None):
+              """Dispatch the repository's real CI/governance workflows on the exact trusted release PR head."""
+              api = api or gh_api
+              pr = release_pr(repo, base, api)
+              if not pr:
+                  return None
+              number = pr.get("number")
+              head = pr.get("head") or {}
+              head_sha, head_ref = head.get("sha"), head.get("ref")
+              if not isinstance(number, int) or not re.fullmatch(r"[0-9a-f]{40}", head_sha or "") or not head_ref:
+                  raise RuntimeError("trusted release PR is missing number/head identity")
+
+              dispatches = [
+                  (required_workflow, {
+                      "pr-number": str(number),
+                      "expected-head": head_sha,
+                      "ci-full": False,
+                  }),
+                  (kavosh_workflow, {
+                      "mode": "pr-check",
+                      "pr-number": str(number),
+                      "expected-head": head_sha,
+                  }),
+              ]
+              for workflow, inputs in dispatches:
+                  if not isinstance(workflow, str) or not re.fullmatch(r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml", workflow):
+                      raise RuntimeError(f"invalid workflow adapter path: {workflow!r}")
+                  workflow_id = urllib.parse.quote(workflow, safe="")
+                  api(
+                      f"repos/{repo}/actions/workflows/{workflow_id}/dispatches",
+                      method="POST",
+                      payload={"ref": head_ref, "inputs": inputs},
+                  )
+              return {"number": number, "head_sha": head_sha, "head_ref": head_ref}
+
+
+          def check_runs(repo, sha, api=None):
+              api = api or gh_api
+              runs, page = [], 1
+              while True:
+                  data = api(f"repos/{repo}/commits/{sha}/check-runs?per_page=100&page={page}")
+                  batch = data.get("check_runs", [])
+                  runs += batch
+                  if len(batch) < 100:
+                      return runs
+                  page += 1
+
+
+          def evaluate(runs, required):
+              """Return (open, pending, reasons). The newest run per name wins (re-runs replace older results)."""
+              latest = {}
+              pending_runs = {}
+              for r in runs:
+                  name = r.get("name", "")
+                  if r.get("status") != "completed":
+                      pending_runs[name] = r
+                  stamp = r.get("started_at") or r.get("created_at") or ""
+                  previous = latest.get(name, {})
+                  previous_stamp = previous.get("started_at") or previous.get("created_at") or ""
+                  pending_now = r.get("status") != "completed"
+                  pending_previous = previous.get("status") != "completed"
+                  if (name not in latest or stamp > previous_stamp or
+                          (pending_now and not pending_previous and (not stamp or stamp == previous_stamp))):
+                      latest[name] = r
+              latest.update(pending_runs)
+              reasons, pending = [], False
+              for name in required:
+                  r = latest.get(name)
+                  if r is None:
+                      reasons.append(f"missing required check '{name}'")
+                  elif r.get("status") in PENDING:
+                      pending = True
+                      reasons.append(f"'{name}' is still {r.get('status')}")
+                  elif r.get("conclusion") != "success":
+                      reasons.append(f"'{name}' concluded {r.get('conclusion')}")
+              return (not reasons), pending, reasons
+
+
+          ACCEPTANCE_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+          ACCEPTANCE_RELEASE_RE = re.compile(r"^v([0-9]+)[.]([0-9]+)[.]([0-9]+)$")
+          ACCEPTANCE_RUN_URL = re.compile(r"^https://github[.]com/([^/]+/[^/]+)/actions/runs/([0-9]+)(?:[/?#].*)?$")
+
+
+          def _json_file(repo, path, sha, api):
+              raw = api(f"repos/{repo}/contents/{path}?ref={sha}")
+              encoded = raw.get("content") if isinstance(raw, dict) else None
+              if not encoded:
+                  raise RuntimeError(f"missing {path} at candidate SHA")
+              try:
+                  return json.loads(base64.b64decode(encoded).decode("utf-8"))
+              except (ValueError, UnicodeDecodeError) as exc:
+                  raise RuntimeError(f"invalid JSON in {path}: {exc}") from exc
+
+
+          def _marker(body, name):
+              m = re.search(rf"(?im)^\s*{re.escape(name)}:\s*(\S.+?)\s*$", body or "")
+              return m.group(1).strip() if m else None
+
+
+          def acceptance_reasons(repo, sha, api=None):
+              """ACC-3: release-readiness from versioned scope + live GitHub Issue/Actions evidence."""
+              api = api or gh_api
+              manifest = _json_file(repo, "kavosh.project.json", sha, api)
+              if manifest.get("acceptance", {}).get("mode", "none") != "continuous":
+                  return []
+              scope = _json_file(repo, "acceptance/scope.json", sha, api)
+              reasons = []
+              if scope.get("schemaVersion") != 1:
+                  reasons.append("acceptance scope schemaVersion must be 1")
+              target = scope.get("targetRelease")
+              tm = ACCEPTANCE_RELEASE_RE.fullmatch(target or "")
+              if not tm:
+                  reasons.append("acceptance targetRelease must match vX.Y.Z")
+              items = scope.get("items")
+              if not isinstance(items, list) or not items:
+                  return reasons + ["continuous acceptance scope must contain at least one item"]
+              target_tuple = tuple(map(int, tm.groups())) if tm else None
+              seen = set()
+              marker_for = {
+                  "test": "Acceptance-Test-Evidence",
+                  "ui": "Acceptance-UI-Evidence",
+                  "security": "Acceptance-Security-Evidence",
+                  "migration": "Acceptance-Migration-Evidence",
+              }
+              for item in items:
+                  if not isinstance(item, dict):
+                      reasons.append("acceptance scope contains a non-object item")
+                      continue
+                  aid = item.get("id") or "<missing-id>"
+                  if aid in seen:
+                      reasons.append(f"{aid}: duplicate acceptance ID")
+                      continue
+                  seen.add(aid)
+                  owner = item.get("owner")
+                  issue_no = item.get("issue")
+                  risk = item.get("risk")
+                  evidence = item.get("evidence") if isinstance(item.get("evidence"), list) else []
+                  if not isinstance(owner, str) or not owner:
+                      reasons.append(f"{aid}: invalid owner")
+                      continue
+                  if risk not in ("low", "medium", "high", "critical"):
+                      reasons.append(f"{aid}: invalid risk")
+                      continue
+                  if not evidence or "ci" not in evidence:
+                      reasons.append(f"{aid}: evidence must include ci")
+                      continue
+                  if risk in ("high", "critical") and "test" not in evidence:
+                      reasons.append(f"{aid}: high/critical risk requires test evidence")
+                      continue
+                  deferred = item.get("deferredTo")
+                  if deferred:
+                      dm = ACCEPTANCE_RELEASE_RE.fullmatch(deferred) if isinstance(deferred, str) else None
+                      defer_issue = item.get("deferIssue")
+                      if not dm or not target_tuple or tuple(map(int, dm.groups())) <= target_tuple:
+                          reasons.append(f"{aid}: invalid deferredTo")
+                          continue
+                      if not isinstance(defer_issue, int) or defer_issue <= 0:
+                          reasons.append(f"{aid}: deferIssue required")
+                          continue
+                      issue = api(f"repos/{repo}/issues/{defer_issue}")
+                      if issue.get("state") != "closed":
+                          reasons.append(f"{aid}: defer approval issue #{defer_issue} is not closed")
+                          continue
+                      approved = _marker(issue.get("body") or "", "Defer-Approved-By")
+                      if approved != f"@{owner}":
+                          reasons.append(f"{aid}: defer is not approved by @{owner}")
+                      continue
+
+                  if not isinstance(issue_no, int) or issue_no <= 0:
+                      reasons.append(f"{aid}: invalid canonical issue")
+                      continue
+                  issue = api(f"repos/{repo}/issues/{issue_no}")
+                  body = issue.get("body") or ""
+                  if issue.get("state") != "closed":
+                      reasons.append(f"{aid}: acceptance issue #{issue_no} is not closed")
+                      continue
+                  accepted_by = _marker(body, "Accepted-By")
+                  if accepted_by != f"@{owner}":
+                      reasons.append(f"{aid}: missing Accepted-By: @{owner}")
+                  merged_sha = _marker(body, "Acceptance-Merged-SHA")
+                  if not merged_sha or not ACCEPTANCE_SHA_RE.fullmatch(merged_sha):
+                      reasons.append(f"{aid}: missing valid Acceptance-Merged-SHA")
+                  else:
+                      cmp = api(f"repos/{repo}/compare/{merged_sha}...{sha}")
+                      if cmp.get("status") not in ("ahead", "identical"):
+                          reasons.append(f"{aid}: merged SHA is not an ancestor of candidate")
+                  run_url = _marker(body, "Acceptance-Evidence-Run")
+                  rm = ACCEPTANCE_RUN_URL.fullmatch(run_url or "")
+                  if not rm or rm.group(1).lower() != repo.lower():
+                      reasons.append(f"{aid}: missing same-repository Actions Acceptance-Evidence-Run")
+                  else:
+                      run = api(f"repos/{repo}/actions/runs/{rm.group(2)}")
+                      if run.get("status") != "completed" or run.get("conclusion") != "success":
+                          reasons.append(f"{aid}: referenced Actions evidence run is not successful")
+                  for ev in evidence:
+                      marker = marker_for.get(ev)
+                      if marker and not re.match(r"^https://\S+$", _marker(body, marker) or ""):
+                          reasons.append(f"{aid}: missing {marker}")
+              return reasons
+
+
+          def gate(repo, sha, required, branch="main", wait=300, interval=15, api=None, sleep=time.sleep):
+              api = api or gh_api
+              required = list(dict.fromkeys(required or []))
+              if not set(DEFAULT_REQUIRED).issubset(required):
+                  return False, [f"required checks must include {', '.join(DEFAULT_REQUIRED)}"]
+              head = api(f"repos/{repo}/branches/{branch}").get("commit", {}).get("sha")
+              if head != sha:
+                  return None, [f"{sha[:7]} is not the current head of {branch} ({(head or '?')[:7]}); the next run will handle the newer commit"]
+              deadline = time.monotonic() + wait
+              while True:
+                  ok, pending, reasons = evaluate(check_runs(repo, sha, api), required)
+                  if ok or not pending or time.monotonic() >= deadline:
+                      final_head = api(f"repos/{repo}/branches/{branch}").get("commit", {}).get("sha")
+                      if final_head != sha:
+                          return None, [f"{sha[:7]} stopped being the current head of {branch} during validation"]
+                      return ok, reasons
+                  sleep(interval)
+
+
+          def main(argv=None):
+              p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+              p.add_argument("--repo", required=True)
+              p.add_argument("--sha")
+              p.add_argument("--branch", default="main")
+              p.add_argument("--required", default=",".join(DEFAULT_REQUIRED))
+              p.add_argument("--wait", type=int, default=300, help="seconds to wait for pending required checks")
+              p.add_argument("--dispatch-release-pr", action="store_true")
+              p.add_argument("--required-workflow", default=".github/workflows/ci.yml")
+              p.add_argument("--kavosh-workflow", default=".github/workflows/kavosh.yml")
+              a = p.parse_args(argv)
+
+              if a.dispatch_release_pr:
+                  try:
+                      dispatched = dispatch_release_pr_checks(
+                          a.repo, a.branch, a.required_workflow, a.kavosh_workflow
+                      )
+                  except RuntimeError as e:
+                      print(f"Release PR verification dispatch FAILED: {e}")
+                      return 1
+                  if dispatched is None:
+                      print(f"No trusted open release-please PR targets {a.branch}; nothing to dispatch")
+                      return 0
+                  print(
+                      f"Dispatched required CI and Kavosh governance for release PR "
+                      f"#{dispatched['number']} @ {dispatched['head_sha']}"
+                  )
+                  return 0
+
+              if not a.sha:
+                  p.error("--sha is required unless --dispatch-release-pr is used")
+              required = [x.strip() for x in a.required.split(",") if x.strip()]
+              if not required:
+                  print("REL-5: no required checks configured — refusing to open the gate")
+                  return 1
+              try:
+                  ok, reasons = gate(a.repo, a.sha, required, a.branch, a.wait)
+              except RuntimeError as e:
+                  print(f"REL-5 gate CLOSED: cannot read checks ({e}) — unavailable CI is not permission to release")
+                  return 1
+              out = os.environ.get("GITHUB_OUTPUT")
+              def write_open(value):
+                  if out:
+                      with open(out, "a", encoding="utf-8") as fh:
+                          fh.write(f"open={'true' if value else 'false'}\n")
+              write_open(False)
+              if ok is None:
+                  print(f"REL-5: {reasons[0]} — skipping")
+                  return 0
+              if ok:
+                  try:
+                      acceptance = acceptance_reasons(a.repo, a.sha)
+                  except RuntimeError as e:
+                      print(f"ACC-3 gate CLOSED: cannot read acceptance evidence ({e})")
+                      return 1
+                  if acceptance:
+                      print(f"ACC-3 gate CLOSED for {a.sha[:7]}:")
+                      for reason in acceptance:
+                          print(f"  - {reason}")
+                      return 1
+                  write_open(True)
+                  print(f"REL-5/ACC-3 gate OPEN for {a.sha[:7]}: required checks and acceptance readiness succeeded")
+                  return 0
+              print(f"REL-5 gate CLOSED for {a.sha[:7]}:")
+              for r in reasons:
+                  print(f"  - {r}")
+              return 1
+
+
+          if __name__ == "__main__":
+              sys.exit(main())
+          PY
 
   package:
     name: package
