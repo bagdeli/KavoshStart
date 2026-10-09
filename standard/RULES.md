@@ -68,6 +68,14 @@
 | REL-6 | پروژه‌ها workflowهای KavoshStart را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، برابر با `kavoshStart` مانیفست؛ tag متحرک (`v1`) ممنوع و منجمد است. ارتقا فقط با PR (Dependabot). | MUST | All | P |
 | REL-7 | RC برای Test فقط با dispatch مستقیم مالک برای `vX.Y.Z-rc.N` و exact current-main SHA ساخته می‌شود؛ required checks همان SHA باید سبز باشند، نسخه باید از آخرین final جدیدتر باشد، شماره RC جلو برود و collision با tag/Release/final fail-closed است. RC branch یا tag متحرک وجود ندارد. | MUST | T1, T2 | G |
 
+## ACC — جریان پذیرش و شواهد
+| ID | قاعده | سطح | Tier | لایه |
+|---|---|---|---|---|
+| ACC-1 | در profile `acceptance.mode=continuous`، فایل `acceptance/scope.json` فقط قرارداد scope نسخه است (نه status tracker): ID یکتا، Issue canonical، owner، risk و نوع evidence را تعریف می‌کند؛ هر PR غیررباتی باید IDهای متاثر را map کند یا `not-applicable` با دلیل واقعی بدهد. | MUST | T2 | P |
+| ACC-2 | سلامت دوره‌ای برای continuous acceptance بدهی پذیرش را از scope + وضعیت واقعی GitHub محاسبه و open/unaccepted/deferred/missing-evidence را گزارش می‌کند؛ merged code هرگز خودکار Acceptance Complete محسوب نمی‌شود. | MUST | T2 | H |
+| ACC-3 | دروازهٔ release برای continuous acceptance fail-closed است: scope غیرخالی، هر مورد in-scope بسته و owner-accepted، merged SHA ancestor کاندیدا، Actions run موفق و evidenceهای لازم risk/type حاضر؛ defer فقط با تصمیم versioned در scope و Issue approval بسته مجاز است. | MUST | T2 | G |
+| ACC-4 | status زندهٔ acceptance داخل فایل نگهداری نمی‌شود؛ source of truth وضعیت/evidence/approval همان GitHub Issue/PR/Run است و scope file فقط declaration نسخه‌دار است. | MUST | T2 | via SRC-1, ACC-1, ACC-2, ACC-3 |
+
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
