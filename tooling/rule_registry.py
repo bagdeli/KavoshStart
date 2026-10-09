@@ -122,14 +122,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {REGISTRY.relative_to(ROOT)}")
         return 0
 
-    current = REGISTRY.read_text(encoding="utf-8") if REGISTRY.exists() else ""
-    if current != rendered:
+    try:
+        current = json.loads(REGISTRY.read_text(encoding="utf-8")) if REGISTRY.exists() else None
+    except json.JSONDecodeError as exc:
+        print(f"rules.registry.json is invalid JSON: {exc}", file=sys.stderr)
+        return 1
+    expected = build_registry()
+    if current != expected:
         print(
             "rules.registry.json is stale; run: python3 tooling/rule_registry.py --write",
             file=sys.stderr,
         )
         return 1
-    print(f"rule registry is current: {len(build_registry()['rules'])} rules")
+    print(f"rule registry is current: {len(expected['rules'])} rules")
     return 0
 
 
