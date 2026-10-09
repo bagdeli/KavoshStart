@@ -1,4 +1,5 @@
 {
+  "$schema": "./rules.registry.schema.json",
   "schemaVersion": 1,
   "source": "standard/RULES.md",
   "generatedBy": "tooling/rule_registry.py",
