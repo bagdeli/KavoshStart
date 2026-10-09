@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.5](https://github.com/bagdeli/KavoshStart/compare/v2.0.4...v2.0.5) (2026-10-09)
+
+
+### Bug Fixes
+
+* **source:** classify release provenance and standards citations correctly ([#100](https://github.com/bagdeli/KavoshStart/issues/100)) ([e38434e](https://github.com/bagdeli/KavoshStart/commit/e38434efcb6e988b9d80dc65198a83d8fa6b4415))
+
 ## [2.0.4](https://github.com/bagdeli/KavoshStart/compare/v2.0.3...v2.0.4) (2026-10-09)
 
 
