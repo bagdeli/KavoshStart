@@ -299,6 +299,49 @@ jobs:
               return [v.split("#", 1)[0].strip() for v in RUNS_ON_RE.findall(text)]
 
 
+          JOB_LINE_RE = re.compile(r"^  ([A-Za-z0-9_-]+):[ \\t]*(?:#.*)?$")
+
+
+          def jobs_without_timeout(text):
+              """Return local job ids that declare runs-on but omit timeout-minutes.
+
+              Reusable-workflow caller jobs use job-level uses and no runs-on. Ignore
+              workflow_call input names and nested with.runs-on values outside job scope.
+              """
+              lines = text.splitlines()
+              try:
+                  start = next(i for i, line in enumerate(lines)
+                               if re.fullmatch(r"jobs:[ \\t]*(?:#.*)?", line))
+              except StopIteration:
+                  return []
+
+              missing = []
+              current = None
+              block = []
+
+              def finish():
+                  if current is None:
+                      return
+                  body = "\n".join(block)
+                  local = bool(re.search(r"^    runs-on:[ \\t]*", body, re.M))
+                  bounded = bool(re.search(r"^    timeout-minutes:[ \\t]*", body, re.M))
+                  if local and not bounded:
+                      missing.append(current)
+
+              for line in lines[start + 1:]:
+                  if line and not line[0].isspace() and not line.lstrip().startswith("#"):
+                      break
+                  match = JOB_LINE_RE.match(line)
+                  if match:
+                      finish()
+                      current = match.group(1)
+                      block = []
+                  elif current is not None:
+                      block.append(line)
+              finish()
+              return missing
+
+
           def is_hosted(value):
               return bool(re.search(r"(ubuntu|windows|macos)-", value)) and "self-hosted" not in value
 
@@ -412,8 +455,11 @@ jobs:
                       add(level, rule, title, detail)
                   noperm = [f for f in wf if not re.search(r"^permissions:", read(f), re.M)]
                   add("fail" if noperm else "ok", "SEC-3", "Workflows declare top-level permissions", ", ".join(noperm) or "ok")
-                  noto = [f for f in wf if "runs-on" in read(f) and "timeout-minutes" not in read(f)]
-                  add("warn" if noto else "ok", "CI-3", "Jobs set timeout-minutes", ", ".join(noto) or "ok")
+                  no_timeout = []
+                  for f in wf:
+                      no_timeout += [f"{f}: {job}" for job in jobs_without_timeout(read(f))]
+                  add("warn" if no_timeout else "ok", "CI-3", "Jobs set timeout-minutes",
+                      ", ".join(no_timeout) or "ok")
 
                   unpinned = unpinned_uses({f: read(f) for f in wf}, m)
                   add("fail" if unpinned else "ok", "SEC-2", "Actions pinned to full SHA; KavoshStart to exact tag",
