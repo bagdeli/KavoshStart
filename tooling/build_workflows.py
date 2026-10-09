@@ -18,6 +18,7 @@ PAIRS = {
     "kavosh-main-guard.yml": "main_guard.py",
     "kavosh-health.yml": "health.py",
     "kavosh-release.yml": "release_gate.py",
+    "kavosh-rc.yml": "rc_gate.py",
     "kavosh-portfolio.yml": None,  # static wrapper; its logic is scripts/portfolio_guard.py
 }
 INDENT = " " * 10
