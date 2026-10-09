@@ -14,9 +14,9 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | SRC-1 | وضعیت زنده (کار باز، اولویت، مسئول، نسخه‌ی منتشرشده) فقط در GitHub: Issue، Project، PR، Release. | MUST | All | via SRC-2, SRC-3, SRC-4 |
-| SRC-2 | هیچ SHA کامل (40 hex) در فایل‌های Markdown، به‌جز `CHANGELOG.md`، `docs/decisions/` و مسیرهای audit/provenance رسمی (`audits/` یا `docs/audits/`). exact source SHA در evidence audit مجاز است؛ Markdown عادی نباید live-state را با SHA منجمد کند. | MUST | All | P |
+| SRC-2 | هیچ SHA کامل (40 hex) در Markdown عادی نگه‌داری نمی‌شود. استثناهای provenance immutable عبارت‌اند از `CHANGELOG.md`، `docs/decisions/`، مسیرهای audit (`audits/` یا `docs/audits/`) و release note نسخه‌دار زیر `docs/release/RELEASE_NOTES_<version>.md`. exact source SHA در این evidenceها مجاز است؛ status زنده نباید با SHA در prose منجمد شود. | MUST | All | P |
 | SRC-3 | فایل‌های ردیاب وضعیت (`STATUS.md`، `HANDOFF.md`، `PROJECT_STATE.md`، `CURRENT_STATE.md`) و پوشه‌ی `archive/` وجود ندارند. | MUST | All | P |
-| SRC-4 | `AGENTS.md` به Issue/PR خاص به‌عنوان «مرجع فعلی» ارجاع نمی‌دهد و تاریخ وضعیت ندارد. | SHOULD | All | P |
+| SRC-4 | `AGENTS.md` به Issue/PR خاص به‌عنوان «مرجع فعلی» ارجاع نمی‌دهد و تاریخ وضعیت ندارد. detector فقط reference صریح GitHub (مثل `Issue #12`، `PR #12`، `pull request #12` یا URL issue/PR) را live-state می‌شمارد؛ citationهایی مثل `UTS #39` یا شمارهٔ استاندارد/بخش live-state نیستند. | SHOULD | All | P |
 | SRC-5 | هر پروژه `kavosh.project.json` معتبر در ریشه دارد. | MUST | All | P |
 | SRC-6 | `README.md`، `PROJECT.md` و `AGENTS.md` دامنه‌ی محصول را یکسان توصیف می‌کنند (همان `summary` مانیفست). | SHOULD | All | R |
 | SRC-7 | `PROJECT.md` (برگه‌ی یک‌صفحه‌ای پروژه) وجود دارد. | MUST | All | P |

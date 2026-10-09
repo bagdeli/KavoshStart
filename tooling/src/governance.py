@@ -20,10 +20,17 @@ TIER_ORDER = {"T0": 0, "T1": 1, "T2": 2}
 SELF_STANDARD_REPO = "bagdeli/KavoshStart"
 KAVOSHSTART_TAG_RE = re.compile(r"^v[0-9]+[.][0-9]+[.][0-9]+$")
 SHA_RE = re.compile(r"\b[0-9a-f]{40}\b")
-ISSUE_REF_RE = re.compile(r"(?<![\w&])#\d{2,}\b")
+ISSUE_REF_RE = re.compile(
+    r"(?i)\b(?:issues?|pr|pull requests?)\s+#\d+\b"
+    r"|https://github[.]com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:issues|pull)/\d+\b"
+)
 DATE_RE = re.compile(r"\b20\d\d-\d\d-\d\d\b")
 FORBIDDEN_RE = re.compile(r"(^|/)(STATUS|HANDOFF|PROJECT_STATE|CURRENT_STATE)\.md$|^(docs/)?archive/")
-SHA_ALLOWED_RE = re.compile(r"(^|/)CHANGELOG\.md$|^docs/decisions/|^(?:docs/)?audits/")
+SHA_ALLOWED_RE = re.compile(
+    r"(^|/)CHANGELOG\.md$|^docs/decisions/|^(?:docs/)?audits/"
+    r"|^docs/release/RELEASE_NOTES_[^/]+\.md$",
+    re.I,
+)
 CC_RE = re.compile(r"^(feat|fix|docs|refactor|perf|test|ci|build|chore|revert)(\([a-z0-9._/-]+\))?!?: \S.{2,}$")
 BRANCH_RE = re.compile(r"^(feat|fix|docs|refactor|test|ci|chore|perf|build|hotfix|revert)/[0-9]+-[a-z0-9][a-z0-9._-]*$")
 EXEMPT_BRANCH_RE = re.compile(r"^(dependabot/|release-please--|renovate/)")
