@@ -27,6 +27,30 @@ COMBOS = [
 ]
 
 
+def derive_capabilities(m):
+    caps = set()
+    if m.get("projectKind") == "library":
+        caps.add("package")
+    if m.get("runtime") == "server":
+        caps.add("server")
+    if m.get("runtime") == "desktop":
+        caps.add("desktop")
+    if (m.get("ui") or {}).get("kind") in ("web", "admin"):
+        caps.add("browser-ui")
+    database = (m.get("stack") or {}).get("database")
+    if database and database != "none":
+        caps.update(("persistent-data", "migration"))
+    if (m.get("deploy") or {}).get("method") == "release-artifact":
+        caps.add("release-artifact")
+    data = m.get("data") or {}
+    if data.get("sensitivity") == "financial" or data.get("regulatedIntegrations"):
+        caps.add("regulated")
+    frameworks = {str(x).lower() for x in ((m.get("stack") or {}).get("frameworks") or [])}
+    if any("wordpress" in x or "woocommerce" in x for x in frameworks):
+        caps.add("cms-wordpress")
+    return sorted(caps)
+
+
 def manifest(tier, runtime, method, ui, envs, runner=None):
     m = json.loads(json.dumps(EXAMPLE))
     # The checked-in example deliberately uses vX.Y.Z so it cannot be copied as a stale valid pin.
@@ -34,6 +58,12 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
     m["kavoshStart"] = "v1.7.0"
     m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
+    m["stack"] = {"languages": ["python"], "frameworks": [], "database": "none"}
+    if runtime == "server":
+        m["stack"] = {"languages": ["python"], "frameworks": ["fastapi"], "database": "postgresql"}
+    if ui in ("web", "admin"):
+        m["stack"]["languages"].append("typescript")
+        m["stack"]["frameworks"].append("nextjs")
     if tier == "T1" and runtime == "none":
         m["projectKind"] = "library"
     m["acceptance"] = {"mode": "continuous" if tier == "T2" else "none"}
@@ -53,6 +83,9 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
     if runner is not None:
         m["ci"]["runner"] = runner
         m["ci"].pop("runnerLabels", None)
+    m["capabilities"] = derive_capabilities(m)
+    if not m["capabilities"]:
+        m["capabilities"] = ["control-plane"] if m.get("repo") == "bagdeli/KavoshStart" else ["infrastructure"]
     return m
 
 
