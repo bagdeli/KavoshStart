@@ -4,6 +4,17 @@ You are an AI agent asked to create, adopt or maintain a Kavosh project "using K
 Follow this protocol exactly. Rules are referenced by ID (e.g. `BR-1`); their canonical list is
 [`standard/RULES.md`](standard/RULES.md). When this file and a rule disagree, the rule wins — report the conflict.
 
+## §0 Session bootstrap — every conversation/session
+
+Before choosing NEW / ADOPT / UPGRADE / WORK:
+1. Verify the exact repository, default branch, workspace/remote when available, approved environments and task scope. Never infer authority from access.
+2. Read the project's root `AGENTS.md`, `kavosh.project.json`, and the selected Issue/Spec/plan. Treat old reports as provenance, not live status.
+3. Read the project's pinned `kavoshStart`, query the latest stable KavoshStart Release, and compare them. If behind, read the CHANGELOG between the pin and latest.
+4. If the newer release changes governance, acceptance, security, release, deploy, CI or agent-control semantics, perform UPGRADE before starting a new feature/gate packet unless the owner has recorded a bounded, traceable defer. Never silently auto-upgrade a dependency in the middle of unrelated work.
+5. For T2 on this standard, `acceptance.mode=continuous` is mandatory and `adoptionPhase: true` is invalid. Do not continue ordinary feature work by treating report-only governance as success.
+6. Refresh only the moving facts needed for the task: current `main`, related open PRs/checks/releases and, when runtime behavior matters, exact deployed version/SHA/schema/health. Do not turn routine continuation into an unrelated full audit.
+7. Choose the mode below and complete one coherent packet. A genuine hotfix may proceed with an owner-approved bounded standard-upgrade defer, recorded in GitHub with its expiry/review trigger.
+
 Pick the mode:
 
 | Mode | Trigger | Go to |
@@ -98,12 +109,15 @@ manually (e.g. the Actions access setting). Stop.
 6. Destructive steps (deleting branches, closing issues, rewriting docs) only with explicit owner approval, one phase at a time.
 
 ## §3 UPGRADE
-1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target.
-2. One PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart`
-   to the same tag (REL-6), apply template changes listed in the changelog, and adjust anything the new rules require. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
-3. KavoshUI upgrades are separate PRs: `chore(ui): upgrade KavoshUI to vX.Y.Z`, with rendered screenshots (RTL + mobile).
+1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target and classify every change that affects governance, acceptance, security, release, deploy, CI, agent controls or templates.
+2. Use one dedicated PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart` to the same exact tag (REL-6), apply template changes listed in the changelog, and update all reusable workflow pins together. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
+3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
+4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and bootstrap a non-fabricated release-scoped `acceptance/scope.json`. Existing detailed requirement ledgers may remain supporting traceability; do not mark historical work accepted merely because code exists.
+5. Run the repository audit/governance and `make check`; resolve new violations or explicitly disposition genuine external blockers. Do not bundle unrelated product features into the upgrade PR.
+6. KavoshUI upgrades are separate PRs: `chore(ui): upgrade KavoshUI to vX.Y.Z`, with rendered screenshots (RTL + mobile) only when the package diff can affect rendering/interaction.
 
 ## §4 WORK on an issue (every day)
+0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.
 1. `gh issue view <n>`; read its parent; read the project's `AGENTS.md`. Nothing else unless the issue points to it.
 2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).
 3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template. Draft stacks may be deep;
