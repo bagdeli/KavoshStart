@@ -124,7 +124,7 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | DOC-1 | هیچ فایل Markdown بزرگ‌تر از 60KB (به‌جز CHANGELOG). | MUST | All | P |
-| DOC-2 | تصمیم معماری = ADR در `docs/decisions/` (قالب MADR). | MUST | T1, T2 | R |
+| DOC-2 | تصمیم معماری = ADR در `docs/decisions/` (قالب MADR). breaking control-plane change (Conventional Commit با `!` روی Rule/schema/governance/release policy) باید ADR را در همان PR تغییر دهد تا معماری نتواند فقط با prose/code بی‌ردیابی عوض شود. | MUST | T1, T2 | P, R |
 | DOC-3 | اصطلاح/مخفف داخلی جدید یک خط در `docs/GLOSSARY.md` دارد. | SHOULD | All | R |
 | DOC-4 | prompt یا سند «کامل‌کننده‌ی محصول» چندصد KB ممنوع؛ به Spec/Issue شکسته می‌شود. | MUST | All | via DOC-1 |
 
