@@ -79,7 +79,7 @@ KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/is
 - Layer O با `GITHUB_TOKEN` محدود به همان مخزن و مجوزهای حداقلی اجرا می‌شود؛ PAT مشترک یا secret حساب لازم نیست.
 - نام، URL، هدف، audit، plan، finding یا runtime metadata پروژه‌ی private نباید وارد file، Issue، PR، commit message، Release یا log عمومی شود.
 
-برای repoهای **private**، ناظر بیرونی باید در یک control surface private مستقل اجرا شود اگر سازمان می‌خواهد freshness/enforcement را portfolio-level تضمین کند. KavoshStart عمومی inventory خصوصی را نگه نمی‌دارد، اما contract آن ناظر را تعریف می‌کند: pin KavoshStart، enforce wiring، main/health freshness، acceptance profile و disabled/missing controlها را از بیرون بررسی کند و هیچ metadata خصوصی را وارد سطح عمومی نکند. target inventory و token فقط در سطح private نگه‌داری می‌شوند.
+برای repoهای **private**، ناظر بیرونی در یک control surface private مستقل اجرا می‌شود. Reference implementation آن `scripts/private_portfolio_guard.py` و قرارداد کاملش [14-private-portfolio-supervisor.md](14-private-portfolio-supervisor.md) است. KavoshStart عمومی inventory خصوصی را نگه نمی‌دارد: target inventory، token و report فقط در سطح private می‌مانند. supervisor pin/freshness، enforce wiring، main/health، acceptance profile و disabled/missing controlها را از بیرون بررسی می‌کند؛ stale stable pin هشدار برای delta classification است و کنترل غایب/غیرفعال failure.
 
 **مرز اعتماد:** Layer O عمومی به همین repo و GitHub Actions وابسته است. اگر خودش از کار بیفتد، فقط انسان متوجه می‌شود که Issue پرتفوی عمومی دیگر به‌روز نشده است. این لایه هیچ ادعایی درباره‌ی مشاهده یا سلامت پروژه‌های private ندارد.
 
