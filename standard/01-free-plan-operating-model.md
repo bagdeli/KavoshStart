@@ -8,7 +8,7 @@
 | Required reviewers / CODEOWNERS اجباری | ❌ | CODEOWNERS فقط درخواست بازبینی است |
 | Merge queue، Environments با reviewer | ❌ | — |
 | GitHub Pages | ❌ برای private | سایت ایستا روی سرور خودمان |
-| Actions | ✅ **2,000 دقیقه/ماه برای کل حساب**، هر job به دقیقه‌ی کامل گرد می‌شود | بودجه‌بندی اجباری (CI-3) |
+| Actions | ✅ standard GitHub-hosted runner در **repo عمومی رایگان و نامحدود** است؛ private GitHub-hosted تابع سهمیهٔ پلن است | budget فقط برای مسیرهای billable؛ storage/cache/Packages و larger runners جدا |
 | Issues، sub-issues، Projects، Milestones، Releases، Labels | ✅ | — |
 | Issue Types | ❌ (فقط Organization) | برچسب `type:*` |
 | Reusable workflow از ریپوی private دیگر همان کاربر | ✅ با تنظیم Access | KavoshStart مرکز workflowهاست |
