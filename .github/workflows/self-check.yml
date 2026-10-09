@@ -5,6 +5,20 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      pr-number:
+        description: Open release PR number for trusted release verification
+        required: false
+        type: string
+      expected-head:
+        description: Exact release PR head SHA
+        required: false
+        type: string
+      ci-full:
+        description: Compatibility input with the common CI dispatch contract
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
 
@@ -17,7 +31,7 @@ permissions:
 
 jobs:
   required:
-    if: github.event_name == 'push' || !github.event.pull_request.draft
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
