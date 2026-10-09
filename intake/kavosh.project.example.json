@@ -67,7 +67,6 @@
     "monthlyMinutesBudget": 0
   },
   "limits": {
-    "prMaxLines": 400,
     "maxOpenReadyPRs": 3,
     "branchMaxAgeDays": 3
   },
@@ -80,5 +79,11 @@
   ],
   "acceptance": {
     "mode": "continuous"
+  },
+  "release": {
+    "strategy": "release-please"
+  },
+  "automation": {
+    "interface": "make"
   }
 }
