@@ -5,6 +5,20 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      pr-number:
+        description: Open release PR number for trusted release verification
+        required: false
+        type: string
+      expected-head:
+        description: Exact release PR head SHA
+        required: false
+        type: string
+      ci-full:
+        description: Compatibility input with the common CI dispatch contract
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
 
@@ -17,10 +31,16 @@ permissions:
 
 jobs:
   required:
-    if: github.event_name == 'push' || !github.event.pull_request.draft
+    name: required
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - run: pip install --quiet pyyaml && make check
       - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"

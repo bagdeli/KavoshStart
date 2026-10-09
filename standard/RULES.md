@@ -1,7 +1,8 @@
 # RULES — فهرست مرجع قواعد KavoshStart
 
 این تنها فهرست رسمی قواعد است. هر سند دیگر فقط **توضیح** می‌دهد و با شناسه به این‌جا ارجاع می‌دهد.
-قاعده‌ی جدید فقط با PR به همین فایل + مکانیزم اجرا + (در صورت لزوم) ADR اضافه می‌شود.
+`standard/rules.registry.json` نمای machine-readable و **generated/read-only** همین جدول است؛ با `python3 tooling/rule_registry.py --write` تولید می‌شود و CI هر drift را رد می‌کند. registry منبع دوم متن Rule نیست.
+قاعده‌ی جدید فقط با PR به همین فایل + مکانیزم اجرا + تست/lifecycle metadata متناظر + (در صورت لزوم) ADR اضافه می‌شود.
 
 **سطح:** `MUST` = الزامی؛ اجرای آن یا با ماشین است (لایه‌های A، P، M، G، H، S، O، E) یا — اگر فقط لایه‌ی `R` دارد — صراحتاً با بازبینی انسانی (فهرست پایین همین فایل) · `SHOULD` = هشدار · `MAY` = اختیاری
 **Tier:** `All` یا فهرست رده‌ها
@@ -80,7 +81,7 @@
 | PR-4 | بخش `## AI involvement` در بدنه‌ی PR. | MUST | All | P |
 | PR-5 | فقط Squash merge؛ پیام commit = عنوان PR. | MUST | All | S, O |
 | PR-6 | merge عملیاتی از acceptance جداست: عامل می‌تواند PR با risk=low/medium را فقط روی exact current head، پس از سبز بودن همه checkهای لازم، نبود blocker/review unresolved و رعایت policy، به‌صورت Squash merge کند. risk=high/critical و تغییر control-plane/security/destructive/release-policy ابتدا تصمیم صریح انسانی برای scope فعلی می‌خواهد؛ سپس merge می‌تواند توسط عامل انجام شود. bypass/--admin ممنوع است. | MUST | All | A, R |
-| PR-7 | **PR با check قرمز `kavosh` یا `required` ادغام نمی‌شود.** | MUST | All | R, M |
+| PR-7 | **PR با check قرمز/غایب `kavosh` یا `required` ادغام نمی‌شود.** برای release-please PR که GitHub به‌علت ایجاد با `GITHUB_TOKEN` اجرای `pull_request` را approval-required می‌کند، workflowهای CI/Kavosh یک مسیر محدود `pull_request_target` دارند که فقط same-repository + `github-actions[bot]` + branch استاندارد release-please را می‌پذیرد. checkهای واجد ruleset با همان contextهای `required` و `kavosh / governance` روی exact head تولید می‌شوند؛ checkout کد candidate credentialless/read-only است و مسیر target برای PRهای دیگر context required ایجاد نمی‌کند. owner click/no-op commit/bypass جزو قرارداد نیست. | MUST | All | P, G, R, M |
 | PR-8 | تعداد PRهای باز غیر-Draft ≤ `limits.maxOpenReadyPRs`. | SHOULD | All | P, H |
 | PR-9 | Draft بدون فعالیت بیش از 7 روز بسته یا به‌روز می‌شود. | SHOULD | All | H |
 

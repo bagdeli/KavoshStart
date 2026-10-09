@@ -51,8 +51,9 @@ jobs:
     with:
       enforce: true
       runs-on: '{{RUNS_ON_JSON}}'
-      authorization-pr: ${{ inputs.pr-number }}
-      authorization-head: ${{ inputs.expected-head }}
+      authorization-pr: ${{ inputs.pr-number || github.event.pull_request.number }}
+      authorization-head: ${{ inputs.expected-head || github.event.pull_request.head.sha }}
+      comment: true
   main-guard:
     if: >-
       (github.event_name == 'push' && !{{PRIVATE_HOSTED}}) ||
