@@ -74,6 +74,13 @@ class GovernanceFiles(unittest.TestCase):
     def test_SRC2_negative_sha_in_docs(self):
         self.assertTrue(fails_for("SRC-2", lambda d: (d / "docs" / "notes.md").write_text("head " + "a" * 40, encoding="utf-8")))
 
+    def test_SRC2_positive_exact_sha_in_docs_audits(self):
+        def setup(d):
+            path = d / "docs" / "audits" / "evidence.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("Exact source: " + "a" * 40, encoding="utf-8")
+        self.assertEqual(fails_for("SRC-2", setup), [])
+
     def test_SRC3_negative_status_file(self):
         self.assertTrue(fails_for("SRC-3", lambda d: (d / "STATUS.md").write_text("status", encoding="utf-8")))
 
