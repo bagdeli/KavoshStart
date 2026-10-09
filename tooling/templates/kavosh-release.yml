@@ -2,7 +2,7 @@
 # KavoshStart release (REL-4, REL-5): runs after CI succeeded on main (caller uses on: workflow_run).
 #   1. REL-5 gate: required checks of the exact main commit must exist and have succeeded.
 #   2. release-please: keeps the Release PR up to date; merging it creates tag vX.Y.Z + GitHub Release.
-#   3. package (runtime none/desktop): resolves the repository release.artifact adapter (or backward-compatible Make default),
+#   3. package (deploy.method=release-artifact): resolves the repository release.artifact adapter (or compatible Make default),
 #      builds declared assets and uploads them to that Release in the SAME run because GITHUB_TOKEN releases do not trigger other workflows.
 # Release PRs are created with GITHUB_TOKEN: their CI runs need "Approve and run" by the owner (GitHub rule).
 name: kavosh-release
