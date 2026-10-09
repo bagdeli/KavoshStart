@@ -132,22 +132,39 @@ def _dispatch_and_wait(repo, workflow, head_ref, head_sha, inputs,
 
 
 def _publish_check(repo, sha, name, run, api):
+    """Mirror one real workflow_dispatch result into both GitHub required-status channels."""
     success = run.get("status") == "completed" and run.get("conclusion") == "success"
-    payload = {
-        "name": name,
-        "head_sha": sha,
-        "status": "completed",
-        "conclusion": "success" if success else "failure",
-        "details_url": run.get("html_url"),
-        "output": {
-            "title": f"Trusted release verification: {name}",
-            "summary": (
-                f"workflow_dispatch run {run.get('id')} concluded "
-                f"{run.get('conclusion')} for exact release head {sha}."
-            ),
+    conclusion = "success" if success else "failure"
+    details_url = run.get("html_url")
+    summary = (
+        f"workflow_dispatch run {run.get('id')} concluded "
+        f"{run.get('conclusion')} for exact release head {sha}."
+    )
+    api(
+        f"repos/{repo}/check-runs",
+        method="POST",
+        payload={
+            "name": name,
+            "head_sha": sha,
+            "status": "completed",
+            "conclusion": conclusion,
+            "details_url": details_url,
+            "output": {
+                "title": f"Trusted release verification: {name}",
+                "summary": summary,
+            },
         },
-    }
-    api(f"repos/{repo}/check-runs", method="POST", payload=payload)
+    )
+    api(
+        f"repos/{repo}/statuses/{sha}",
+        method="POST",
+        payload={
+            "state": conclusion,
+            "target_url": details_url,
+            "description": f"Trusted workflow_dispatch verification run {run.get('id')}",
+            "context": name,
+        },
+    )
     return success
 
 
