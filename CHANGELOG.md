@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0](https://github.com/bagdeli/KavoshStart/compare/v1.7.1...v2.0.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **standard:** KavoshStart v2 replaces universal PR size gates and owner-only mechanical merges with risk/evidence governance, delegated low/medium merge, outcome-based command/release contracts, and explicit continuation/acceptance separation.
+
+### Features
+
+* **standard:** generalize risk evidence and delegated merge ([#73](https://github.com/bagdeli/KavoshStart/issues/73)) ([15e94c1](https://github.com/bagdeli/KavoshStart/commit/15e94c180fd62dde68a7ee88fe2f61fbf94d7900)), closes [#72](https://github.com/bagdeli/KavoshStart/issues/72)
+
+
+### Bug Fixes
+
+* **governance:** require ADR for breaking control-plane changes ([#79](https://github.com/bagdeli/KavoshStart/issues/79)) ([ba5098f](https://github.com/bagdeli/KavoshStart/commit/ba5098f1d2c9fb2c76a9692ebc4117ecd61a1d66))
+* **main-guard:** tolerate post-merge PR association lag ([#82](https://github.com/bagdeli/KavoshStart/issues/82)) ([71b50c5](https://github.com/bagdeli/KavoshStart/commit/71b50c5f5b23c682bc960690347393c9b84e7fb6))
+
 ## [1.7.1](https://github.com/bagdeli/KavoshStart/compare/v1.7.0...v1.7.1) (2026-10-09)
 
 
