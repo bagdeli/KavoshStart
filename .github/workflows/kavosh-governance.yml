@@ -803,7 +803,8 @@ jobs:
                   page += 1
               counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]
               lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
-              for level, rule, t, d in change_risk_problems(body, files, bot):
+              risk_results, _declared_risk = change_risk_problems(body, files, bot)
+              for level, rule, t, d in risk_results:
                   add(level, rule, t, d)
               visual_files = ui_render_files(files)
               if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
