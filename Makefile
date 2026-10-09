@@ -4,6 +4,7 @@ setup:
 	@python3 --version
 
 lint:
+	python3 tooling/rule_registry.py --check
 	python3 tooling/sync_pins.py --check
 	python3 tooling/build_workflows.py --check
 	python3 -c "import json,glob; [json.load(open(f,encoding='utf-8')) for f in glob.glob('**/*.json',recursive=True)]"
