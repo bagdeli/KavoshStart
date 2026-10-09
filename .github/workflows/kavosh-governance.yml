@@ -752,6 +752,29 @@ jobs:
           )
 
 
+          BREAKING_CC_RE = re.compile(r"^[a-z]+(?:\([^)]+\))?!:", re.I)
+          CONTROL_PLANE_ARCH_RE = re.compile(
+              r"(^|/)(standard/RULES\.md|intake/kavosh\.project\.schema\.json|release-please-config\.json)$"
+              r"|^tooling/src/(governance|release_gate|main_guard|health)\.py$",
+              re.I,
+          )
+          ADR_PATH_RE = re.compile(r"^docs/decisions/[0-9]{4}-[a-z0-9-]+\.md$", re.I)
+
+
+          def architectural_decision_problems(title, files):
+              """DOC-2: a breaking control-plane Conventional Commit must carry its ADR in the same PR."""
+              names = [item.get("filename", "") if isinstance(item, dict) else str(item) for item in files]
+              breaking = bool(BREAKING_CC_RE.match(title or ""))
+              control = [name for name in names if CONTROL_PLANE_ARCH_RE.search(name)]
+              if not breaking or not control:
+                  return [("ok", "DOC-2", "Breaking control-plane ADR", "not required for this PR shape")]
+              adrs = [name for name in names if ADR_PATH_RE.fullmatch(name)]
+              if not adrs:
+                  return [("fail", "DOC-2", "Breaking control-plane ADR",
+                           f"breaking control-plane change requires a changed docs/decisions ADR; paths: {', '.join(control[:5])}")]
+              return [("ok", "DOC-2", "Breaking control-plane ADR", ", ".join(adrs[:3]))]
+
+
           def change_risk_problems(body, files, bot=False):
               """CR-1/2: declare change risk independently of diff size; sensitive paths impose a high-risk floor."""
               if bot:
@@ -805,6 +828,8 @@ jobs:
               lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
               risk_results, _declared_risk = change_risk_problems(body, files, bot)
               for level, rule, t, d in risk_results:
+                  add(level, rule, t, d)
+              for level, rule, t, d in architectural_decision_problems(title, files):
                   add(level, rule, t, d)
               visual_files = ui_render_files(files)
               if m.get("ui", {}).get("kind", "none") != "none" and visual_files:

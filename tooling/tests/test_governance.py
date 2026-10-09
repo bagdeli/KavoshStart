@@ -268,6 +268,25 @@ class ContinuousAcceptance(unittest.TestCase):
         self.assertIn("requires test evidence", out[0][3])
 
 
+class ArchitecturalDecision(unittest.TestCase):
+    def test_DOC2_positive_breaking_control_plane_with_adr(self):
+        """Covers: DOC-2 (positive)"""
+        out = g.architectural_decision_problems(
+            "feat(standard)!: change governance",
+            [{"filename": "standard/RULES.md"},
+             {"filename": "docs/decisions/0011-risk-evidence-delegated-merge.md"}],
+        )
+        self.assertEqual(fails(out), [])
+
+    def test_DOC2_negative_breaking_control_plane_without_adr(self):
+        """Covers: DOC-2 (negative)"""
+        out = g.architectural_decision_problems(
+            "feat(standard)!: change governance",
+            [{"filename": "standard/RULES.md"}],
+        )
+        self.assertTrue(any(r[1] == "DOC-2" for r in fails(out)))
+
+
 class ChangeRisk(unittest.TestCase):
     def test_CR1_positive_declared_risk_and_capabilities(self):
         """Covers: CR-1 (positive)"""
