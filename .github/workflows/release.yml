@@ -13,8 +13,11 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
-  actions: read
+  actions: write
 
 jobs:
   release:
     uses: ./.github/workflows/kavosh-release.yml
+    with:
+      required-workflow: '.github/workflows/self-check.yml'
+      kavosh-workflow: '.github/workflows/kavosh.yml'

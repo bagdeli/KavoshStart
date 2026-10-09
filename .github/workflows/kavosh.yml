@@ -9,6 +9,25 @@ on:
   schedule:
     - cron: "30 4 * * 6"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: One bounded manual/trusted run
+        required: true
+        default: health
+        type: choice
+        options: [health, pr-check, main-guard]
+      pr-number:
+        description: Open PR number (required for pr-check)
+        required: false
+        type: string
+      expected-head:
+        description: Exact current PR head SHA (required for pr-check)
+        required: false
+        type: string
+      expected-sha:
+        description: Exact current main SHA (required for main-guard)
+        required: false
+        type: string
 
 concurrency:
   group: kavosh-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -23,11 +42,16 @@ permissions:
 
 jobs:
   kavosh:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'pr-check')
     uses: ./.github/workflows/kavosh-governance.yml
+    with:
+      authorization-pr: ${{ inputs.pr-number }}
+      authorization-head: ${{ inputs.expected-head }}
   main-guard:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'main-guard')
     uses: ./.github/workflows/kavosh-main-guard.yml
+    with:
+      authorization-sha: ${{ inputs.expected-sha }}
   health:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'health')
     uses: ./.github/workflows/kavosh-health.yml

@@ -20,7 +20,7 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
-  actions: read
+  actions: write
 
 jobs:
   release:
@@ -31,3 +31,5 @@ jobs:
     with:
       runs-on: '{{RUNS_ON_JSON}}'
       package: {{PACKAGE}}
+      required-workflow: '{{CI_WORKFLOW}}'
+      kavosh-workflow: '.github/workflows/kavosh.yml'
