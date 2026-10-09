@@ -43,6 +43,16 @@ class ReleaseCandidateGate(unittest.TestCase):
         )
         self.assertIn("RC number must be greater than every existing RC for this version", reasons)
 
+    def test_REL7_negative_pending_rerun_supersedes_old_success(self):
+        runs = [
+            check("required", conclusion="success", stamp="2026-10-09T00:00:00Z"),
+            {"name": "required", "status": "queued", "conclusion": None,
+             "started_at": None, "created_at": None},
+            check("main-guard / main-guard"),
+        ]
+        reasons = rc.candidate_reasons("v1.6.0-rc.1", SHA, REQ, SHA, runs, ["v1.5.0"])
+        self.assertTrue(any("required" in reason and "queued" in reason for reason in reasons))
+
     def test_required_check_floor_cannot_be_removed(self):
         reasons = rc.candidate_reasons(
             "v1.6.0-rc.1", SHA, ["required"], SHA,
