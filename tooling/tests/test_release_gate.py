@@ -144,6 +144,8 @@ class ReleasePrBridge(unittest.TestCase):
                 return {"workflow_runs": run_state[workflow]}
             if path.endswith("/check-runs") and method == "POST":
                 return {"id": 100}
+            if "/statuses/" in path and method == "POST":
+                return {"id": 200}
             raise AssertionError((path, method, payload))
 
         result = rg.verify_release_pr(
@@ -156,6 +158,13 @@ class ReleasePrBridge(unittest.TestCase):
         self.assertEqual([p["name"] for p in published], ["required", "kavosh / governance"])
         self.assertTrue(all(p["head_sha"] == pr["head"]["sha"] for p in published))
         self.assertTrue(all(p["conclusion"] == "success" for p in published))
+        statuses = [(path, payload) for path, method, payload in calls
+                    if "/statuses/" in path and method == "POST"]
+        self.assertEqual([payload["context"] for _, payload in statuses],
+                         ["required", "kavosh / governance"])
+        self.assertTrue(all(path.endswith("/statuses/" + pr["head"]["sha"])
+                            for path, _ in statuses))
+        self.assertTrue(all(payload["state"] == "success" for _, payload in statuses))
 
     def test_REL5_negative_untrusted_release_like_pr_is_ignored(self):
         pr = self.trusted_pr()
@@ -198,6 +207,8 @@ class ReleasePrBridge(unittest.TestCase):
                 }]}
             if path.endswith("/check-runs") and method == "POST":
                 return {}
+            if "/statuses/" in path and method == "POST":
+                return {}
             raise AssertionError(path)
         result = rg.verify_release_pr(
             "o/r", "main", ".github/workflows/ci.yml", ".github/workflows/kavosh.yml",
@@ -208,6 +219,10 @@ class ReleasePrBridge(unittest.TestCase):
                      if path.endswith("/check-runs") and method == "POST"]
         self.assertEqual(published[0]["conclusion"], "failure")
         self.assertEqual(published[1]["conclusion"], "success")
+        statuses = [payload for path, method, payload in calls
+                    if "/statuses/" in path and method == "POST"]
+        self.assertEqual(statuses[0]["state"], "failure")
+        self.assertEqual(statuses[1]["state"], "success")
 
 
 class ReleaseGate(unittest.TestCase):
