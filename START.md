@@ -38,8 +38,8 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 3. Do not proceed while any required answer is missing.
 
 ### Step 2 — Classify
-1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2)
-   and **Runtime** (none/static/server/desktop). Show the owner which criterion triggered the result.
+1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
+   **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
 2. Explain the GitHub Free cost boundary. Do not run private hosted CI without direct owner approval for one named
    execution; labels and a zero budget field are not authorization. Public standard hosted CI may run only where it
    draws on no shared allowance. A T1/static project may choose `ci.runner: none` to use the local-only profile.
@@ -94,7 +94,7 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 5. Post the backlog summary to the owner (issue links only; do not write live backlog/status into a file — `SRC-1`).
 
 ### Step 6 — Hand over
-Report: repository URL, tier/runtime, budget, the first 3 tasks you recommend, anything the owner must do
+Report: repository URL, tier/runtime/capabilities, budget, the first 3 tasks you recommend, anything the owner must do
 manually (e.g. the Actions access setting). Stop.
 
 ---
