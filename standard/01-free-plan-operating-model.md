@@ -81,6 +81,8 @@
 
 ## هزینه‌ی دقیقه‌ی خود KavoshStart
 
+KavoshStart عمومی است و workflowهای خودش روی **standard GitHub-hosted runner** اجرا می‌شوند؛ این دقیقه‌ها طبق مدل billing GitHub رایگان/نامحدودند و نباید CI-3 را قرمز کنند. این معافیت فقط minute billing همان runner استاندارد عمومی است، نه larger runners، artifact/storage، cache یا Packages.
+
 - `kavosh-governance`: یک job کوتاه روی رویدادهای PR.
 - `kavosh-main-guard`: یک job پس از push/merge به main.
 - `kavosh-health`: هفتگی.
