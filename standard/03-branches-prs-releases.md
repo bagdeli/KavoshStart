@@ -27,7 +27,7 @@ Batch کوچک برای feedback سریع مطلوب است، اما **هیچ س
 Core نتیجه را govern می‌کند، نه ابزار را:
 
 - هر strategy باید SemVer، tag immutable `vX.Y.Z[-rc.N]`، exact-source identity، changelog/release notes، provenance لازم و release gate معادل REL-5/6 را حفظ کند.
-- `release.strategy=release-please` مسیر پیش‌فرض scaffold است و `release.workflow` پیش‌فرض `.github/workflows/release.yml`، که `kavosh-release.yml` را صدا می‌زند.
+- `release.strategy=release-please` مسیر پیش‌فرض scaffold است و `release.workflow` پیش‌فرض `.github/workflows/release.yml`، که `kavosh-release.yml` را صدا می‌زند. اگر این مسیر asset منتشر می‌کند، `automation.interface=make` می‌تواند از adapter سازگار `make setup && make package` + `dist/*` استفاده کند؛ هر interface دیگر باید `release.artifact.command` و relative globهای `release.artifact.paths` را صریح اعلام کند. KavoshStart package manager یا task runner خاصی را invariant نمی‌کند.
 - `changesets` یا `custom` باید workflow واقعی و `strategyADR` را در manifest اعلام کند؛ governance وجود adapter و قرارداد معادل را بررسی می‌کند. ابزار downstream حق ندارد با نام متفاوت gate ضعیف‌تری بسازد.
 - `ci.requiredWorkflow` فایل workflow دارای job تجمیعی ثابت `required` را اعلام می‌کند؛ نام فایل invariant نیست.
 - اگر checks همان exact candidate قرمز/غایب باشند هیچ نسخه‌ای ساخته نمی‌شود. tag دستی جای release gate نیست.

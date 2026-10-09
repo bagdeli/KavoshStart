@@ -225,6 +225,12 @@ class Manifest(unittest.TestCase):
     def test_SRC5_negative_schema_violation(self):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T9")))
 
+    def test_SRC5_negative_release_artifact_parent_traversal(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m.setdefault("release", {"strategy": "release-please"})
+        m["release"]["artifact"] = {"command": "make package", "paths": ["../secret.zip"]}
+        self.assertTrue(fails_for("SRC-5", manifest=m))
+
     def test_SRC5_negative_tier_below_classification(self):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T0")))
 

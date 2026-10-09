@@ -2,8 +2,8 @@
 # KavoshStart release (REL-4, REL-5): runs after CI succeeded on main (caller uses on: workflow_run).
 #   1. REL-5 gate: required checks of the exact main commit must exist and have succeeded.
 #   2. release-please: keeps the Release PR up to date; merging it creates tag vX.Y.Z + GitHub Release.
-#   3. package (runtime none/desktop): builds `make package` → dist/* and uploads to that Release in the SAME run,
-#      because releases created with GITHUB_TOKEN do not trigger other workflows.
+#   3. package (deploy.method=release-artifact): resolves the repository release.artifact adapter (or compatible Make default),
+#      builds declared assets and uploads them to that Release in the SAME run because GITHUB_TOKEN releases do not trigger other workflows.
 # Release PRs are created with GITHUB_TOKEN: their CI runs need "Approve and run" by the owner (GitHub rule).
 name: kavosh-release
 
@@ -19,7 +19,7 @@ on:
         type: string
         default: "required,main-guard / main-guard"
       package:
-        description: Build `make package` and attach dist/* to a newly created release (runtime none/desktop)
+        description: Build and attach release artifacts using kavosh.project.json release.artifact (or the default Make adapter)
         type: boolean
         default: false
     outputs:
@@ -367,12 +367,109 @@ jobs:
         if: hashFiles('package.json') != '' && hashFiles('.node-version') == ''
         with:
           node-version: "lts/*"
-      - run: make setup
-      - run: make package
-      - name: Attach dist/* to the release
+      - name: Resolve release artifact adapter
+        env:
+          KAVOSH_ARTIFACT_SCRIPT: ${{ runner.temp }}/kavosh-release-artifact.sh
+          KAVOSH_ARTIFACT_PATHS: ${{ runner.temp }}/kavosh-release-artifact-paths.json
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+          manifest = json.loads(pathlib.Path("kavosh.project.json").read_text(encoding="utf-8"))
+          release = manifest.get("release", {}) or {}
+          artifact = release.get("artifact")
+          interface = (manifest.get("automation", {}) or {}).get("interface", "make")
+          if artifact:
+              command = artifact.get("command")
+              paths = artifact.get("paths")
+          elif interface == "make":
+              command = "make setup\nmake package"
+              paths = ["dist/*"]
+          else:
+              sys.exit(f"REL-4: automation.interface={interface} requires release.artifact.command + paths")
+          if not isinstance(command, str) or not command.strip():
+              sys.exit("REL-4: release.artifact.command must be non-empty")
+          if not isinstance(paths, list) or not paths or any(not isinstance(p, str) or not p for p in paths):
+              sys.exit("REL-4: release.artifact.paths must be a non-empty list")
+          for pattern in paths:
+              pure = pathlib.PurePosixPath(pattern)
+              if pure.is_absolute() or ".." in pure.parts:
+                  sys.exit(f"REL-4: unsafe release artifact path: {pattern}")
+          script = pathlib.Path(os.environ["KAVOSH_ARTIFACT_SCRIPT"])
+          script.write_text("#!/usr/bin/env bash\nset -euo pipefail\n" + command.rstrip() + "\n", encoding="utf-8")
+          script.chmod(0o700)
+          pathlib.Path(os.environ["KAVOSH_ARTIFACT_PATHS"]).write_text(json.dumps(paths), encoding="utf-8")
+          print(f"release artifact adapter: {interface}; {len(paths)} path pattern(s)")
+          PY
+      - name: Build release artifacts
+        env:
+          KAVOSH_ARTIFACT_SCRIPT: ${{ runner.temp }}/kavosh-release-artifact.sh
+        run: bash "$KAVOSH_ARTIFACT_SCRIPT"
+      - name: Attach declared artifacts to the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.release.outputs.tag }}
+          REPO: ${{ github.repository }}
+          KAVOSH_ARTIFACT_PATHS: ${{ runner.temp }}/kavosh-release-artifact-paths.json
         run: |
-          ls dist/* >/dev/null 2>&1 || { echo "make package produced no files in dist/"; exit 1; }
-          gh release upload "$TAG" dist/* --clobber --repo "${{ github.repository }}"
+          python3 - <<'PY'
+          import glob, json, mimetypes, os, pathlib, sys, urllib.error, urllib.parse, urllib.request
+
+          token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+          if not token:
+              sys.exit("GitHub API token is unavailable")
+          repo, tag = os.environ["REPO"], os.environ["TAG"]
+          root = pathlib.Path.cwd().resolve()
+          patterns = json.loads(pathlib.Path(os.environ["KAVOSH_ARTIFACT_PATHS"]).read_text(encoding="utf-8"))
+          files = []
+          for pattern in patterns:
+              for raw in glob.glob(pattern, recursive=True):
+                  path = pathlib.Path(raw)
+                  if path.is_symlink():
+                      sys.exit(f"REL-4: release artifact symlink is forbidden: {raw}")
+                  if not path.is_file():
+                      continue
+                  resolved = path.resolve()
+                  try:
+                      resolved.relative_to(root)
+                  except ValueError:
+                      sys.exit(f"REL-4: release artifact escapes repository: {raw}")
+                  files.append(resolved)
+          files = sorted(set(files))
+          if not files:
+              sys.exit(f"REL-4: release artifact adapter produced no files for {patterns}")
+          names = [p.name for p in files]
+          if len(names) != len(set(names)):
+              sys.exit("REL-4: release artifacts must have unique basenames")
+
+          api = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+          def request(url, method="GET", data=None, extra=None):
+              h = dict(headers)
+              if extra:
+                  h.update(extra)
+              req = urllib.request.Request(url, data=data, method=method, headers=h)
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as response:
+                      raw = response.read().decode("utf-8")
+                      return json.loads(raw) if raw.strip() else None
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise SystemExit(f"GitHub API {method} failed: HTTP {exc.code} {detail}") from exc
+
+          release = request(f"{api}/repos/{repo}/releases/tags/{urllib.parse.quote(tag, safe='')}")
+          existing = {a.get("name") for a in release.get("assets", [])}
+          duplicates = [name for name in names if name in existing]
+          if duplicates:
+              sys.exit(f"REL-4: refusing to overwrite existing release asset(s): {duplicates}")
+          upload_base = release["upload_url"].split("{", 1)[0]
+          for path in files:
+              data = path.read_bytes()
+              ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+              url = upload_base + "?" + urllib.parse.urlencode({"name": path.name})
+              request(url, method="POST", data=data, extra={"Content-Type": ctype})
+              print(f"uploaded release asset: {path.relative_to(root)}")
+          PY

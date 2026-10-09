@@ -14,6 +14,8 @@ class RuntimeDependencies(unittest.TestCase):
             ROOT / "tooling/src/release_gate.py",
             ROOT / "tooling/src/rc_gate.py",
             ROOT / "tooling/templates/kavosh-governance.yml",
+            ROOT / "tooling/templates/kavosh-release.yml",
+            ROOT / ".github/workflows/kavosh-release.yml",
         ]
         forbidden = (
             'subprocess.run(["gh"',
@@ -21,6 +23,7 @@ class RuntimeDependencies(unittest.TestCase):
             '["gh", "api"]',
             "['gh', 'api']",
             "gh api ",
+            "gh release ",
         )
         for path in paths:
             text = path.read_text(encoding="utf-8")
