@@ -89,6 +89,19 @@ def expected_tier(m):
     return "T0"
 
 
+def standard_lifecycle_problems(m):
+    """STD-2 / ACC-1: normal operation cannot remain in legacy adoption and T2 uses continuous acceptance."""
+    out = []
+    adoption = m.get("adoptionPhase") is True
+    out.append(("fail" if adoption else "ok", "STD-2", "Legacy adoption mode is closed",
+                "remove adoptionPhase: true; record bounded exceptions instead" if adoption else "normal enforcing operation"))
+    if m.get("tier") == "T2":
+        mode = m.get("acceptance", {}).get("mode", "none")
+        out.append(("ok" if mode == "continuous" else "fail", "ACC-1", "T2 uses continuous acceptance",
+                    mode if mode == "continuous" else "set acceptance.mode=continuous and bootstrap acceptance/scope.json"))
+    return out
+
+
 def check_manifest(actual_repo=None):
     p = Path("kavosh.project.json")
     if not p.exists():
@@ -111,6 +124,8 @@ def check_manifest(actual_repo=None):
         add("fail", "SRC-5", "Tier consistent with CLASSIFICATION.md", f"manifest {m['tier']} < classified {exp}; raise tier or add tierOverride ADR")
     else:
         add("ok", "SRC-5", "Tier consistent with CLASSIFICATION.md", f"{m['tier']} (classified {exp})")
+    for level, rule, title, detail in standard_lifecycle_problems(m):
+        add(level, rule, title, detail)
     rt, method = m["runtime"], m["deploy"]["method"]
     if rt in ("server", "static") and method not in ("pull-build", "pull-image", "custom"):
         add("fail", "DEP-1", "Deploy method fits runtime", f"runtime {rt} needs pull-build, pull-image or ADR-backed custom, got {method}")
