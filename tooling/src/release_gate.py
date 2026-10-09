@@ -129,7 +129,20 @@ def acceptance_reasons(repo, sha, api=None):
         seen.add(aid)
         owner = item.get("owner")
         issue_no = item.get("issue")
+        risk = item.get("risk")
         evidence = item.get("evidence") if isinstance(item.get("evidence"), list) else []
+        if not isinstance(owner, str) or not owner:
+            reasons.append(f"{aid}: invalid owner")
+            continue
+        if risk not in ("low", "medium", "high", "critical"):
+            reasons.append(f"{aid}: invalid risk")
+            continue
+        if not evidence or "ci" not in evidence:
+            reasons.append(f"{aid}: evidence must include ci")
+            continue
+        if risk in ("high", "critical") and "test" not in evidence:
+            reasons.append(f"{aid}: high/critical risk requires test evidence")
+            continue
         deferred = item.get("deferredTo")
         if deferred:
             dm = ACCEPTANCE_RELEASE_RE.fullmatch(deferred) if isinstance(deferred, str) else None
