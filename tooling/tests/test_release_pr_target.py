@@ -24,6 +24,7 @@ class ReleasePrBridgeContract(unittest.TestCase):
         self.assertIn("required-workflow:", text)
         self.assertIn("kavosh-workflow:", text)
         self.assertIn("checks: write", text)
+        self.assertIn("statuses: write", text)
         self.assertIn("actions: write", text)
         self.assertIn("--verify-release-pr", text)
         self.assertIn("required", text)
