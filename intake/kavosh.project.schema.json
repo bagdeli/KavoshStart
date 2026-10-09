@@ -338,6 +338,11 @@
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
           "description": "Required for any self-hosted runner; must establish rootless or disposable-VM isolation. Public use must address fork/untrusted code."
+        },
+        "requiredWorkflow": {
+          "type": "string",
+          "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
+          "description": "Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."
         }
       }
     },
@@ -417,7 +422,12 @@
         "strategyADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Required when strategy=custom to explain equivalent versioning, provenance and gating."
+          "description": "Required for changesets/custom strategies; proves equivalent SemVer, vX.Y.Z immutable tag, exact-source provenance and release gating."
+        },
+        "workflow": {
+          "type": "string",
+          "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
+          "description": "Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."
         }
       }
     },
