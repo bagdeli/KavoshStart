@@ -16,6 +16,8 @@ SCHEMA = (json.loads(_SCHEMA_SRC) if not _SCHEMA_SRC.startswith("__") else
 
 TIER_BUDGET = {"T0": 100, "T1": 300, "T2": 700}
 TIER_ORDER = {"T0": 0, "T1": 1, "T2": 2}
+SELF_STANDARD_REPO = "bagdeli/KavoshStart"
+KAVOSHSTART_TAG_RE = re.compile(r"^v[0-9]+[.][0-9]+[.][0-9]+$")
 SHA_RE = re.compile(r"\b[0-9a-f]{40}\b")
 ISSUE_REF_RE = re.compile(r"(?<![\w&])#\d{2,}\b")
 DATE_RE = re.compile(r"\b20\d\d-\d\d-\d\d\b")
@@ -89,6 +91,26 @@ def expected_tier(m):
     return "T0"
 
 
+def standard_pin_problems(m, actual_repo=None):
+    """STD-1: consumers pin exact releases; only KavoshStart itself may use the reserved self identity."""
+    trusted_repo = actual_repo or m.get("repo")
+    declared_repo = m.get("repo")
+    pin = m.get("kavoshStart")
+    is_standard = trusted_repo == SELF_STANDARD_REPO and declared_repo == SELF_STANDARD_REPO
+    if pin == "self":
+        if is_standard:
+            return [("ok", "STD-1", "KavoshStart self-hosting identity", "self → checked-out canonical source")]
+        return [("fail", "STD-1", "Reserved KavoshStart self identity",
+                 f"'self' is valid only for {SELF_STANDARD_REPO}; consumers must pin vX.Y.Z")]
+    if is_standard:
+        return [("fail", "STD-1", "KavoshStart self-hosting identity",
+                 "canonical KavoshStart must use kavoshStart: self, not a previous/future release tag")]
+    if not isinstance(pin, str) or not KAVOSHSTART_TAG_RE.fullmatch(pin):
+        return [("fail", "STD-1", "Consumer KavoshStart exact pin",
+                 f"expected vX.Y.Z, got {pin!r}")]
+    return [("ok", "STD-1", "Consumer KavoshStart exact pin", pin)]
+
+
 def standard_lifecycle_problems(m):
     """STD-2 / ACC-1: normal operation cannot remain in legacy adoption and T2 uses continuous acceptance."""
     out = []
@@ -119,6 +141,8 @@ def check_manifest(actual_repo=None):
     if actual_repo and m.get("repo") != actual_repo:
         add("fail", "SRC-5", "Manifest identity matches GitHub event",
             f"manifest repo {m.get('repo')} does not match trusted repository {actual_repo}")
+    for level, rule, title, detail in standard_pin_problems(m, actual_repo):
+        add(level, rule, title, detail)
     exp = expected_tier(m)
     if TIER_ORDER[m["tier"]] < TIER_ORDER[exp] and not (m.get("tierOverride") and Path(m["tierOverride"]).exists()):
         add("fail", "SRC-5", "Tier consistent with CLASSIFICATION.md", f"manifest {m['tier']} < classified {exp}; raise tier or add tierOverride ADR")
@@ -430,7 +454,7 @@ def release_tag_config(text):
 
 
 USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*['\"]?([^'\"\s#]+)", re.M)
-EXACT_TAG_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+EXACT_TAG_RE = KAVOSHSTART_TAG_RE
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 KAVOSH_WF = "bagdeli/KavoshStart/.github/workflows/"
 
