@@ -82,13 +82,20 @@ jobs:
 
           def evaluate_checks(runs, required):
               latest = {}
+              pending = {}
               for run in runs:
                   name = run.get("name", "")
+                  if run.get("status") != "completed":
+                      pending[name] = run
                   stamp = run.get("started_at") or run.get("created_at") or ""
                   old = latest.get(name)
                   old_stamp = (old or {}).get("started_at") or (old or {}).get("created_at") or ""
-                  if old is None or stamp >= old_stamp:
+                  pending_now = run.get("status") != "completed"
+                  pending_old = (old or {}).get("status") != "completed"
+                  if (old is None or stamp > old_stamp or
+                          (pending_now and not pending_old and (not stamp or stamp == old_stamp))):
                       latest[name] = run
+              latest.update(pending)
               reasons = []
               for name in required:
                   run = latest.get(name)
@@ -204,6 +211,18 @@ jobs:
                   return 1
               if reasons:
                   print("REL-7 gate CLOSED:")
+                  for reason in reasons:
+                      print(f"  - {reason}")
+                  return 1
+              # Re-read the exact main/check/tag state immediately before mutation. The owner authorization
+              # is capability-scoped to this tag + SHA and expires if main/check state moved.
+              try:
+                  reasons = run_gate(args.repo, args.tag, args.sha, required)
+              except RuntimeError as exc:
+                  print(f"REL-7 pre-create gate CLOSED: {exc}")
+                  return 1
+              if reasons:
+                  print("REL-7 pre-create gate CLOSED:")
                   for reason in reasons:
                       print(f"  - {reason}")
                   return 1
