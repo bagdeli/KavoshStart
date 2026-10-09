@@ -81,6 +81,25 @@ class GovernanceFiles(unittest.TestCase):
             path.write_text("Exact source: " + "a" * 40, encoding="utf-8")
         self.assertEqual(fails_for("SRC-2", setup), [])
 
+    def test_SRC2_positive_exact_sha_in_versioned_release_notes(self):
+        def setup(d):
+            path = d / "docs" / "release" / "RELEASE_NOTES_0.1.0.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("Reviewed source commit: " + "a" * 40, encoding="utf-8")
+        self.assertEqual(fails_for("SRC-2", setup), [])
+
+    def test_SRC4_positive_standards_citation_is_not_live_issue_state(self):
+        def setup(d):
+            (d / "AGENTS.md").write_text("# Agent rules\nUse UTS #39 confusable detection.\n", encoding="utf-8")
+        warnings = [r for r in run_files(setup) if r[0] == "warn" and r[1] == "SRC-4"]
+        self.assertEqual(warnings, [])
+
+    def test_SRC4_negative_explicit_issue_reference_is_live_state(self):
+        def setup(d):
+            (d / "AGENTS.md").write_text("# Agent rules\nCurrent blocker: Issue #39.\n", encoding="utf-8")
+        warnings = [r for r in run_files(setup) if r[0] == "warn" and r[1] == "SRC-4"]
+        self.assertTrue(warnings)
+
     def test_SRC3_negative_status_file(self):
         self.assertTrue(fails_for("SRC-3", lambda d: (d / "STATUS.md").write_text("status", encoding="utf-8")))
 
