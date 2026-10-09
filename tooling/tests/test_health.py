@@ -72,6 +72,39 @@ class MinuteBudget(unittest.TestCase):
         self.assertEqual(h.minute_budget_level(101, 100), (False, 101))
 
 
+class AcceptanceDebt(unittest.TestCase):
+    def test_ACC2_positive_closed_evidenced_and_approved_defer(self):
+        scope = {"schemaVersion": 1, "items": [
+            {"id": "AC-001", "issue": 12, "owner": "bagdeli"},
+            {"id": "AC-002", "issue": 13, "owner": "bagdeli", "deferredTo": "v0.2.0", "deferIssue": 14},
+        ]}
+        issues = {
+            12: {"state": "closed", "body": "Acceptance-Merged-SHA: " + "a" * 40 +
+                 "\nAcceptance-Evidence-Run: https://github.com/o/r/actions/runs/1\nAccepted-By: @bagdeli\n"},
+            14: {"state": "closed", "body": "Defer-Approved-By: @bagdeli\n"},
+        }
+        out = h.acceptance_health(scope, issues.get)
+        self.assertEqual(out["open"], [])
+        self.assertEqual(out["missing_evidence"], [])
+        self.assertEqual(out["defer_problems"], [])
+
+    def test_ACC2_negative_surfaces_open_missing_evidence_and_bad_defer(self):
+        scope = {"schemaVersion": 1, "items": [
+            {"id": "AC-001", "issue": 12, "owner": "bagdeli"},
+            {"id": "AC-002", "issue": 13, "owner": "bagdeli"},
+            {"id": "AC-003", "owner": "bagdeli", "deferredTo": "v0.2.0", "deferIssue": 14},
+        ]}
+        issues = {
+            12: {"state": "open", "body": "", "created_at": "2026-09-01T00:00:00Z"},
+            13: {"state": "closed", "body": "Accepted-By: @bagdeli\n"},
+            14: {"state": "closed", "body": ""},
+        }
+        out = h.acceptance_health(scope, issues.get)
+        self.assertEqual(out["open"], ["AC-001"])
+        self.assertEqual(out["missing_evidence"], ["AC-002"])
+        self.assertEqual(out["defer_problems"], ["AC-003"])
+
+
 class TemplateHardening(unittest.TestCase):
     def test_CI2_runner_installer_rejects_rootful_docker_and_is_ephemeral(self):
         """Covers: CI-2 (negative rootful access, positive ephemeral rootless runner)"""
