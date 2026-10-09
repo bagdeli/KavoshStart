@@ -13,6 +13,7 @@
     "visibility",
     "tier",
     "runtime",
+    "capabilities",
     "users",
     "data",
     "size",
@@ -480,6 +481,27 @@
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"
         }
       }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "control-plane",
+          "package",
+          "server",
+          "browser-ui",
+          "desktop",
+          "persistent-data",
+          "migration",
+          "infrastructure",
+          "release-artifact",
+          "regulated",
+          "cms-wordpress"
+        ]
+      },
+      "description": "Composable project capabilities. Tier controls assurance/process; runtime controls execution shape; capabilities control domain-specific applicability/evidence. Technology names are not capabilities."
     }
   }
 }

@@ -16,7 +16,7 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
 | B0 | R | ریپو خصوصی باشد یا عمومی؟ | `visibility`, `ci.runner` | private → GitHub-hosted با مجوز مستقیم برای هر run یا isolated self-hosted به‌صورت اختیاری؛ public → standard GitHub-hosted. برای T1/static، حالت local-only با `ci.runner: none` و بودجه صفر اختیاری است. Default private |
-| B0b | R* | اگر self-hosted انتخاب شد، runner اختصاصی کجاست و مرز isolation آن چیست؟ | `ci.runnerLabels`, `ci.runners` | rootless Docker or disposable dedicated VM; labels `[self-hosted, linux, x64, <repo-slug>]`. Capacity follows queue/SLO. |
+| B0b | R* | اگر self-hosted انتخاب شد، trust model، isolation/containment، مرز کد نامطمئن و credential boundary چیست؟ | `ci.runnerLabels`, `ci.runners`, `ci.trustModelADR` | implementation خاص invariant نیست؛ dedicated/ephemeral/rootless/container/VM فقط وقتی معتبرند که boundary واقعی و مستند داشته باشند. labels `[self-hosted, linux, x64, <repo-slug>]`. Capacity follows queue/SLO. |
 | B1 | R | آیا برنامه باید روی سرور همیشه روشن اجرا شود؟ | `runtime` | No → `none` (library/CLI/script) or `desktop`; only static files → `static`; yes → `server` |
 | B2 | R* | سرور کجاست؟ ایران / خارج / هر دو؟ | `deploy.location` | *if runtime=server |
 | B3 | R* | سرور به github.com و ghcr.io دسترسی پایدار دارد؟ | `deploy.method` | yes → `pull-image` or `pull-build`; no → `pull-build` via mirror/relay (KavoshRepo) |
@@ -53,6 +53,7 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 | F2 | R | کدام عامل‌ها روی آن کار می‌کنند؟ | `agents` | `claude`, `codex`, `copilot`, `gemini` |
 | F3 |   | وابستگی به ریپوهای دیگر Kavosh؟ | `dependsOn` | e.g. `KavoshLicense`, `KavoshUI` |
 | F4 | R | آیا این پروژه را ریپوهای دیگر Kavosh مصرف می‌کنند (کتابخانه/استاندارد)؟ | `projectKind` | `application` / `library` / `tool`; library ⇒ at least T1 |
+| F5 | R | این پروژه چه capabilityهای پایدار دارد؟ | `capabilities` | choose from `control-plane`, `package`, `server`, `browser-ui`, `desktop`, `persistent-data`, `migration`, `infrastructure`, `release-artifact`, `regulated`, `cms-wordpress`; derive obvious entries from earlier answers, then ask only for non-derivable scope |
 
 ## Rules for asking
 - Ask everything missing in **one** message. Number the questions with the IDs above.

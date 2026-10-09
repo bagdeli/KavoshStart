@@ -388,6 +388,61 @@ class ArchitecturalDecision(unittest.TestCase):
         self.assertTrue(any(r[1] == "DOC-2" for r in fails(out)))
 
 
+class CapabilityProfiles(unittest.TestCase):
+    def test_CAP1_positive_nonempty_catalog_capabilities(self):
+        out = g.capability_profile_problems({
+            "capabilities": ["control-plane", "infrastructure"],
+            "runtime": "none",
+            "ui": {"kind": "none"},
+            "stack": {"database": "none", "frameworks": []},
+            "deploy": {"method": "none"},
+            "data": {"sensitivity": "none", "regulatedIntegrations": []},
+        })
+        self.assertEqual(fails(out), [])
+
+    def test_CAP1_negative_missing_duplicate_or_malformed_capabilities(self):
+        cases = [
+            {},
+            {"capabilities": []},
+            {"capabilities": ["server", "server"]},
+            {"capabilities": ["server", {"name": "browser-ui"}]},
+            {"capabilities": ["made-up-capability"]},
+        ]
+        for manifest in cases:
+            with self.subTest(manifest=manifest):
+                self.assertTrue(any(r[1] == "CAP-1" for r in fails(g.capability_profile_problems(manifest))))
+
+    def test_CAP2_positive_derivable_capabilities_are_composable(self):
+        m = {
+            "capabilities": [
+                "package", "server", "browser-ui", "persistent-data", "migration",
+                "release-artifact", "regulated", "cms-wordpress", "infrastructure",
+            ],
+            "projectKind": "library",
+            "runtime": "server",
+            "ui": {"kind": "admin"},
+            "stack": {"database": "postgresql", "frameworks": ["WordPress", "WooCommerce"]},
+            "deploy": {"method": "release-artifact"},
+            "data": {"sensitivity": "financial", "regulatedIntegrations": ["bank"]},
+        }
+        self.assertEqual(fails(g.capability_profile_problems(m)), [])
+
+    def test_CAP2_negative_manifest_facts_cannot_hide_required_capabilities(self):
+        m = {
+            "capabilities": ["server"],
+            "runtime": "server",
+            "ui": {"kind": "web"},
+            "stack": {"database": "mysql", "frameworks": ["wordpress"]},
+            "deploy": {"method": "pull-build"},
+            "data": {"sensitivity": "personal", "regulatedIntegrations": ["payment-provider"]},
+        }
+        out = fails(g.capability_profile_problems(m))
+        cap2 = [r for r in out if r[1] == "CAP-2"]
+        self.assertEqual(len(cap2), 1)
+        for expected in ("browser-ui", "persistent-data", "migration", "regulated", "cms-wordpress"):
+            self.assertIn(expected, cap2[0][3])
+
+
 class ChangeRisk(unittest.TestCase):
     def test_CR1_positive_declared_risk_and_capabilities(self):
         """Covers: CR-1 (positive)"""

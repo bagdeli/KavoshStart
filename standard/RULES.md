@@ -28,6 +28,12 @@
 | STD-1 | هر **مصرف‌کننده** KavoshStart باید `kavoshStart: vX.Y.Z` دقیق داشته باشد و Health آن را با آخرین Release پایدار مقایسه کند؛ مقدار رزروشدهٔ `self` فقط برای `bagdeli/KavoshStart` مجاز است و همان repo باید local checked-out source را اجرا کند. consumer با `self` و خود KavoshStart با pin نسخه‌ای fail می‌شوند. ارتقا خودکار ممنوع؛ تغییر control-plane پیش از feature/gate جدید یا upgrade می‌شود یا defer محدود و صریح مالک می‌گیرد. | MUST | All | P, H, R |
 | STD-2 | `adoptionPhase: true` در پروژه‌ای که این استاندارد را پذیرفته مجاز نیست؛ adoption یک migration محدود است و کار عادی فقط با governance اجباری ادامه می‌یابد. deviation واقعی با exception traceable ثبت می‌شود، نه report-only mode. | MUST | All | P |
 
+## CAP — قابلیت‌های composable پروژه
+| ID | قاعده | سطح | Tier | لایه |
+|---|---|---|---|---|
+| CAP-1 | هر پروژه‌ای که این نسخه یا جدیدتر را می‌پذیرد یک آرایهٔ غیرخالی و بدون تکرار `capabilities` از catalog رسمی دارد. Capability فناوری/فریم‌ورک نیست؛ یک سطح applicability/evidence مانند `package`، `browser-ui`، `persistent-data` یا `infrastructure` است. | MUST | All | P |
+| CAP-2 | capabilityهای قابل‌اثبات از facts مانیفست باید اعلام شده باشند: library→`package`، runtime server→`server`، UI web/admin→`browser-ui`، runtime desktop→`desktop`، database→`persistent-data`+`migration`، deploy release-artifact→`release-artifact`، financial/regulated integration→`regulated`، WordPress/WooCommerce→`cms-wordpress`. capabilityهای صریحی مانند `control-plane` یا `infrastructure` فقط وقتی واقعاً در scope پروژه‌اند اضافه می‌شوند؛ capability هیچ Tier/Runtime fact را override نمی‌کند. | MUST | All | P |
+
 ## CR — ریسک تغییر و شواهد
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|

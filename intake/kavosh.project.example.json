@@ -87,5 +87,12 @@
   },
   "automation": {
     "interface": "make"
-  }
+  },
+  "capabilities": [
+    "server",
+    "browser-ui",
+    "persistent-data",
+    "migration",
+    "regulated"
+  ]
 }

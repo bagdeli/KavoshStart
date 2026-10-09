@@ -257,6 +257,60 @@
       }
     },
     {
+      "id": "CAP-1",
+      "statement": "هر پروژه‌ای که این نسخه یا جدیدتر را می‌پذیرد یک آرایهٔ غیرخالی و بدون تکرار `capabilities` از catalog رسمی دارد. Capability فناوری/فریم‌ورک نیست؛ یک سطح applicability/evidence مانند `package`، `browser-ui`، `persistent-data` یا `infrastructure` است.",
+      "level": "MUST",
+      "tier": "All",
+      "enforcement": {
+        "raw": "P",
+        "layers": [
+          "P"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": true,
+        "humanReview": false
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v2.0.6",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": true,
+        "contract": "tooling/tests/test_rules.py"
+      }
+    },
+    {
+      "id": "CAP-2",
+      "statement": "capabilityهای قابل‌اثبات از facts مانیفست باید اعلام شده باشند: library→`package`، runtime server→`server`، UI web/admin→`browser-ui`، runtime desktop→`desktop`، database→`persistent-data`+`migration`، deploy release-artifact→`release-artifact`، financial/regulated integration→`regulated`، WordPress/WooCommerce→`cms-wordpress`. capabilityهای صریحی مانند `control-plane` یا `infrastructure` فقط وقتی واقعاً در scope پروژه‌اند اضافه می‌شوند؛ capability هیچ Tier/Runtime fact را override نمی‌کند.",
+      "level": "MUST",
+      "tier": "All",
+      "enforcement": {
+        "raw": "P",
+        "layers": [
+          "P"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": true,
+        "humanReview": false
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v2.0.6",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": true,
+        "contract": "tooling/tests/test_rules.py"
+      }
+    },
+    {
       "id": "CR-1",
       "statement": "هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند.",
       "level": "MUST",
