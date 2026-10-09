@@ -1,4 +1,4 @@
-"""Contract test (#7): every MUST in standard/RULES.md that claims a machine layer (P, M, G, H, O) must have at least
+"""Contract test (#7): every MUST in standard/RULES.md that claims a machine layer (P, M, G, H, O, E) must have at least
 one positive and one negative offline test. Keeps RULES.md, documentation and code from drifting apart.
 
 How a test declares coverage (either works):
@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = ROOT / "standard" / "RULES.md"
-MACHINE = {"P", "M", "G", "H", "O"}
+MACHINE = {"P", "M", "G", "H", "O", "E"}
 ROW = re.compile(r"^\|\s*([A-Z]+-\d+)\s*\|(.*)\|\s*(MUST|SHOULD|MAY)\s*\|([^|]*)\|([^|]*)\|\s*$")
 NAME = re.compile(r"^test_([A-Z]+)(\d+)_(positive|negative)")
 COVERS = re.compile(r"Covers:\s*([^\n]+)")
