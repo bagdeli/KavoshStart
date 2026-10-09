@@ -14,7 +14,7 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | SRC-1 | وضعیت زنده (کار باز، اولویت، مسئول، نسخه‌ی منتشرشده) فقط در GitHub: Issue، Project، PR، Release. | MUST | All | via SRC-2, SRC-3, SRC-4 |
-| SRC-2 | هیچ SHA کامل (40 hex) در فایل‌های Markdown، به‌جز `CHANGELOG.md`، `docs/decisions/`، `audits/`. | MUST | All | P |
+| SRC-2 | هیچ SHA کامل (40 hex) در فایل‌های Markdown، به‌جز `CHANGELOG.md`، `docs/decisions/` و مسیرهای audit/provenance رسمی (`audits/` یا `docs/audits/`). exact source SHA در evidence audit مجاز است؛ Markdown عادی نباید live-state را با SHA منجمد کند. | MUST | All | P |
 | SRC-3 | فایل‌های ردیاب وضعیت (`STATUS.md`، `HANDOFF.md`، `PROJECT_STATE.md`، `CURRENT_STATE.md`) و پوشه‌ی `archive/` وجود ندارند. | MUST | All | P |
 | SRC-4 | `AGENTS.md` به Issue/PR خاص به‌عنوان «مرجع فعلی» ارجاع نمی‌دهد و تاریخ وضعیت ندارد. | SHOULD | All | P |
 | SRC-5 | هر پروژه `kavosh.project.json` معتبر در ریشه دارد. | MUST | All | P |
