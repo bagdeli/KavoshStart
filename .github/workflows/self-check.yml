@@ -21,6 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: pip install --quiet pyyaml && make check
       - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"
