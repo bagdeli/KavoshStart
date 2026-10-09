@@ -18,8 +18,10 @@ notices (the portfolio issue stops updating). The standard does not claim visibi
 import base64
 import json
 import os
-import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,21 +40,47 @@ PUBLIC_INVENTORY = Path(__file__).resolve().parents[1] / ".github" / "kavosh-pub
 
 
 class Api:
-    """Thin gh wrapper; tests replace it with a fake exposing the same two methods."""
+    """GitHub REST via Python stdlib; tests replace this with fakes at the same trust boundary."""
+
+    def request(self, path, method="GET", payload=None, allow_status=()):
+        base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+        token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        if not token:
+            raise PermissionError("GitHub API token is unavailable")
+        url = path if path.startswith("https://") else f"{base}/{path.lstrip('/')}"
+        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        req = urllib.request.Request(
+            url, data=data, method=method,
+            headers={"Authorization": f"Bearer {token}",
+                     "Accept": "application/vnd.github+json",
+                     "X-GitHub-Api-Version": "2022-11-28",
+                     "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                raw = response.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            if exc.code in set(allow_status):
+                return None
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise PermissionError(f"GitHub API {method} {path}: HTTP {exc.code} {detail[:200]}") from exc
+        return json.loads(raw) if raw.strip() else None
 
     def get(self, path):
-        r = subprocess.run(["gh", "api", path], capture_output=True, text=True, encoding="utf-8")
-        if r.returncode != 0:
-            if "Not Found" in r.stderr or "404" in r.stderr:
-                return None
-            raise PermissionError(r.stderr.strip()[:200])
-        return json.loads(r.stdout) if r.stdout.strip() else None
+        return self.request(path, allow_status=(404,))
 
     def repos(self, owner):
-        r = subprocess.run(["gh", "repo", "list", owner, "--limit", "300", "--json",
-                            "nameWithOwner,isPrivate,isArchived,defaultBranchRef"],
-                           capture_output=True, text=True, encoding="utf-8", check=True)
-        return json.loads(r.stdout)
+        out = []
+        for page in range(1, 4):
+            batch = self.get(f"users/{owner}/repos?per_page=100&page={page}") or []
+            out += [{"nameWithOwner": item.get("full_name"),
+                     "isPrivate": item.get("private"),
+                     "isArchived": item.get("archived"),
+                     "defaultBranchRef": {"name": item.get("default_branch")}}
+                    for item in batch]
+            if len(batch) < 100:
+                break
+        return out
 
 
 def content(api, repo, path, ref):
@@ -189,28 +217,44 @@ def run(api, owner, inventory=None):
     return "\n".join(lines) + "\n", total_findings
 
 
-def update_issue(text):
-    def gh(*a):
-        return subprocess.run(["gh", *a], capture_output=True, text=True, encoding="utf-8")
-    gh("label", "create", "kavosh:portfolio", "-R", HOME, "--color", "5319E7", "--description", "Layer O portfolio findings", "--force")
-    found = json.loads(gh("issue", "list", "-R", HOME, "--label", "kavosh:portfolio", "--state", "open", "--json", "number").stdout or "[]")
+def update_issue(text, findings, api=None):
+    """Keep one canonical public Layer O issue; green closes it, findings create/update it."""
+    api = api or Api()
+    api.request(f"repos/{HOME}/labels", method="POST",
+                payload={"name": "kavosh:portfolio", "color": "5319E7",
+                         "description": "Layer O portfolio findings"},
+                allow_status=(422,))
+    label = urllib.parse.quote("kavosh:portfolio", safe="")
+    found = api.get(f"repos/{HOME}/issues?labels={label}&state=open&per_page=100") or []
+    found = [item for item in found if "pull_request" not in item]
+    if findings == 0:
+        if found:
+            number = found[0]["number"]
+            api.request(f"repos/{HOME}/issues/{number}", method="PATCH",
+                        payload={"state": "closed", "state_reason": "completed"})
+            api.request(f"repos/{HOME}/issues/{number}/comments", method="POST",
+                        payload={"body": "Latest Layer O report has zero findings."})
+        return
     if found:
-        gh("issue", "edit", str(found[0]["number"]), "-R", HOME, "--body", text)
+        api.request(f"repos/{HOME}/issues/{found[0]['number']}", method="PATCH", payload={"body": text})
     else:
-        gh("issue", "create", "-R", HOME, "--title", "Portfolio supervisor (Layer O)", "--label", "kavosh:portfolio", "--body", text)
+        api.request(f"repos/{HOME}/issues", method="POST",
+                    payload={"title": "Portfolio supervisor (Layer O)",
+                             "labels": ["kavosh:portfolio"], "body": text})
 
 
 def main(argv):
     if not argv or argv[0].startswith("-"):
         print(__doc__)
         return 2
-    text, findings = run(Api(), argv[0])
+    api = Api()
+    text, findings = run(api, argv[0])
     print(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         Path(summary).open("a", encoding="utf-8").write(text)
     if "--update-issue" in argv:
-        update_issue(text)
+        update_issue(text, findings, api)
     return 1 if findings else 0
 
 
