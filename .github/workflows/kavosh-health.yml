@@ -172,6 +172,17 @@ jobs:
               return not (visibility == "public" and runner == "github-hosted")
 
 
+          SEMVER_TAG_RE = re.compile(r"^v([0-9]+)[.]([0-9]+)[.]([0-9]+)$")
+
+
+          def kavoshstart_freshness_level(pinned, latest):
+              """STD-1: exact pins stay stable, while an older/newer-than-published pin is visible to health."""
+              pm, lm = SEMVER_TAG_RE.fullmatch(pinned or ""), SEMVER_TAG_RE.fullmatch(latest or "")
+              if not pm or not lm:
+                  return "warn"
+              return True if tuple(map(int, pm.groups())) == tuple(map(int, lm.groups())) else "warn"
+
+
           def report_is_green(rows):
               """A health report is green only when no check failed or warned."""
               return all(status == "✅" for status, *_ in rows)
@@ -237,6 +248,21 @@ jobs:
               limits = manifest.get("limits", {})
               budget = manifest.get("ci", {}).get("monthlyMinutesBudget")
               add(bool(manifest), "SRC-5", "Manifest present", manifest.get("tier", "missing"), "kavosh.project.json")
+
+              # Standard lifecycle. KavoshStart itself executes local current-source workflows, so consumer freshness applies downstream.
+              if repo != "bagdeli/KavoshStart" and manifest:
+                  latest_release = gh("repos/bagdeli/KavoshStart/releases/latest", check=False)
+                  latest_tag = (latest_release or {}).get("tag_name")
+                  pinned = manifest.get("kavoshStart")
+                  if latest_tag:
+                      add(kavoshstart_freshness_level(pinned, latest_tag), "STD-1", "KavoshStart standard freshness",
+                          pinned or "missing", f"latest stable {latest_tag}; review CHANGELOG and upgrade/defer explicitly")
+                  else:
+                      add("warn", "STD-1", "KavoshStart standard freshness", pinned or "missing",
+                          "latest release unavailable; retry during the next health/session preflight")
+              if manifest.get("tier") == "T2":
+                  mode = manifest.get("acceptance", {}).get("mode", "none")
+                  add(mode == "continuous", "ACC-2", "T2 continuous acceptance profile", mode, "continuous")
 
               # Branches
               branches = [b["name"] for b in paged(f"repos/{repo}/branches") if b["name"] != default]
