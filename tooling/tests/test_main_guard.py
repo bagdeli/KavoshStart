@@ -61,6 +61,34 @@ class MainGuard(unittest.TestCase):
         api = api_for({"m1": [pr(5, "m1", "h1")]}, {"h1": [check("kavosh / governance"), check("required")]})
         self.assertEqual(mg.inspect(push(("m1", "feat: x")), REPO, REQ, api), [])
 
+    def test_BR6_positive_squash_merge_uses_exact_pr_fallback_during_association_lag(self):
+        """Regression: commit→pull association may lag seconds behind a completed squash merge."""
+        merge = pr(79, "m1", "h1")
+        calls = []
+        def api(path):
+            calls.append(path)
+            if path.endswith("/commits/m1/pulls"):
+                return []
+            if path.endswith("/pulls/79"):
+                return merge
+            if "/commits/h1/check-runs" in path:
+                return {"check_runs": [check("kavosh / governance"), check("required")]}
+            return {"parents": [{"sha": "p"}]}
+        event = push(("m1", "fix(governance): exact squash (#79)"))
+        self.assertEqual(mg.inspect(event, REPO, REQ, api), [])
+        self.assertTrue(any(path.endswith("/pulls/79") for path in calls))
+
+    def test_BR6_negative_pr_suffix_cannot_fake_merge_provenance(self):
+        fake = pr(79, "different-merge", "h1")
+        def api(path):
+            if path.endswith("/commits/m1/pulls"):
+                return []
+            if path.endswith("/pulls/79"):
+                return fake
+            return {"parents": [{"sha": "p"}]}
+        event = push(("m1", "fix: forged-looking title (#79)"))
+        self.assertIn("BR-6 direct push", mg.inspect(event, REPO, REQ, api)[0])
+
     def test_PR7_negative_required_check_missing(self):
         api = api_for({"m1": [pr(5, "m1", "h1")]}, {"h1": [check("kavosh / governance")]})
         v = mg.inspect(push(("m1", "feat: x")), REPO, REQ, api)
