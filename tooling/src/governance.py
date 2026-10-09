@@ -183,7 +183,43 @@ def check_manifest(actual_repo=None):
             f"monthlyMinutesBudget={budget}; billable execution still follows owner/account policy")
     for level, rule, title, detail in runner_manifest_problems(m):
         add(level, rule, title, detail)
+    for level, rule, title, detail in release_adapter_problems(m):
+        add(level, rule, title, detail)
     return m
+
+
+def release_adapter_problems(m):
+    """REL-3/4/5: non-default release tools are adapters, but must prove the same release outcomes."""
+    release = m.get("release", {}) or {}
+    strategy = release.get("strategy", "release-please")
+    if strategy == "release-please":
+        return []
+    out = []
+    workflow = release.get("workflow")
+    if not workflow:
+        out.append(("fail", "REL-4", "Declared release workflow adapter",
+                    f"release.strategy={strategy} requires release.workflow"))
+    elif not Path(workflow).exists():
+        out.append(("fail", "REL-4", "Declared release workflow adapter", f"{workflow} does not exist"))
+    else:
+        out.append(("ok", "REL-4", "Declared release workflow adapter", f"{strategy} → {workflow}"))
+
+    adr_problem = decision_adr_problem(
+        release.get("strategyADR"),
+        ("release strategy", "semver", "vX.Y.Z", "exact source", "provenance", "release gate", "immutable"),
+    )
+    if adr_problem:
+        out.append(("fail", "REL-4", "Equivalent non-default release contract", adr_problem))
+        out.append(("fail", "REL-3", "Repository release tag contract",
+                    "non-default release strategy ADR must explicitly preserve immutable vX.Y.Z tags"))
+    else:
+        out.append(("ok", "REL-4", "Equivalent non-default release contract", release["strategyADR"]))
+        out.append(("ok", "REL-3", "Repository release tag contract", "ADR preserves immutable vX.Y.Z tags"))
+    if strategy == "changesets":
+        out.append(("ok" if Path(".changeset/config.json").exists() else "fail", "REL-4",
+                    "Changesets adapter configuration",
+                    ".changeset/config.json" if Path(".changeset/config.json").exists() else "missing .changeset/config.json"))
+    return out
 
 
 def decision_adr_problem(ref, required_terms):
@@ -428,8 +464,9 @@ def check_files(m, actual_repo=None):
             "; ".join(unpinned[:8]) or "ok")
 
     add("ok" if "PROJECT.md" in files else "fail", "SRC-7", "PROJECT.md exists", "one-page project brief (START.md §1 step 3)")
-    level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
-    add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
+    if m.get("release", {}).get("strategy", "release-please") == "release-please":
+        level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
+        add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
     add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
     if m.get("ci", {}).get("runner") != "none":
         trusted_repo = actual_repo or m.get("repo")
@@ -494,13 +531,26 @@ def wiring_problems(workflows, m, actual_repo=None):
     if re.search(r"^\s*enforce:\s*false", kav, re.M):
         problems.append(("fail", "AI-4", "Governance cannot be downgraded by repository config",
                          "enforce: false cannot authorize a report-only bypass"))
-    ci = workflows.get(".github/workflows/ci.yml", "") or workflows.get(".github/workflows/self-check.yml", "")
-    if not re.search(r"^  required:\s*$", ci, re.M):
-        problems.append(("fail", "CI-7", "CI has a job named `required`", "ci.yml must define job `required`"))
-    rel = workflows.get(".github/workflows/release.yml", "")
-    if prefix + "kavosh-release.yml" not in rel:
-        problems.append(("fail", "REL-5", "release.yml uses the gated kavosh-release", f"expected uses: {prefix}kavosh-release.yml"))
-    return problems or [("ok", "AI-4", "Guard workflows present and wired", "kavosh.yml, ci.yml, release.yml")]
+    ci_path = m.get("ci", {}).get("requiredWorkflow")
+    if not ci_path:
+        ci_path = ".github/workflows/ci.yml" if ".github/workflows/ci.yml" in workflows else ".github/workflows/self-check.yml"
+    ci = workflows.get(ci_path, "")
+    if not ci:
+        problems.append(("fail", "CI-7", "Declared required CI workflow exists", f"missing {ci_path}"))
+    elif not re.search(r"^  required:\s*$", ci, re.M):
+        problems.append(("fail", "CI-7", "CI has a job named `required`", f"{ci_path} must define job `required`"))
+
+    release = m.get("release", {}) or {}
+    strategy = release.get("strategy", "release-please")
+    rel_path = release.get("workflow") or ".github/workflows/release.yml"
+    rel = workflows.get(rel_path, "")
+    if not rel:
+        problems.append(("fail", "REL-5", "Declared release workflow exists", f"missing {rel_path}"))
+    elif strategy == "release-please" and prefix + "kavosh-release.yml" not in rel:
+        problems.append(("fail", "REL-5", "Default release workflow uses gated kavosh-release",
+                         f"expected uses: {prefix}kavosh-release.yml"))
+    return problems or [("ok", "AI-4", "Guard workflows and declared CI/release adapters are wired",
+                         f"kavosh.yml, {ci_path}, {rel_path}")]
 
 
 PLACEHOLDER_RE = re.compile(r"<[^@>\n]*>|example\.com", re.I)  # <Agent>, <email> … but not <a@b.c>
