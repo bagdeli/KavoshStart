@@ -20,7 +20,7 @@
 Milestone  vX.Y.Z                 (T1, T2)
 └─ type:epic      1–6 هفته         (T2)
    └─ type:feature  2–10 روز + spec (T1, T2)
-      └─ type:task   ≤ 1 روز، ≤ 400 خط = یک PR
+      └─ type:task   معمولاً ≤ 1 روز؛ مرز PR بر اساس coherence، risk، testability و reviewability
 type:bug · type:decision (→ ADR) · type:chore
 ```
 - رابطه‌ی والد/فرزند با **sub-issue بومی** GitHub، نه متن «parent #192».
