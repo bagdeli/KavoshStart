@@ -148,6 +148,19 @@ class MainGuard(unittest.TestCase):
         v = mg.inspect(push(("m1", "feat: a"), ("m2", "feat: b")), REPO, REQ, api)
         self.assertTrue(any("one push added 2 commits" in x for x in v))
 
+    def test_record_uses_api_seam_without_github_cli(self):
+        calls = []
+        def api(path, method="GET", payload=None, allow_status=()):
+            calls.append((path, method, payload))
+            if "/issues?" in path:
+                return []
+            return {}
+        event = push(("m1", "fix: hot"))
+        entry = mg.record(REPO, event, ["**BR-6 direct push** test"], api=api)
+        self.assertIn("BR-6 direct push", entry)
+        self.assertTrue(any(path.endswith("/labels") and method == "POST" for path, method, _ in calls))
+        self.assertTrue(any(path.endswith("/issues") and method == "POST" for path, method, _ in calls))
+
     def test_BR7_negative_force_push(self):
         v = mg.inspect(push(forced=True), REPO, REQ, api_for())
         self.assertIn("BR-7 force-push", v[0])
