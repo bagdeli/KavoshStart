@@ -39,7 +39,8 @@ push به main → ci (required) + kavosh (main-guard) → ci موفق → relea
 - اگر CI قرمز است یا اجرا نشده (مثلاً قفل Billing)، هیچ نسخه‌ای ساخته نمی‌شود (REL-5). دور زدن این دروازه با tag دستی تخلف است.
 - tag `v1` قدیمی منجمد است و هرگز جابه‌جا نمی‌شود؛ پروژه‌ها فقط `@vX.Y.Z` دقیق (REL-6).
 - نام tag برای انتشارهای جدید فقط `vX.Y.Z` یا `vX.Y.Z-rc.N` است. انتشار تاریخیِ immutable با نام `KavoshStart-v1.1.0` حفظ می‌شود: health فقط همین tag موجود را grandfather می‌کند، اما هیچ tag نام‌دار تازه‌ای مجاز نیست. هر tag تاریخی را حذف یا جابه‌جا نکنید.
-- پیش‌انتشار: `vX.Y.Z-rc.N` ← سرور test خودکار آن را می‌کشد ← UAT ← نسخه‌ی نهایی ← مالک روی production پین می‌کند.
+- پیش‌انتشار برای Test از workflow `rc` و فقط با dispatch مستقیم مالک ساخته می‌شود: مالک `vX.Y.Z-rc.N` و **SHA کامل current main** را وارد و همان creation را تأیید می‌کند. REL-7 دوباره required checks را روی همان SHA می‌سنجد، tag/release/final collision و RC عقب‌تر را رد می‌کند و سپس GitHub prerelease immutable می‌سازد. ساخت tag دستی، RC branch یا deploy مستقیم main جایگزین این مسیر نیست.
+- پس از RC: سرور Test طبق DEP-2 آن release را می‌کشد، DEP-7/8 environment را با exact tag+SHA می‌پذیرد، UAT/acceptance انجام می‌شود؛ نسخه‌ی نهایی همچنان فقط از Release PR/release-please و REL-5 می‌آید و مالک همان final را روی Production پین می‌کند.
 - hotfix نسخه‌ی قدیمی: شاخه‌ی `release/X.Y` **از روی tag** و فقط برای همان hotfix؛ بعد حذف.
 
 ## Conventional Commits
