@@ -4,8 +4,6 @@ name: kavosh
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, edited]
-  pull_request_target:
-    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   schedule:
@@ -44,24 +42,14 @@ permissions:
 
 jobs:
   kavosh:
-    name: >-
-      ${{ github.event_name == 'pull_request_target' &&
-          !(github.event.pull_request.head.repo.full_name == github.repository &&
-            github.event.pull_request.user.login == 'github-actions[bot]' &&
-            startsWith(github.event.pull_request.head.ref, 'release-please--branches--'))
-          && 'release-pr-target-ignored' || 'kavosh' }}
     if: >-
       github.event_name == 'pull_request' ||
-      (github.event_name == 'workflow_dispatch' && inputs.mode == 'pr-check') ||
-      (github.event_name == 'pull_request_target' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
-       github.event.pull_request.user.login == 'github-actions[bot]' &&
-       startsWith(github.event.pull_request.head.ref, 'release-please--branches--'))
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'pr-check')
     uses: ./.github/workflows/kavosh-governance.yml
     with:
       authorization-pr: ${{ inputs.pr-number || github.event.pull_request.number }}
       authorization-head: ${{ inputs.expected-head || github.event.pull_request.head.sha }}
-      comment: ${{ github.event_name != 'pull_request_target' }}
+      comment: true
   main-guard:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'main-guard')
     uses: ./.github/workflows/kavosh-main-guard.yml

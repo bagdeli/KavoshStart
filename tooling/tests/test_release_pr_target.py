@@ -1,67 +1,56 @@
-"""Regression contract for ruleset-eligible release-please PR verification (#83)."""
+"""Regression contract for bot release-PR verification without owner-click mechanics (#83)."""
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-TRUST_TERMS = (
-    "pull_request_target:",
-    "github.event.pull_request.head.repo.full_name == github.repository",
-    "github.event.pull_request.user.login == 'github-actions[bot]'",
-    "startsWith(github.event.pull_request.head.ref, 'release-please--branches--')",
-)
 
-
-class ReleasePrTargetContract(unittest.TestCase):
+class ReleasePrBridgeContract(unittest.TestCase):
     def read(self, relative):
         return (ROOT / relative).read_text(encoding="utf-8")
 
-    def assert_trusted_target(self, relative):
-        text = self.read(relative)
-        for term in TRUST_TERMS:
-            self.assertIn(term, text, f"{relative}: missing trusted release target term {term}")
+    def test_REL5_no_pull_request_target_proxy_remains(self):
+        for relative in (
+            ".github/workflows/self-check.yml",
+            ".github/workflows/kavosh.yml",
+            "templates/common/.github/workflows/ci.yml",
+            "templates/common/.github/workflows/kavosh.yml",
+        ):
+            with self.subTest(relative=relative):
+                self.assertNotIn("pull_request_target:", self.read(relative))
 
-    def test_REL5_self_check_target_is_narrow_and_read_only_checkout(self):
-        relative = ".github/workflows/self-check.yml"
-        self.assert_trusted_target(relative)
-        text = self.read(relative)
-        self.assertIn("'release-pr-target-ignored' || 'required'", text)
-        self.assertIn("github.event.pull_request.head.sha || github.sha", text)
-        self.assertIn("persist-credentials: false", text)
-        self.assertIn("permissions:\n  contents: read", text)
+    def test_REL5_release_bridge_has_exact_workflow_inputs_and_check_write(self):
+        text = self.read("tooling/templates/kavosh-release.yml")
+        self.assertIn("required-workflow:", text)
+        self.assertIn("kavosh-workflow:", text)
+        self.assertIn("checks: write", text)
+        self.assertIn("actions: write", text)
+        self.assertIn("--verify-release-pr", text)
+        self.assertIn("required", text)
+        self.assertIn("kavosh / governance", self.read("tooling/src/release_gate.py"))
 
-    def test_REL5_common_ci_target_preserves_required_context_only_for_trusted_release_pr(self):
-        relative = "templates/common/.github/workflows/ci.yml"
-        self.assert_trusted_target(relative)
-        text = self.read(relative)
-        self.assertIn("'release-pr-target-ignored' || 'required'", text)
-        self.assertIn("persist-credentials: false", text)
-
-    def test_REL5_kavosh_target_preserves_context_and_disables_comment_write_path(self):
+    def test_REL5_dispatch_contract_remains_bounded_and_exact_head(self):
+        for relative in (
+            ".github/workflows/self-check.yml",
+            "templates/common/.github/workflows/ci.yml",
+        ):
+            text = self.read(relative)
+            self.assertIn("pr-number:", text)
+            self.assertIn("expected-head:", text)
+            self.assertIn("persist-credentials: false", text)
         for relative in (
             ".github/workflows/kavosh.yml",
             "templates/common/.github/workflows/kavosh.yml",
         ):
-            with self.subTest(relative=relative):
-                self.assert_trusted_target(relative)
-                text = self.read(relative)
-                self.assertIn("'release-pr-target-ignored' || 'kavosh'", text)
-                self.assertIn("authorization-head:", text)
-                self.assertIn("github.event.pull_request.head.sha", text)
-                self.assertIn("comment:", text)
-                self.assertIn("github.event_name != 'pull_request_target'", text)
+            text = self.read(relative)
+            self.assertIn("mode:", text)
+            self.assertIn("pr-number:", text)
+            self.assertIn("expected-head:", text)
 
-    def test_REL5_release_workflow_no_longer_uses_dispatch_proxy(self):
-        for relative in (
-            "tooling/templates/kavosh-release.yml",
-            ".github/workflows/release.yml",
-            "templates/common/.github/workflows/release.yml",
-        ):
-            with self.subTest(relative=relative):
-                text = self.read(relative)
-                self.assertNotIn("Dispatch exact-head verification for the release PR", text)
-                self.assertNotIn("required-workflow:", text)
-                self.assertNotIn("kavosh-workflow:", text)
+    def test_REL5_common_ci_private_dispatch_does_not_require_github_cli(self):
+        text = self.read("templates/common/.github/workflows/ci.yml")
+        self.assertNotIn('gh api "repos/$REPO/pulls/$PR_NUMBER"', text)
+        self.assertIn("urllib.request", text)
 
 
 if __name__ == "__main__":

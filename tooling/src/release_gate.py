@@ -18,6 +18,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+import urllib.parse
 import time
 
 DEFAULT_REQUIRED = ["required", "main-guard / main-guard"]
@@ -44,6 +45,151 @@ def gh_api(path, method="GET", payload=None):
         detail = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
     return json.loads(raw) if raw.strip() else {}
+
+
+
+RELEASE_PR_BRANCH_RE = re.compile(r"^release-please--branches--.+--components--.+$")
+
+
+def release_pr(repo, base="main", api=None):
+    """Return the single trusted same-repository github-actions release-please PR."""
+    api = api or gh_api
+    encoded_base = urllib.parse.quote(base, safe="")
+    pulls = api(f"repos/{repo}/pulls?state=open&base={encoded_base}&per_page=100") or []
+    candidates = []
+    for pr in pulls:
+        head = pr.get("head") or {}
+        user = pr.get("user") or {}
+        if (
+            (pr.get("base") or {}).get("ref") == base
+            and (head.get("repo") or {}).get("full_name") == repo
+            and RELEASE_PR_BRANCH_RE.fullmatch(head.get("ref") or "")
+            and user.get("login") == "github-actions[bot]"
+        ):
+            candidates.append(pr)
+    if len(candidates) > 1:
+        raise RuntimeError(
+            f"multiple trusted release-please PRs target {base}: "
+            f"{[p.get('number') for p in candidates]}"
+        )
+    return candidates[0] if candidates else None
+
+
+def _workflow_id(path):
+    if not isinstance(path, str) or not re.fullmatch(
+        r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml", path
+    ):
+        raise RuntimeError(f"invalid workflow adapter path: {path!r}")
+    return urllib.parse.quote(path, safe="")
+
+
+def _workflow_runs(repo, workflow, head_sha, api):
+    wid = _workflow_id(workflow)
+    data = api(
+        f"repos/{repo}/actions/workflows/{wid}/runs?"
+        "event=workflow_dispatch&per_page=100"
+    ) or {}
+    return [
+        run for run in data.get("workflow_runs", [])
+        if run.get("head_sha") == head_sha
+    ]
+
+
+def _dispatch_and_wait(repo, workflow, head_ref, head_sha, inputs,
+                       wait=900, interval=5, api=None, sleep=time.sleep):
+    api = api or gh_api
+    before = {run.get("id") for run in _workflow_runs(repo, workflow, head_sha, api)}
+    wid = _workflow_id(workflow)
+    api(
+        f"repos/{repo}/actions/workflows/{wid}/dispatches",
+        method="POST",
+        payload={"ref": head_ref, "inputs": inputs},
+    )
+    deadline = time.monotonic() + wait
+    found = None
+    while time.monotonic() < deadline:
+        runs = _workflow_runs(repo, workflow, head_sha, api)
+        fresh = [run for run in runs if run.get("id") not in before]
+        if fresh:
+            fresh.sort(
+                key=lambda run: (
+                    run.get("run_started_at") or run.get("created_at") or "",
+                    run.get("id") or 0,
+                ),
+                reverse=True,
+            )
+            found = fresh[0]
+            if found.get("status") == "completed":
+                return found
+        sleep(interval)
+    if found:
+        raise RuntimeError(
+            f"{workflow} run {found.get('id')} did not complete within {wait}s"
+        )
+    raise RuntimeError(
+        f"{workflow} dispatch for {head_sha[:7]} did not produce a discoverable run"
+    )
+
+
+def _publish_check(repo, sha, name, run, api):
+    success = run.get("status") == "completed" and run.get("conclusion") == "success"
+    payload = {
+        "name": name,
+        "head_sha": sha,
+        "status": "completed",
+        "conclusion": "success" if success else "failure",
+        "details_url": run.get("html_url"),
+        "output": {
+            "title": f"Trusted release verification: {name}",
+            "summary": (
+                f"workflow_dispatch run {run.get('id')} concluded "
+                f"{run.get('conclusion')} for exact release head {sha}."
+            ),
+        },
+    }
+    api(f"repos/{repo}/check-runs", method="POST", payload=payload)
+    return success
+
+
+def verify_release_pr(repo, base, required_workflow, kavosh_workflow,
+                      wait=900, interval=5, api=None, sleep=time.sleep):
+    """Run real exact-head checks, then bridge their result into ruleset-visible check runs."""
+    api = api or gh_api
+    pr = release_pr(repo, base, api)
+    if not pr:
+        return None
+    number = pr.get("number")
+    head = pr.get("head") or {}
+    head_sha, head_ref = head.get("sha"), head.get("ref")
+    if (
+        not isinstance(number, int)
+        or not re.fullmatch(r"[0-9a-f]{40}", head_sha or "")
+        or not head_ref
+    ):
+        raise RuntimeError("trusted release PR is missing number/head identity")
+
+    required_run = _dispatch_and_wait(
+        repo, required_workflow, head_ref, head_sha,
+        {"pr-number": str(number), "expected-head": head_sha, "ci-full": False},
+        wait, interval, api, sleep,
+    )
+    kavosh_run = _dispatch_and_wait(
+        repo, kavosh_workflow, head_ref, head_sha,
+        {"mode": "pr-check", "pr-number": str(number), "expected-head": head_sha},
+        wait, interval, api, sleep,
+    )
+
+    required_ok = _publish_check(repo, head_sha, "required", required_run, api)
+    kavosh_ok = _publish_check(
+        repo, head_sha, "kavosh / governance", kavosh_run, api
+    )
+    return {
+        "number": number,
+        "head_sha": head_sha,
+        "required_run": required_run.get("id"),
+        "kavosh_run": kavosh_run.get("id"),
+        "ok": required_ok and kavosh_ok,
+    }
 
 
 def check_runs(repo, sha, api=None):
@@ -233,11 +379,42 @@ def gate(repo, sha, required, branch="main", wait=300, interval=15, api=None, sl
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--repo", required=True)
-    p.add_argument("--sha", required=True)
+    p.add_argument("--sha")
     p.add_argument("--branch", default="main")
     p.add_argument("--required", default=",".join(DEFAULT_REQUIRED))
     p.add_argument("--wait", type=int, default=300, help="seconds to wait for pending required checks")
+    p.add_argument("--verify-release-pr", action="store_true")
+    p.add_argument("--required-workflow", default=".github/workflows/ci.yml")
+    p.add_argument("--kavosh-workflow", default=".github/workflows/kavosh.yml")
+    p.add_argument("--verification-wait", type=int, default=900)
     a = p.parse_args(argv)
+
+    if a.verify_release_pr:
+        try:
+            verified = verify_release_pr(
+                a.repo, a.branch, a.required_workflow, a.kavosh_workflow,
+                wait=a.verification_wait,
+            )
+        except RuntimeError as e:
+            print(f"Release PR verification FAILED: {e}")
+            return 1
+        if verified is None:
+            print(f"No trusted open release-please PR targets {a.branch}; nothing to verify")
+            return 0
+        if not verified["ok"]:
+            print(
+                f"Release PR #{verified['number']} exact-head verification failed "
+                f"for {verified['head_sha']}"
+            )
+            return 1
+        print(
+            f"Release PR #{verified['number']} verified at {verified['head_sha']}; "
+            "ruleset-visible required checks published"
+        )
+        return 0
+
+    if not a.sha:
+        p.error("--sha is required unless --verify-release-pr is used")
     required = [x.strip() for x in a.required.split(",") if x.strip()]
     if not required:
         print("REL-5: no required checks configured — refusing to open the gate")
