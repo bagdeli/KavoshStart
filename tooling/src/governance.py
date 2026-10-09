@@ -132,6 +132,66 @@ def standard_lifecycle_problems(m):
     return out
 
 
+PROJECT_CAPABILITIES = {
+    "control-plane", "package", "server", "browser-ui", "desktop", "persistent-data",
+    "migration", "infrastructure", "release-artifact", "regulated", "cms-wordpress",
+}
+
+
+def capability_profile_problems(m):
+    """CAP-1/2: capability declarations are composable and must cover facts we can prove from the manifest."""
+    caps = m.get("capabilities")
+    out = []
+    if not isinstance(caps, list) or not caps:
+        return [("fail", "CAP-1", "Declared project capabilities",
+                 "add a non-empty capabilities array from the KavoshStart capability catalog")]
+    if len(caps) != len(set(caps)):
+        out.append(("fail", "CAP-1", "Declared project capabilities", "capabilities must be unique"))
+    unknown = sorted({c for c in caps if c not in PROJECT_CAPABILITIES})
+    if unknown:
+        out.append(("fail", "CAP-1", "Declared project capabilities",
+                    "unknown capability: " + ", ".join(unknown)))
+    if not unknown and len(caps) == len(set(caps)):
+        out.append(("ok", "CAP-1", "Declared project capabilities", ", ".join(caps)))
+
+    required = {}
+    def need(capability, reason):
+        required.setdefault(capability, []).append(reason)
+
+    if m.get("projectKind") == "library":
+        need("package", "projectKind=library")
+    runtime = m.get("runtime")
+    if runtime == "server":
+        need("server", "runtime=server")
+    if runtime == "desktop":
+        need("desktop", "runtime=desktop")
+    ui_kind = (m.get("ui") or {}).get("kind")
+    if ui_kind in ("web", "admin"):
+        need("browser-ui", f"ui.kind={ui_kind}")
+    database = (m.get("stack") or {}).get("database")
+    if database and database != "none":
+        need("persistent-data", f"stack.database={database}")
+        need("migration", f"stack.database={database}")
+    deploy_method = (m.get("deploy") or {}).get("method")
+    if deploy_method == "release-artifact":
+        need("release-artifact", "deploy.method=release-artifact")
+    data = m.get("data") or {}
+    if data.get("sensitivity") == "financial" or data.get("regulatedIntegrations"):
+        need("regulated", "financial/regulated data boundary")
+    frameworks = {str(x).lower() for x in ((m.get("stack") or {}).get("frameworks") or [])}
+    if any("wordpress" in x or "woocommerce" in x for x in frameworks):
+        need("cms-wordpress", "WordPress/WooCommerce framework")
+
+    missing = sorted(set(required) - set(caps))
+    if missing:
+        detail = "; ".join(f"{cap} ({', '.join(required[cap])})" for cap in missing)
+        out.append(("fail", "CAP-2", "Capabilities cover manifest facts", "missing " + detail))
+    else:
+        out.append(("ok", "CAP-2", "Capabilities cover manifest facts",
+                    "all derivable capabilities are declared" if required else "no additional derivable capability"))
+    return out
+
+
 def check_manifest(actual_repo=None):
     p = Path("kavosh.project.json")
     if not p.exists():
@@ -144,6 +204,8 @@ def check_manifest(actual_repo=None):
         return {}
     errs = validate(m, SCHEMA)
     add("fail" if errs else "ok", "SRC-5", "Manifest matches schema", "; ".join(errs[:8]) or "valid")
+    for level, rule, title, detail in capability_profile_problems(m):
+        add(level, rule, title, detail)
     if errs:
         return m
     if actual_repo and m.get("repo") != actual_repo:
