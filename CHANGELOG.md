@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/bagdeli/KavoshStart/compare/v1.6.0...v1.7.0) (2026-10-09)
+
+
+### Features
+
+* **standard:** close lifecycle and acceptance gaps ([#67](https://github.com/bagdeli/KavoshStart/issues/67)) ([488d72d](https://github.com/bagdeli/KavoshStart/commit/488d72d6e7b59adb2bf72bc5a992f605be9bcb85))
+
 ## [1.6.0](https://github.com/bagdeli/KavoshStart/compare/v1.5.0...v1.6.0) (2026-10-09)
 
 
