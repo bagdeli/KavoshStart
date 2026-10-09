@@ -193,6 +193,26 @@ class AiSection(unittest.TestCase):
         self.assertTrue(fails(g.ai_section_problems(self.body("none"))))
 
 
+class StandardLifecycle(unittest.TestCase):
+    def test_STD2_positive_normal_operation(self):
+        """Covers: STD-2 (positive)"""
+        out = g.standard_lifecycle_problems({"tier": "T1"})
+        self.assertEqual(fails(out), [])
+
+    def test_STD2_negative_legacy_adoption_true(self):
+        """Covers: STD-2 (negative)"""
+        out = g.standard_lifecycle_problems({"tier": "T1", "adoptionPhase": True})
+        self.assertTrue(any(r[1] == "STD-2" for r in fails(out)))
+
+    def test_ACC1_positive_T2_continuous_required_profile(self):
+        out = g.standard_lifecycle_problems({"tier": "T2", "acceptance": {"mode": "continuous"}})
+        self.assertEqual([r for r in fails(out) if r[1] == "ACC-1"], [])
+
+    def test_ACC1_negative_T2_without_continuous_profile(self):
+        out = g.standard_lifecycle_problems({"tier": "T2"})
+        self.assertTrue(any(r[1] == "ACC-1" for r in fails(out)))
+
+
 class ContinuousAcceptance(unittest.TestCase):
     def setUp(self):
         self.original = g.acceptance_scope
