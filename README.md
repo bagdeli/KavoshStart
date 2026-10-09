@@ -55,7 +55,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 
 ## نسخه‌بندی
 
-KavoshStart خودش SemVer دارد و فقط از طریق دروازه‌ی REL-5 منتشر می‌شود. پروژه‌ها workflowها را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، همان مقدار `kavosh.project.json` → `kavoshStart`؛ Dependabot ارتقا را به‌صورت PR پیشنهاد می‌کند (ADR-0006). tag قدیمی `v1` و نسخه‌ی `v1.0.0` (pre-release) برای استفاده نیستند.
+KavoshStart خودش SemVer دارد و فقط از طریق دروازه‌ی REL-5 منتشر می‌شود. پروژه‌های مصرف‌کننده workflowها را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، همان مقدار `kavosh.project.json` → `kavoshStart`؛ Dependabot ارتقا را به‌صورت PR پیشنهاد می‌کند (ADR-0006). مقدار `self` فقط در مانیفست خود `bagdeli/KavoshStart` معتبر است و به معنی checked-out canonical source است؛ هیچ consumer و هیچ workflow refای از `@self` استفاده نمی‌کند (ADR-0010). فایل example عمداً `vX.Y.Z` نامعتبر دارد تا قبل از scaffold به آخرین Release واقعی resolve شود. tag قدیمی `v1` و نسخه‌ی `v1.0.0` (pre-release) برای استفاده نیستند.
 
 ## پیش‌نیاز یک‌باره
 

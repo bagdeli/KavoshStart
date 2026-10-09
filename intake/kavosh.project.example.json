@@ -1,6 +1,6 @@
 {
   "$schema": "https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json",
-  "kavoshStart": "v1.0.0",
+  "kavoshStart": "vX.Y.Z",
   "name": "Kavosh SMS",
   "repo": "bagdeli/KavoshSMS",
   "summary": "Internal service that sends and tracks transactional SMS for Kavosh products through Iranian SMS providers.",

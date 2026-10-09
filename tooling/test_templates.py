@@ -28,6 +28,9 @@ COMBOS = [
 
 def manifest(tier, runtime, method, ui, envs, runner=None):
     m = json.loads(json.dumps(EXAMPLE))
+    # The checked-in example deliberately uses vX.Y.Z so it cannot be copied as a stale valid pin.
+    # Template tests resolve it to a syntactically valid exact release tag before scaffolding.
+    m["kavoshStart"] = "v1.7.0"
     m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
     m["acceptance"] = {"mode": "continuous" if tier == "T2" else "none"}
@@ -81,8 +84,8 @@ def main():
                     print(f"FAIL rendered YAML/JSON {combo}: {path}: {e}")
                     failures += 1
                     continue
-            # REL-4/5/6: gated release in every repo, exact KavoshStart pins, package only for artifact runtimes
-            pin = EXAMPLE["kavoshStart"]
+            # REL-4/5/6: gated release in every repo, exact resolved KavoshStart pins, package only for artifact runtimes
+            pin = json.loads((repo / "kavosh.project.json").read_text(encoding="utf-8"))["kavoshStart"]
             rel = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
             kav = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
             want_pkg = "true" if combo[1] in ("none", "desktop") else "false"

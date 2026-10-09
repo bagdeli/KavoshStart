@@ -9,7 +9,7 @@ Follow this protocol exactly. Rules are referenced by ID (e.g. `BR-1`); their ca
 Before choosing NEW / ADOPT / UPGRADE / WORK:
 1. Verify the exact repository, default branch, workspace/remote when available, approved environments and task scope. Never infer authority from access.
 2. Read the project's root `AGENTS.md`, `kavosh.project.json`, and the selected Issue/Spec/plan. Treat old reports as provenance, not live status.
-3. Read the project's pinned `kavoshStart`, query the latest stable KavoshStart Release, and compare them. If behind, read the CHANGELOG between the pin and latest.
+3. For a consumer project, read its exact `kavoshStart: vX.Y.Z`, query the latest stable KavoshStart Release, and compare them. If behind, read the CHANGELOG between the pin and latest. The reserved value `self` is valid only when the repository is exactly `bagdeli/KavoshStart`; there it means the checked-out canonical source and is never used as a workflow ref.
 4. If the newer release changes governance, acceptance, security, release, deploy, CI or agent-control semantics, perform UPGRADE before starting a new feature/gate packet unless the owner has recorded a bounded, traceable defer. Never silently auto-upgrade a dependency in the middle of unrelated work.
 5. For T2 on this standard, `acceptance.mode=continuous` is mandatory and `adoptionPhase: true` is invalid. Do not continue ordinary feature work by treating report-only governance as success.
 6. Refresh only the moving facts needed for the task: current `main`, related open PRs/checks/releases and, when runtime behavior matters, exact deployed version/SHA/schema/health. Do not turn routine continuation into an unrelated full audit.
@@ -47,7 +47,7 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 
 ### Step 3 — Manifest
 1. Write `kavosh.project.json` conforming to [`intake/kavosh.project.schema.json`](intake/kavosh.project.schema.json).
-   Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`)
+   Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`). Never copy the illustrative `vX.Y.Z` from the example and never use the reserved `self` value in a consumer project.
    and, if the project has a UI, `ui.kavoshui` to the latest KavoshUI release.
 2. For a new T2 project set `acceptance.mode: continuous` unless the owner explicitly chooses a documented phased adoption; T0/T1 may opt in. This is an evidence-flow profile, not permission to invent acceptance status.
 3. Write `PROJECT.md` from `templates/common/PROJECT.md` — one page, Persian, no status.

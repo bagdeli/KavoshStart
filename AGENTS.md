@@ -4,7 +4,7 @@
 Canonical GitHub repository: https://github.com/bagdeli/KavoshStart (public).
 Local chat context, when present: `.codex/PROJECT_CONTEXT.md` (untracked notes; refresh live state from GitHub).
 KavoshStart is the engineering standard for all Kavosh repositories: intake, classification, rules, templates and
-reusable GitHub workflows. It contains no product code. It follows itself (tier T1, runtime none — see `kavosh.project.json`).
+reusable GitHub workflows. It contains no product code. It self-hosts from the checked-out canonical source (tier T1, runtime none; reserved `kavoshStart: self` — see ADR-0010 and `kavosh.project.json`). Consumer projects must still pin exact release tags.
 Using KavoshStart for another project? Read `START.md`, not this file.
 
 ## Repository map

@@ -24,7 +24,7 @@
 ## STD — چرخهٔ استاندارد KavoshStart
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| STD-1 | pin دقیق KavoshStart باید در Health با آخرین Release پایدار مقایسه شود؛ نسخهٔ جدید به‌صورت warning آشکار می‌شود و عامل در شروع جلسه CHANGELOG را ارزیابی می‌کند. ارتقا خودکار ممنوع؛ تغییر control-plane پیش از feature/gate جدید یا upgrade می‌شود یا defer محدود و صریح مالک می‌گیرد. | MUST | All | H, R |
+| STD-1 | هر **مصرف‌کننده** KavoshStart باید `kavoshStart: vX.Y.Z` دقیق داشته باشد و Health آن را با آخرین Release پایدار مقایسه کند؛ مقدار رزروشدهٔ `self` فقط برای `bagdeli/KavoshStart` مجاز است و همان repo باید local checked-out source را اجرا کند. consumer با `self` و خود KavoshStart با pin نسخه‌ای fail می‌شوند. ارتقا خودکار ممنوع؛ تغییر control-plane پیش از feature/gate جدید یا upgrade می‌شود یا defer محدود و صریح مالک می‌گیرد. | MUST | All | P, H, R |
 | STD-2 | `adoptionPhase: true` در پروژه‌ای که این استاندارد را پذیرفته مجاز نیست؛ adoption یک migration محدود است و کار عادی فقط با governance اجباری ادامه می‌یابد. deviation واقعی با exception traceable ثبت می‌شود، نه report-only mode. | MUST | All | P |
 
 ## WK — مدیریت کار
@@ -71,7 +71,7 @@
 | REL-3 | tagهای نسخه‌ی جدید فقط `vX.Y.Z[-rc.N]` هستند؛ tag نام‌دار تازه (`name-v1.2.0`) یا غیرنسخه (مثل `develop`) ممنوع؛ release-please با `include-component-in-tag: false`. انتشار تاریخیِ موجود `KavoshStart-v1.1.0` تغییر/حذف نمی‌شود و فقط همین tag در health grandfathered است. | MUST | All | A, P, H |
 | REL-4 | release-please نسخه و `CHANGELOG.md` را از Conventional Commits می‌سازد (workflow مشترک `kavosh-release`). | MUST | All | G |
 | REL-5 | **دروازه‌ی انتشار:** نسخه فقط از commit فعلی `main` ساخته می‌شود که checkهای الزامی (`required`، `main-guard / main-guard`) آن **وجود داشته و موفق** باشند. در دسترس نبودن CI مجوز انتشار نیست. | MUST | All | G |
-| REL-6 | پروژه‌ها workflowهای KavoshStart را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، برابر با `kavoshStart` مانیفست؛ tag متحرک (`v1`) ممنوع و منجمد است. ارتقا فقط با PR (Dependabot). | MUST | All | P |
+| REL-6 | پروژه‌های **مصرف‌کننده** workflowهای KavoshStart را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، برابر با `kavoshStart` مانیفست؛ tag متحرک (`v1`) ممنوع و منجمد است. خود `bagdeli/KavoshStart` با `kavoshStart: self` فقط workflowهای local همان checkout را فرا می‌خواند و `@self` هرگز ref معتبر نیست. ارتقای consumer فقط با PR است. | MUST | All | P |
 | REL-7 | RC برای Test فقط با dispatch مستقیم مالک برای `vX.Y.Z-rc.N` و exact current-main SHA ساخته می‌شود؛ required checks همان SHA باید سبز باشند، نسخه باید از آخرین final جدیدتر باشد، شماره RC جلو برود و collision با tag/Release/final fail-closed است. RC branch یا tag متحرک وجود ندارد. | MUST | T1, T2 | G |
 
 ## ACC — جریان پذیرش و شواهد
