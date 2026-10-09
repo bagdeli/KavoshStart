@@ -351,6 +351,9 @@ def check_files(m, actual_repo=None):
     bad = [f for f in files if FORBIDDEN_RE.search(f)]
     add("fail" if bad else "ok", "SRC-3", "No status-tracker files or archive/", ", ".join(bad[:10]) or "none")
 
+    for level, rule, title, detail in acceptance_scope_problems(m):
+        add(level, rule, title, detail)
+
     offenders = []
     for f in md:
         if SHA_ALLOWED_RE.search(f) or Path(f).name == "AGENTS.md":
@@ -701,6 +704,8 @@ def check_pr(m, event, repo):
     else:
         for level, rule, t, d in ai_section_problems(body):
             add(level, rule, t, d)
+    for level, rule, t, d in acceptance_mapping_problems(m, body, bot):
+        add(level, rule, t, d)
 
     open_prs = gh("api", f"repos/{repo}/pulls?state=open&per_page=100") or []
     ready = [p for p in open_prs if not p["draft"] and p["user"]["type"] != "Bot"]
