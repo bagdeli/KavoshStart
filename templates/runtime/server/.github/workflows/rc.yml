@@ -1,4 +1,5 @@
 # Owner-dispatched Test release-candidate creation (REL-7).
+# PRIVATE_HOSTED_DISPATCH_REQUIRED: this workflow has no automatic trigger; one owner dispatch authorizes one exact tag/SHA.
 # This does not deploy anything. The server Test channel may later pull the immutable RC through DEP-2.
 name: rc
 
