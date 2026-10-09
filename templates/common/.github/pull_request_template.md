@@ -6,6 +6,11 @@ Closes #
 ## How verified
 <!-- Commands run (`make check`), tests added, screenshots for UI (RTL + mobile). -->
 
+## Acceptance mapping
+<!-- For acceptance.mode=continuous: list AC-* IDs affected by this PR, or:
+not-applicable: <specific reason>
+-->
+
 ## Session handoff
 - **Done:**
 - **Remaining (as new issues):**

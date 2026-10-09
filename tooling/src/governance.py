@@ -351,6 +351,9 @@ def check_files(m, actual_repo=None):
     bad = [f for f in files if FORBIDDEN_RE.search(f)]
     add("fail" if bad else "ok", "SRC-3", "No status-tracker files or archive/", ", ".join(bad[:10]) or "none")
 
+    for level, rule, title, detail in acceptance_scope_problems(m):
+        add(level, rule, title, detail)
+
     offenders = []
     for f in md:
         if SHA_ALLOWED_RE.search(f) or Path(f).name == "AGENTS.md":
@@ -491,6 +494,121 @@ def ai_section_problems(body):
     return problems or [("ok", "PR-4", "AI involvement section", value)]
 
 
+# ---------------------------------------------------------------- continuous acceptance
+ACCEPTANCE_ID_RE = re.compile(r"^AC-[0-9]{3,}$")
+ACCEPTANCE_RELEASE_RE = re.compile(r"^v([0-9]+)[.]([0-9]+)[.]([0-9]+)$")
+ACCEPTANCE_OWNER_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
+ACCEPTANCE_EVIDENCE = {"ci", "test", "ui", "security", "migration"}
+ACCEPTANCE_LIVE_KEYS = {"status", "state", "accepted", "done", "passed", "complete", "completed"}
+
+
+def acceptance_scope():
+    path = Path("acceptance/scope.json")
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return False
+
+
+def acceptance_scope_problems(m):
+    if m.get("acceptance", {}).get("mode", "none") != "continuous":
+        return []
+    scope = acceptance_scope()
+    if scope is None:
+        return [("fail", "ACC-1", "Acceptance scope contract", "acceptance/scope.json is required")]
+    if scope is False or not isinstance(scope, dict):
+        return [("fail", "ACC-1", "Acceptance scope contract", "scope is not valid JSON object")]
+    problems = []
+    if scope.get("schemaVersion") != 1:
+        problems.append("schemaVersion must be 1")
+    target = scope.get("targetRelease")
+    tm = ACCEPTANCE_RELEASE_RE.fullmatch(target or "")
+    if not tm:
+        problems.append("targetRelease must match vX.Y.Z")
+    if ACCEPTANCE_LIVE_KEYS & set(scope):
+        problems.append("scope root contains live status fields")
+    items = scope.get("items")
+    if not isinstance(items, list):
+        problems.append("items must be an array")
+        items = []
+    ids, issues = set(), set()
+    target_tuple = tuple(map(int, tm.groups())) if tm else None
+    for index, item in enumerate(items):
+        prefix = f"items[{index}]"
+        if not isinstance(item, dict):
+            problems.append(f"{prefix} must be an object")
+            continue
+        if ACCEPTANCE_LIVE_KEYS & set(item):
+            problems.append(f"{prefix} contains live status fields")
+        aid = item.get("id")
+        if not isinstance(aid, str) or not ACCEPTANCE_ID_RE.fullmatch(aid):
+            problems.append(f"{prefix}.id must match AC-NNN")
+        elif aid in ids:
+            problems.append(f"duplicate acceptance id {aid}")
+        else:
+            ids.add(aid)
+        issue = item.get("issue")
+        if not isinstance(issue, int) or isinstance(issue, bool) or issue <= 0:
+            problems.append(f"{prefix}.issue must be a positive GitHub issue number")
+        elif issue in issues:
+            problems.append(f"duplicate canonical issue #{issue}")
+        else:
+            issues.add(issue)
+        owner = item.get("owner")
+        if not isinstance(owner, str) or not ACCEPTANCE_OWNER_RE.fullmatch(owner):
+            problems.append(f"{prefix}.owner must be a GitHub login without @")
+        risk = item.get("risk")
+        if risk not in ("low", "medium", "high", "critical"):
+            problems.append(f"{prefix}.risk must be low/medium/high/critical")
+        evidence = item.get("evidence")
+        if not isinstance(evidence, list) or not evidence or any(x not in ACCEPTANCE_EVIDENCE for x in evidence):
+            problems.append(f"{prefix}.evidence must be a non-empty subset of {sorted(ACCEPTANCE_EVIDENCE)}")
+        else:
+            if len(evidence) != len(set(evidence)):
+                problems.append(f"{prefix}.evidence has duplicates")
+            if "ci" not in evidence:
+                problems.append(f"{prefix}.evidence must include ci")
+            if risk in ("high", "critical") and "test" not in evidence:
+                problems.append(f"{prefix} high/critical risk requires test evidence")
+        deferred = item.get("deferredTo")
+        if deferred is not None:
+            dm = ACCEPTANCE_RELEASE_RE.fullmatch(deferred) if isinstance(deferred, str) else None
+            if not dm:
+                problems.append(f"{prefix}.deferredTo must match vX.Y.Z")
+            elif target_tuple and tuple(map(int, dm.groups())) <= target_tuple:
+                problems.append(f"{prefix}.deferredTo must be newer than targetRelease")
+            if not isinstance(item.get("deferIssue"), int) or isinstance(item.get("deferIssue"), bool) or item.get("deferIssue", 0) <= 0:
+                problems.append(f"{prefix}.deferIssue is required for a defer")
+    return [("fail" if problems else "ok", "ACC-1", "Acceptance scope contract",
+             "; ".join(problems[:12]) if problems else f"{len(items)} scoped item(s), target {target}")]
+
+
+def acceptance_mapping_problems(m, body, bot=False):
+    if m.get("acceptance", {}).get("mode", "none") != "continuous" or bot:
+        return []
+    sec = re.search(r"(?ims)^#+\s*Acceptance mapping\s*$(.*?)(?=^#+\s|\Z)", body or "")
+    if not sec:
+        return [("fail", "ACC-1", "Acceptance mapping", "add ## Acceptance mapping with AC-* IDs or not-applicable reason")]
+    text = re.sub(r"<!--.*?-->", "", sec.group(1), flags=re.S).strip()
+    na = re.search(r"(?im)^\s*not-applicable:\s*(\S.+)$", text)
+    ids = sorted(set(re.findall(r"\bAC-[0-9]{3,}\b", text)))
+    if na and ids:
+        return [("fail", "ACC-1", "Acceptance mapping", "cannot combine AC-* mappings with not-applicable")]
+    if na:
+        reason = na.group(1).strip()
+        return [("ok" if len(reason) >= 12 else "fail", "ACC-1", "Acceptance mapping",
+                 reason if len(reason) >= 12 else "not-applicable needs a specific reason (>=12 chars)")]
+    if not ids:
+        return [("fail", "ACC-1", "Acceptance mapping", "no AC-* ID and no justified not-applicable")]
+    scope = acceptance_scope()
+    known = {item.get("id") for item in scope.get("items", []) if isinstance(item, dict)} if isinstance(scope, dict) else set()
+    unknown = [aid for aid in ids if aid not in known]
+    return [("fail" if unknown else "ok", "ACC-1", "Acceptance mapping",
+             f"unknown: {', '.join(unknown)}" if unknown else ", ".join(ids))]
+
+
 # ---------------------------------------------------------------- pull request
 def gh(*args):
     out = subprocess.run(["gh", *args], check=True, capture_output=True, text=True, encoding="utf-8").stdout
@@ -586,6 +704,8 @@ def check_pr(m, event, repo):
     else:
         for level, rule, t, d in ai_section_problems(body):
             add(level, rule, t, d)
+    for level, rule, t, d in acceptance_mapping_problems(m, body, bot):
+        add(level, rule, t, d)
 
     open_prs = gh("api", f"repos/{repo}/pulls?state=open&per_page=100") or []
     ready = [p for p in open_prs if not p["draft"] and p["user"]["type"] != "Bot"]

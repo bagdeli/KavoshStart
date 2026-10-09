@@ -77,5 +77,8 @@
   ],
   "dependsOn": [
     "bagdeli/KavoshUI"
-  ]
+  ],
+  "acceptance": {
+    "mode": "continuous"
+  }
 }

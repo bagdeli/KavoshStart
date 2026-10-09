@@ -4,6 +4,7 @@ import base64
 import json
 import math
 import os
+import re
 import subprocess
 from datetime import datetime, timedelta, timezone
 
@@ -137,6 +138,50 @@ def report_is_green(rows):
     return all(status == "✅" for status, *_ in rows)
 
 
+def acceptance_health(scope, issue_for):
+    """ACC-2: compute acceptance debt without inventing status outside GitHub."""
+    if not isinstance(scope, dict) or scope.get("schemaVersion") != 1 or not isinstance(scope.get("items"), list):
+        return {"invalid": True, "total": 0, "active": 0, "accepted": 0, "deferred": 0,
+                "open": [], "missing_evidence": [], "defer_problems": [], "oldest": 0}
+    open_items, missing, defer_problems, ages = [], [], [], []
+    active = accepted = deferred_valid = 0
+    for item in scope["items"]:
+        if not isinstance(item, dict):
+            continue
+        aid, owner = item.get("id", "?"), item.get("owner", "")
+        if item.get("deferredTo"):
+            n = item.get("deferIssue")
+            issue = issue_for(n) if isinstance(n, int) else None
+            body = (issue or {}).get("body") or ""
+            approved = re.search(r"(?im)^\s*Defer-Approved-By:\s*@([^\s]+)\s*$", body)
+            if not issue or issue.get("state") != "closed" or not approved or approved.group(1) != owner:
+                defer_problems.append(aid)
+            else:
+                deferred_valid += 1
+            continue
+        active += 1
+        n = item.get("issue")
+        issue = issue_for(n) if isinstance(n, int) else None
+        if not issue or issue.get("state") != "closed":
+            open_items.append(aid)
+            if issue and issue.get("created_at"):
+                ages.append(days(issue["created_at"]))
+            continue
+        body = issue.get("body") or ""
+        base = (
+            re.search(r"(?im)^\s*Acceptance-Merged-SHA:\s*[0-9a-f]{40}\s*$", body),
+            re.search(r"(?im)^\s*Acceptance-Evidence-Run:\s*https://github[.]com/\S+/actions/runs/[0-9]+\S*\s*$", body),
+            re.search(rf"(?im)^\s*Accepted-By:\s*@{re.escape(owner)}\s*$", body),
+        )
+        if not all(base):
+            missing.append(aid)
+        else:
+            accepted += 1
+    return {"invalid": False, "total": len(scope["items"]), "active": active, "accepted": accepted,
+            "deferred": deferred_valid, "open": open_items, "missing_evidence": missing,
+            "defer_problems": defer_problems, "oldest": max(ages, default=0)}
+
+
 def main():
     repo = os.environ["REPO"]
     rows = []
@@ -188,6 +233,41 @@ def main():
     add(not mistyped, "WK-1", "Open issues with exactly one type:* label", ", ".join(mistyped[:12]) or "all", "all")
     add(not noisy, "WK-2", "Issues with > 30 comments", ", ".join(noisy) or 0, "0")
     add(not viol, "PR-7", "Open violation issues", ", ".join(viol) or 0, "0")
+
+    if manifest.get("acceptance", {}).get("mode", "none") == "continuous":
+        scope_raw = gh(f"repos/{repo}/contents/acceptance/scope.json?ref={default}", check=False)
+        scope = None
+        if scope_raw and scope_raw.get("content"):
+            try:
+                scope = json.loads(base64.b64decode(scope_raw["content"]).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                scope = None
+        cache = {}
+        def acceptance_issue(number):
+            if not isinstance(number, int):
+                return None
+            if number not in cache:
+                cache[number] = gh(f"repos/{repo}/issues/{number}", check=False)
+            return cache[number]
+        debt = acceptance_health(scope, acceptance_issue)
+        add(not debt["invalid"] and debt["total"] > 0, "ACC-2", "Acceptance scope", debt["total"], "> 0 valid items")
+        add("warn" if debt["open"] else True, "ACC-2", "Open acceptance debt",
+            ", ".join(debt["open"][:12]) or 0, "close continuously before release")
+        add(not debt["missing_evidence"], "ACC-2", "Closed items missing base evidence",
+            ", ".join(debt["missing_evidence"][:12]) or 0, "0")
+        add(not debt["defer_problems"], "ACC-2", "Invalid/expired defer approvals",
+            ", ".join(debt["defer_problems"][:12]) or 0, "0")
+        ratio = round(100 * debt["accepted"] / debt["active"]) if debt["active"] else 0
+        add("warn" if debt["active"] and ratio < 80 else True, "ACC-2", "Acceptance evidence closure",
+            f"{debt['accepted']}/{debt['active']} ({ratio}%), deferred={debt['deferred']}", "≥ 80% during delivery; 100% at Release")
+        add("warn" if debt["oldest"] > 14 else True, "ACC-2", "Oldest open acceptance item",
+            f"{debt['oldest']} d", "≤ 14 d")
+        recent_closed = paged(f"repos/{repo}/pulls?state=closed&sort=updated&direction=desc", max_pages=2)
+        unmapped = [f"#{p['number']}" for p in recent_closed
+                    if p.get("merged_at") and days(p["merged_at"]) <= 30 and p.get("user", {}).get("type") != "Bot"
+                    and not re.search(r"(?im)^#+\s*Acceptance mapping\s*$", p.get("body") or "")]
+        add("warn" if unmapped else True, "ACC-2", "Merged PRs without acceptance mapping (30 d)",
+            ", ".join(unmapped[:12]) or 0, "0 after continuous profile adoption")
 
     # CI, last 7 days
     since = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")

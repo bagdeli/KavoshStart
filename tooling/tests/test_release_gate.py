@@ -1,4 +1,6 @@
 """Offline tests for REL-5 (tooling/src/release_gate.py). Rule ids in test names feed the contract test (#7)."""
+import base64
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -25,6 +27,70 @@ def fake_api(runs_seq, head=SHA):
         state["i"] += 1
         return {"check_runs": runs}
     return api
+
+
+def acceptance_api(issue_body=None, issue_state="closed", run_conclusion="success", compare_status="ahead",
+                   defer=False, defer_approved=True):
+    manifest = {"acceptance": {"mode": "continuous"}}
+    item = {"id": "AC-001", "issue": 12, "owner": "bagdeli", "risk": "high", "evidence": ["ci", "test"]}
+    if defer:
+        item.update({"deferredTo": "v0.2.0", "deferIssue": 13})
+    scope = {"schemaVersion": 1, "targetRelease": "v0.1.0", "items": [item]}
+    good = (
+        f"Acceptance-Merged-SHA: {'b' * 40}\n"
+        "Acceptance-Evidence-Run: https://github.com/o/r/actions/runs/99\n"
+        "Acceptance-Test-Evidence: https://test.example/evidence/1\n"
+        "Accepted-By: @bagdeli\n"
+    )
+    body = good if issue_body is None else issue_body
+
+    def enc(obj):
+        return {"content": base64.b64encode(json.dumps(obj).encode()).decode()}
+
+    def api(path):
+        if "contents/kavosh.project.json" in path:
+            return enc(manifest)
+        if "contents/acceptance/scope.json" in path:
+            return enc(scope)
+        if "/issues/13" in path:
+            return {"state": "closed", "body": "Defer-Approved-By: @bagdeli\n" if defer_approved else ""}
+        if "/issues/12" in path:
+            return {"state": issue_state, "body": body}
+        if "/compare/" in path:
+            return {"status": compare_status}
+        if "/actions/runs/99" in path:
+            return {"status": "completed", "conclusion": run_conclusion}
+        raise AssertionError(path)
+    return api
+
+
+class AcceptanceReleaseGate(unittest.TestCase):
+    def test_ACC3_positive_closed_item_with_exact_provenance(self):
+        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=acceptance_api()), [])
+
+    def test_ACC3_positive_owner_approved_future_defer(self):
+        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=acceptance_api(defer=True)), [])
+
+    def test_ACC3_positive_legacy_profile_is_backward_compatible(self):
+        def api(path):
+            if "contents/kavosh.project.json" in path:
+                payload = base64.b64encode(json.dumps({"tier": "T2"}).encode()).decode()
+                return {"content": payload}
+            raise AssertionError(path)
+        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=api), [])
+
+    def test_ACC3_negative_issue_only_stale_failed_or_unapproved_evidence(self):
+        issue_only = "Accepted-By: @bagdeli\nAcceptance-Merged-SHA: " + "b" * 40 + "\n"
+        cases = [
+            acceptance_api(issue_body=issue_only),
+            acceptance_api(compare_status="diverged"),
+            acceptance_api(run_conclusion="failure"),
+            acceptance_api(issue_state="open"),
+            acceptance_api(defer=True, defer_approved=False),
+        ]
+        for api in cases:
+            with self.subTest(api=api):
+                self.assertTrue(rg.acceptance_reasons("o/r", SHA, api=api))
 
 
 class ReleaseGate(unittest.TestCase):

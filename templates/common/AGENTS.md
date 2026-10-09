@@ -56,6 +56,7 @@ components, and read KavoshUI `AGENTS.md` and `docs/foundations/DESIGN_STANDARD_
 - [ ] Acceptance criteria of the issue met and listed in the PR body
 - [ ] Tests added/updated; `make check` green locally and in CI
 - [ ] Docs / ADR / runbook updated if behaviour changed
+- [ ] If `acceptance.mode=continuous`: PR maps affected AC-* IDs (or justified not-applicable); live evidence/approval stays on the canonical GitHub Issue
 - [ ] Persistent server/static environments pass exact release identity + independent health + canonical route via `--verify-environment` (DEP-7/8)
 - [ ] No TODO without a linked issue
 

@@ -193,6 +193,39 @@ class AiSection(unittest.TestCase):
         self.assertTrue(fails(g.ai_section_problems(self.body("none"))))
 
 
+class ContinuousAcceptance(unittest.TestCase):
+    def setUp(self):
+        self.original = g.acceptance_scope
+        g.acceptance_scope = lambda: {
+            "schemaVersion": 1,
+            "targetRelease": "v0.1.0",
+            "items": [{"id": "AC-001", "issue": 12, "owner": "bagdeli", "risk": "high",
+                       "evidence": ["ci", "test"]}],
+        }
+        self.manifest = {"acceptance": {"mode": "continuous"}}
+
+    def tearDown(self):
+        g.acceptance_scope = self.original
+
+    def test_ACC1_positive_valid_scope_and_pr_mapping(self):
+        self.assertEqual(fails(g.acceptance_scope_problems(self.manifest)), [])
+        body = "## Acceptance mapping\n- AC-001\n"
+        self.assertEqual(fails(g.acceptance_mapping_problems(self.manifest, body)), [])
+
+    def test_ACC1_negative_unknown_missing_and_false_status_fields(self):
+        self.assertTrue(fails(g.acceptance_mapping_problems(self.manifest, "## Acceptance mapping\n- AC-999\n")))
+        self.assertTrue(fails(g.acceptance_mapping_problems(self.manifest, "## What and why\nx\n")))
+        g.acceptance_scope = lambda: {
+            "schemaVersion": 1, "targetRelease": "v0.1.0",
+            "items": [{"id": "AC-001", "issue": 12, "owner": "bagdeli", "risk": "high",
+                       "evidence": ["ci"], "status": "accepted"}],
+        }
+        out = fails(g.acceptance_scope_problems(self.manifest))
+        self.assertTrue(out)
+        self.assertIn("live status", out[0][3])
+        self.assertIn("requires test evidence", out[0][3])
+
+
 class Classification(unittest.TestCase):
     def test_SRC5_library_classifies_at_least_T1(self):
         m = {"runtime": "none", "projectKind": "library", "ui": {"kind": "none"},
