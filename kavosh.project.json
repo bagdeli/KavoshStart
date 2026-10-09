@@ -53,7 +53,8 @@
   },
   "ci": {
     "runner": "github-hosted",
-    "monthlyMinutesBudget": 100
+    "monthlyMinutesBudget": 100,
+    "requiredWorkflow": ".github/workflows/self-check.yml"
   },
   "limits": {
     "maxOpenReadyPRs": 3,
@@ -64,7 +65,8 @@
     "codex"
   ],
   "release": {
-    "strategy": "release-please"
+    "strategy": "release-please",
+    "workflow": ".github/workflows/release.yml"
   },
   "automation": {
     "interface": "make"
