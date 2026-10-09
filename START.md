@@ -122,18 +122,17 @@ manually (e.g. the Actions access setting). Stop.
 2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).
 3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template. Draft stacks may be deep;
    health warns until the Ready stack is normalized.
-4. Implement; run focused tests; run `make check`; push once. Heavy CI is off by default on Draft; early CI still
-   needs direct approval if it consumes shared quota.
-5. Update the PR body: Done / Remaining (as new issues) / Decisions / How verified / AI involvement.
-6. Mark ready for review. An explicit owner authorization for this PR and current head permits an ordinary green
-   squash merge after fresh preflight checks. Recheck base, mergeability, required green checks and unresolved review
-   threads immediately before merge; bind it to the same SHA with `gh pr merge <number> --squash --match-head-commit <sha>`.
-   It never permits `--admin`, protection bypass or a red/missing check.
-7. If the branch is older than 3 days or `main` moved significantly: rebase on `origin/main` before asking for review (`BR-3`).
+4. Implement one coherent packet; run focused verification plus the project's semantic `check` command. The default scaffold exposes this through `make check`, but an adopted project may use another documented adapter (CI-8). Heavy CI is off by default on Draft; early CI still needs direct approval if it consumes shared quota.
+5. Update the PR body: Change risk / affected capabilities / Done / Remaining (as canonical issues) / Decisions / How verified / AI involvement. A remaining required outcome is never silently converted into "done" by starting the next task (FLOW-2).
+6. Mark ready for review. Recheck base, mergeability, exact head, required green checks, unresolved review threads and blockers immediately before merge.
+   - `low` / `medium`: when all required gates are complete, the agent may perform the ordinary Squash merge on the exact current head without asking the owner to click Merge.
+   - `high` / `critical`, control-plane, security/trust-boundary, destructive-data or release-policy change: require an explicit human decision for the current scope first; after that decision the agent may perform the mechanical merge.
+   - A generic "continue/proceed" is execution authority only; it is never acceptance, merge, release or waiver authority (FLOW-1).
+   - Never use `--admin`, bypass protection, or merge a red/missing check.
+7. If the branch is stale or `main` moved materially, refresh/rebase based on conflict and risk rather than a universal age threshold. Branch age remains a health signal, not proof that the change is unsafe (BR-3).
 
 ## Hard stops — ask the owner, do nothing else
 - Creating/deleting repositories, deleting branches or tags, closing issues you did not create.
-- Production data changes and credentials require direct authorization scoped to one action; SETAD/Moadian/bank
-  credentials, OTP/CAPTCHA and signing keys are never handled by agents.
+- High/critical risk decisions, Production data changes and credentials require direct human authorization scoped to the current action/scope; SETAD/Moadian/bank credentials, OTP/CAPTCHA and signing keys are never handled by agents.
 - A rule in `standard/RULES.md` would have to be broken to finish the task.
 - A CI dispatch would consume shared quota without direct, bounded owner approval.
