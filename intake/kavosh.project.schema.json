@@ -380,6 +380,22 @@
       "items": {
         "type": "string"
       }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "none",
+            "continuous"
+          ],
+          "description": "Continuous release-scope acceptance/evidence flow. New T2 projects use continuous; existing projects opt in during upgrade."
+        }
+      }
     }
   }
 }
