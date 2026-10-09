@@ -26,28 +26,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Inspect public portfolio (repository-scoped read)
+      - name: Inspect public portfolio and maintain canonical issue
         id: inspect
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set +e
-          python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" > report.md
+          python3 scripts/portfolio_guard.py "${{ github.repository_owner }}" --update-issue > report.md
           echo "findings=$?" >> "$GITHUB_OUTPUT"
           cat report.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Update the kavosh:portfolio issue (write with this repo's token)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh label create kavosh:portfolio -R "${{ github.repository }}" --color 5319E7 --description "Layer O portfolio findings" --force
-          n=$(gh issue list -R "${{ github.repository }}" --label kavosh:portfolio --state open --json number -q '.[0].number')
-          if [ "${{ steps.inspect.outputs.findings }}" = "0" ]; then
-            if [ -n "$n" ]; then gh issue close "$n" -R "${{ github.repository }}" --reason completed --comment "Latest Layer O report has zero findings."; fi
-          elif [ -n "$n" ]; then
-            gh issue edit "$n" -R "${{ github.repository }}" --body-file report.md
-          else
-            gh issue create -R "${{ github.repository }}" --title "Portfolio supervisor (Layer O)" --label "kavosh:portfolio" --body-file report.md
-          fi
       - name: Fail when there are findings
         if: steps.inspect.outputs.findings != '0'
         run: exit 1
