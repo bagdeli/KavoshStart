@@ -78,6 +78,22 @@ def portfolio(api):
     return pg.run(api, "bagdeli", inventory=[REPO])
 
 
+class MutationApi:
+    def __init__(self, found=None):
+        self.found = found or []
+        self.calls = []
+
+    def get(self, path):
+        self.calls.append(("GET", path, None))
+        if "/issues?" in path:
+            return list(self.found)
+        return None
+
+    def request(self, path, method="GET", payload=None, allow_status=()):
+        self.calls.append((method, path, payload))
+        return None
+
+
 class LayerO(unittest.TestCase):
     def test_O_positive_clean_repo(self):
         """Covers: BR-5, PR-5, BR-9, AI-4, REL-6 (positive)"""
@@ -193,6 +209,29 @@ class LayerO(unittest.TestCase):
         text, n = portfolio(api)
         self.assertEqual(n, 0, text)
         self.assertNotIn(REPO, text)
+
+    def test_O_positive_green_report_closes_existing_portfolio_issue(self):
+        api = MutationApi(found=[{"number": 7, "body": "old"}])
+        pg.update_issue("green", 0, api)
+        self.assertTrue(any(method == "PATCH" and path.endswith("/issues/7") and payload.get("state") == "closed"
+                            for method, path, payload in api.calls if payload))
+        self.assertTrue(any(method == "POST" and path.endswith("/issues/7/comments")
+                            for method, path, _ in api.calls))
+
+    def test_O_negative_findings_create_portfolio_issue_when_missing(self):
+        api = MutationApi()
+        pg.update_issue("report body", 2, api)
+        created = [(method, path, payload) for method, path, payload in api.calls
+                   if method == "POST" and path.endswith("/issues") and payload and payload.get("title")]
+        self.assertEqual(len(created), 1)
+        self.assertEqual(created[0][2]["labels"], ["kavosh:portfolio"])
+
+    def test_O_runtime_has_no_direct_github_cli_dependency(self):
+        script = (ROOT / "scripts" / "portfolio_guard.py").read_text(encoding="utf-8")
+        template = (ROOT / "tooling" / "templates" / "kavosh-portfolio.yml").read_text(encoding="utf-8")
+        self.assertNotIn('subprocess.run(["gh"', script)
+        self.assertNotIn("gh issue ", template)
+        self.assertNotIn("gh label ", template)
 
     def test_O_reports_frozen_v1_consumers(self):
         api = FakeApi()
