@@ -35,3 +35,14 @@ type:bug · type:decision (→ ADR) · type:chore
 
 ## چرا
 در یک پروژه‌ی بزرگ، «مرجع فعلی» چند بار عوض شده و در فایل‌های متعدد کپی شده بود؛ عاملی که از `main` شروع می‌کرد ممکن بود به Issue بسته هدایت شود. وضعیت در GitHub همیشه زنده است و با `gh` قابل خواندن.
+## Immutable provenance versus live state
+
+Source-of-truth rules distinguish evidence that must remain frozen from operational state that must stay live:
+
+- exact source commit identifiers are valid in immutable release notes, audits and ADRs because they prove what was reviewed or released;
+- ordinary explanatory Markdown must not freeze current repository state with a commit SHA;
+- `AGENTS.md` must not depend on a specific current Issue/PR or status date;
+- a standards citation such as `UTS #39`, RFC/section numbering or other non-GitHub citation is not a live Issue/PR reference;
+- if an agent/contributor rule truly depends on a GitHub work item, put that state in GitHub and keep AGENTS generic.
+
+
