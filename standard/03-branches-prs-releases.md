@@ -13,30 +13,25 @@ main   ●────●────●────●────●───�
 
 ## چرخه‌ی یک PR
 1. Issue در وضعیت Ready ← `git switch -c feat/<n>-<slug> origin/main`
-2. Draft PR زود (برنامه در بدنه). stack عمیق مجاز است و health هشدار می‌دهد؛ پیش از Ready به main یا یک والد بلافاصله قابل‌ادغام normalize می‌شود. CI سنگین روی Draft خاموش است؛ dispatch زودهنگام مجوز quota نیست.
-3. کد + تست + `make check` محلی ← یک push.
-4. Ready for review ← `kavosh` و `required` سبز، شاخه shallow، threadها resolved.
-5. مالک برای PR و head فعلی مجوز merge می‌دهد؛ عامل بلافاصله پیش از merge، base، mergeability، checkهای سبز و threadهای حل‌نشده را دوباره بررسی می‌کند و **Squash merge** عادی را با تطبیق همان SHA انجام می‌دهد: `gh pr merge <number> --squash --match-head-commit <sha>`. `--admin` و bypass مطلقاً ممنوع‌اند.
+2. Draft PR زود. stack عمیق در Draft مجاز است؛ پیش از Ready به main یا یک والد بلافاصله قابل‌ادغام normalize می‌شود.
+3. **Change Risk** و capabilityهای متاثر را مستقل از Tier اعلام کنید. line/file/commit count فقط telemetry است و risk classifier یا hard gate نیست.
+4. یک packet منسجم پیاده کنید و semantic `check` contract پروژه را اجرا کنید؛ Make فقط adapter پیش‌فرض scaffold است.
+5. Ready for review ← `kavosh` و `required` سبز، exact head معلوم، blocker و thread حل‌نشده وجود ندارد.
+6. `low/medium`: عامل می‌تواند پس از preflight کامل همان exact head را Squash merge کند. `high/critical` و control-plane/security/destructive/release-policy ابتدا تصمیم صریح انسانی برای scope فعلی می‌خواهند؛ سپس خود merge مکانیکی قابل واگذاری است.
+7. «ادامه بده» فقط اجازهٔ گام بعدی است و Acceptance/Merge/Release یا waiver قبلی نیست. outcome ناقص باید Issue/acceptance item canonical داشته باشد.
 
-## اندازه
-| | هدف | هشدار | قرمز |
-|---|---|---|---|
-| خطوط تغییر (بدون lockfile/generated) | ≤ 200 | > `prMaxLines` (400) | > 2.5 × `prMaxLines` (1000) |
-| فایل‌ها | ≤ 20 | > 20 | > 50 |
-| عمق stack در Draft | آزاد | هشدار می‌گیرد | normalize پیش از Ready |
-| عمق stack در Ready/Merge | 1 | یک والد بلافاصله قابل ادغام | ≥ 3 یا والد غیرقابل ادغام = قرمز |
-
-برچسب `size:exception` فقط درخواست استثناست. عبور از سقف سخت نیازمند دلیل روشن و تأیید مالک روی همان head فعلی است.
+## اندازه و split
+Batch کوچک برای feedback سریع مطلوب است، اما **هیچ سقف عمومی بر اساس تعداد خط یا فایل وجود ندارد**. split فقط وقتی مطلوب است که هر بخش مستقل، قابل‌تست، قابل‌مرور و امن برای merge بماند. generated refactor یا تغییر منسجم بزرگ باید generator/روش بازبینی/verification خود را مستند کند؛ کوچک بودن diff نیز تغییر پرریسک را کم‌ریسک نمی‌کند.
 
 ## انتشار
-```text
-push به main → ci (required) + kavosh (main-guard) → ci موفق → release (workflow_run)
-   → REL-5: checkهای الزامی همان commit موجود و موفق؟ و هنوز head main است؟
-   → release-please: Release PR را به‌روز می‌کند / پس از ادغام آن: tag + Release (+ فایل‌های انتشار در همان اجرا)
-```
-- release-please یک «Release PR» باز نگه می‌دارد؛ ادغامش = نسخه + `CHANGELOG.md` + tag + Release.
-- **Approve and run:** Release PR را `GITHUB_TOKEN` می‌سازد؛ اگر workflow action-required شد، فقط پس از مشاهدهٔ commit و هزینهٔ احتمالی اجرای مشخص را مجاز کنید، سپس سبز شدن را ببینید.
-- اگر CI قرمز است یا اجرا نشده (مثلاً قفل Billing)، هیچ نسخه‌ای ساخته نمی‌شود (REL-5). دور زدن این دروازه با tag دستی تخلف است.
+Core نتیجه را govern می‌کند، نه ابزار را:
+
+- هر strategy باید SemVer، tag immutable `vX.Y.Z[-rc.N]`، exact-source identity، changelog/release notes، provenance لازم و release gate معادل REL-5/6 را حفظ کند.
+- `release.strategy=release-please` مسیر پیش‌فرض scaffold است و `release.workflow` پیش‌فرض `.github/workflows/release.yml`، که `kavosh-release.yml` را صدا می‌زند.
+- `changesets` یا `custom` باید workflow واقعی و `strategyADR` را در manifest اعلام کند؛ governance وجود adapter و قرارداد معادل را بررسی می‌کند. ابزار downstream حق ندارد با نام متفاوت gate ضعیف‌تری بسازد.
+- `ci.requiredWorkflow` فایل workflow دارای job تجمیعی ثابت `required` را اعلام می‌کند؛ نام فایل invariant نیست.
+- اگر checks همان exact candidate قرمز/غایب باشند هیچ نسخه‌ای ساخته نمی‌شود. tag دستی جای release gate نیست.
+- تصمیم انسانی Release از اجرای مکانیکی CI/merge جداست. محدودیت پلتفرم مثل GitHub `action_required` نباید به‌عنوان تصمیم محصولی تعبیر شود و باید بدون bypass checks حل شود.
 - tag `v1` قدیمی منجمد است و هرگز جابه‌جا نمی‌شود؛ پروژه‌ها فقط `@vX.Y.Z` دقیق (REL-6).
 - نام tag برای انتشارهای جدید فقط `vX.Y.Z` یا `vX.Y.Z-rc.N` است. انتشار تاریخیِ immutable با نام `KavoshStart-v1.1.0` حفظ می‌شود: health فقط همین tag موجود را grandfather می‌کند، اما هیچ tag نام‌دار تازه‌ای مجاز نیست. هر tag تاریخی را حذف یا جابه‌جا نکنید.
 - پیش‌انتشار برای Test از workflow `rc` و فقط با dispatch مستقیم مالک ساخته می‌شود: مالک `vX.Y.Z-rc.N` و **SHA کامل current main** را وارد و همان creation را تأیید می‌کند. REL-7 دوباره required checks را روی همان SHA می‌سنجد، tag/release/final collision و RC عقب‌تر را رد می‌کند و سپس GitHub prerelease immutable می‌سازد. ساخت tag دستی، RC branch یا deploy مستقیم main جایگزین این مسیر نیست.
