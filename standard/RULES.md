@@ -21,6 +21,12 @@
 | SRC-6 | `README.md`، `PROJECT.md` و `AGENTS.md` دامنه‌ی محصول را یکسان توصیف می‌کنند (همان `summary` مانیفست). | SHOULD | All | R |
 | SRC-7 | `PROJECT.md` (برگه‌ی یک‌صفحه‌ای پروژه) وجود دارد. | MUST | All | P |
 
+## STD — چرخهٔ استاندارد KavoshStart
+| ID | قاعده | سطح | Tier | لایه |
+|---|---|---|---|---|
+| STD-1 | pin دقیق KavoshStart باید در Health با آخرین Release پایدار مقایسه شود؛ نسخهٔ جدید به‌صورت warning آشکار می‌شود و عامل در شروع جلسه CHANGELOG را ارزیابی می‌کند. ارتقا خودکار ممنوع؛ تغییر control-plane پیش از feature/gate جدید یا upgrade می‌شود یا defer محدود و صریح مالک می‌گیرد. | MUST | All | H, R |
+| STD-2 | `adoptionPhase: true` در پروژه‌ای که این استاندارد را پذیرفته مجاز نیست؛ adoption یک migration محدود است و کار عادی فقط با governance اجباری ادامه می‌یابد. deviation واقعی با exception traceable ثبت می‌شود، نه report-only mode. | MUST | All | P |
+
 ## WK — مدیریت کار
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
@@ -71,7 +77,7 @@
 ## ACC — جریان پذیرش و شواهد
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| ACC-1 | در profile `acceptance.mode=continuous`، فایل `acceptance/scope.json` فقط قرارداد scope نسخه است (نه status tracker): ID یکتا، Issue canonical، owner، risk و نوع evidence را تعریف می‌کند؛ هر PR غیررباتی باید IDهای متاثر را map کند یا `not-applicable` با دلیل واقعی بدهد. | MUST | T2 | P |
+| ACC-1 | هر پروژهٔ T2 باید `acceptance.mode=continuous` داشته باشد. `acceptance/scope.json` فقط قرارداد scope نسخه است (نه status tracker): ID یکتا، Issue canonical، owner، risk و نوع evidence را تعریف می‌کند؛ هر PR غیررباتی باید IDهای متاثر را map کند یا `not-applicable` با دلیل واقعی بدهد. | MUST | T2 | P |
 | ACC-2 | سلامت دوره‌ای برای continuous acceptance بدهی پذیرش را از scope + وضعیت واقعی GitHub محاسبه و open/unaccepted/deferred/missing-evidence را گزارش می‌کند؛ merged code هرگز خودکار Acceptance Complete محسوب نمی‌شود. | MUST | T2 | H |
 | ACC-3 | دروازهٔ release برای continuous acceptance fail-closed است: scope غیرخالی، هر مورد in-scope بسته و owner-accepted، merged SHA ancestor کاندیدا، Actions run موفق و evidenceهای لازم risk/type حاضر؛ defer فقط با تصمیم versioned در scope و Issue approval بسته مجاز است. | MUST | T2 | G |
 | ACC-4 | status زندهٔ acceptance داخل فایل نگهداری نمی‌شود؛ source of truth وضعیت/evidence/approval همان GitHub Issue/PR/Run است و scope file فقط declaration نسخه‌دار است. | MUST | T2 | via SRC-1, ACC-1, ACC-2, ACC-3 |

@@ -1,6 +1,6 @@
 {
   "$schema": "./intake/kavosh.project.schema.json",
-  "kavoshStart": "v1.2.0",
+  "kavoshStart": "v1.6.0",
   "name": "KavoshStart",
   "repo": "bagdeli/KavoshStart",
   "summary": "Engineering standard, project intake, templates and reusable GitHub workflows for every Kavosh project built by humans and AI agents.",

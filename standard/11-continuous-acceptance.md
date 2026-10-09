@@ -18,13 +18,13 @@ Promotion Complete    = release/deploy/environment gates
 
 ## فعال‌سازی
 
-برای T2 جدید:
+برای هر T2 که این نسخه یا جدیدتر KavoshStart را می‌پذیرد:
 
 ```json
 "acceptance": {"mode": "continuous"}
 ```
 
-پروژه‌های موجود backward-compatible هستند و هنگام upgrade می‌توانند opt in کنند.
+الزامی است. پروژه‌ای که روی KavoshStart قدیمی پین مانده retroactively تغییر نمی‌کند؛ اما upgrade به استاندارد جدید باید این profile را در همان PR فعال و scope واقعی نسخه را bootstrap کند.
 
 ## scope contract
 
@@ -117,3 +117,9 @@ Layer H تعداد scope items، open acceptance items، deferred items و مو�
 ## حریم منبع حقیقت
 
 `scope.json` فقط intent نسخه‌دار است. statusهایی مثل `accepted`, `done`, `passed` داخل آن ممنوع‌اند. state واقعی در GitHub Issue/PR/Actions و environment evidence باقی می‌ماند.
+
+## migration برای T2 موجود
+
+در upgrade، هدف ساختن tracker دوم یا تبدیل کورکورانهٔ هر requirement داخلی به AC مستقل نیست. acceptance item باید واحدی باشد که مالک بتواند برای release همان نسخه درباره‌اش تصمیم بگیرد. یک item می‌تواند چند requirement ریزتر را پوشش دهد فقط وقتی owner، risk tier و evidence آنها مشترک است و mapping requirement→evidence از بین نمی‌رود.
+
+کد merge‌شدهٔ تاریخی بدون evidence معتبر خودکار accepted نمی‌شود. آن را به‌عنوان debt واقعی وارد scope کنید، evidence قابل‌استفاده را reuse کنید و فقط gapهای مادی را دوباره اجرا کنید. Health closure ratio و سن debt را برای feedback زودهنگام نشان می‌دهد؛ G/Release همچنان برای scope همان نسخه fail-closed است.

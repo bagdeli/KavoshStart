@@ -28,6 +28,7 @@ make check    # lint + test + build — run before your single push
 ```
 
 ## Where to find work
+- Start every session with KavoshStart `START.md §0`: verify repo/scope, compare this manifest's exact KavoshStart pin with the latest stable release, and read the CHANGELOG delta before new feature/gate work when behind.
 - Your task is exactly one issue: `gh issue view <n>`; read its parent issue too.
 - Priorities: GitHub Project "Kavosh Delivery". Never rely on a file for status.
 - Decisions: `docs/decisions/`. Feature intent: `specs/<n>-<slug>/spec.md`.

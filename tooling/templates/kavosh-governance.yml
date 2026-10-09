@@ -11,7 +11,7 @@ on:
         type: string
         default: '["ubuntu-latest"]'
       enforce:
-        description: false = report only (adoption phase)
+        description: Compatibility input only; false is fail-closed and never authorizes report-only success
         type: boolean
         default: true
       comment:

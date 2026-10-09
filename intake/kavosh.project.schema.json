@@ -83,7 +83,7 @@
     },
     "adoptionPhase": {
       "type": "boolean",
-      "description": "Deprecated legacy marker. This field never authorizes enforce:false or a green report-only check."
+      "description": "Deprecated legacy migration marker. Consumers of the current standard must not set this to true; it never authorizes enforce:false."
     },
     "firstRelease": {
       "type": "array",
@@ -393,9 +393,10 @@
             "none",
             "continuous"
           ],
-          "description": "Continuous release-scope acceptance/evidence flow. New T2 projects use continuous; existing projects opt in during upgrade."
+          "description": "Continuous release-scope acceptance/evidence flow. Required for T2 when adopting/upgrading to the current KavoshStart standard."
         }
-      }
+      },
+      "description": "Acceptance-flow profile. T2 consumers of the current standard must use mode=continuous; T0/T1 may opt in."
     }
   }
 }
