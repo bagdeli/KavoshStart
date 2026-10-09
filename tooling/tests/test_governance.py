@@ -91,7 +91,7 @@ class Wiring(unittest.TestCase):
         self.assertTrue(any(r[1] == "REL-5" for r in fails(g.wiring_problems(wf(rel=rel), M))))
 
     def test_AI4_positive_kavoshstart_uses_local_refs(self):
-        own = {"repo": "bagdeli/KavoshStart", "kavoshStart": "v1.1.0"}
+        own = {"repo": "bagdeli/KavoshStart", "kavoshStart": "self"}
         text = KAVOSH_OK.replace("bagdeli/KavoshStart/.github/workflows/", "./.github/workflows/").replace("@v1.1.0", "")
         rel = REL_OK.replace("bagdeli/KavoshStart/.github/workflows/", "./.github/workflows/").replace("@v1.1.0", "")
         self.assertEqual(fails(g.wiring_problems(wf(kavosh=text, rel=rel), own)), [])
@@ -191,6 +191,28 @@ class AiSection(unittest.TestCase):
 
     def test_AI3_negative_none_but_placeholder_left(self):
         self.assertTrue(fails(g.ai_section_problems(self.body("none"))))
+
+
+class StandardPinIdentity(unittest.TestCase):
+    def test_STD1_positive_consumer_exact_release_pin(self):
+        """Covers: STD-1 (positive)"""
+        self.assertEqual(fails(g.standard_pin_problems(
+            {"repo": "bagdeli/KavoshERP", "kavoshStart": "v1.7.0"}, "bagdeli/KavoshERP")), [])
+
+    def test_STD1_positive_canonical_standard_uses_self(self):
+        self.assertEqual(fails(g.standard_pin_problems(
+            {"repo": "bagdeli/KavoshStart", "kavoshStart": "self"}, "bagdeli/KavoshStart")), [])
+
+    def test_STD1_negative_consumer_cannot_use_self(self):
+        """Covers: STD-1 (negative)"""
+        out = fails(g.standard_pin_problems(
+            {"repo": "bagdeli/KavoshERP", "kavoshStart": "self"}, "bagdeli/KavoshERP"))
+        self.assertTrue(any(r[1] == "STD-1" for r in out))
+
+    def test_STD1_negative_standard_cannot_pin_its_previous_release(self):
+        out = fails(g.standard_pin_problems(
+            {"repo": "bagdeli/KavoshStart", "kavoshStart": "v1.7.0"}, "bagdeli/KavoshStart"))
+        self.assertTrue(any(r[1] == "STD-1" for r in out))
 
 
 class StandardLifecycle(unittest.TestCase):
