@@ -64,7 +64,8 @@
   },
   "ci": {
     "runner": "github-hosted",
-    "monthlyMinutesBudget": 0
+    "monthlyMinutesBudget": 0,
+    "requiredWorkflow": ".github/workflows/ci.yml"
   },
   "limits": {
     "maxOpenReadyPRs": 3,
@@ -81,7 +82,8 @@
     "mode": "continuous"
   },
   "release": {
-    "strategy": "release-please"
+    "strategy": "release-please",
+    "workflow": ".github/workflows/release.yml"
   },
   "automation": {
     "interface": "make"
