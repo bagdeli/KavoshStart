@@ -86,6 +86,31 @@ class RulesContract(unittest.TestCase):
             RULES = original
             Path(f.name).unlink()
 
+    def test_explanatory_standards_do_not_reintroduce_numeric_pr_caps(self):
+        """PR size may be telemetry, but canonical prose must not turn line/file counts back into merge gates."""
+        paths = [ROOT / "README.md", ROOT / "START.md",
+                 ROOT / "templates/common/AGENTS.md",
+                 ROOT / "templates/common/.github/pull_request_template.md"]
+        paths += sorted((ROOT / "standard").glob("*.md"))
+        forward = re.compile(
+            r"(?i)(?:\\bpr\\b|pull request|type:task|\\btask\\b).{0,140}"
+            r"(?:<=|≥|≤|<|>|>=|max(?:imum)?|حداکثر)\\s*"
+            r"(?:[0-9]+(?:[.][0-9]+)?\\s*[×x]\\s*)?[0-9]+\\s*(?:lines?|files?|خط|فایل)"
+        )
+        reverse = re.compile(
+            r"(?i)(?:<=|≥|≤|<|>|>=|max(?:imum)?|حداکثر)\\s*"
+            r"(?:[0-9]+(?:[.][0-9]+)?\\s*[×x]\\s*)?[0-9]+\\s*(?:lines?|files?|خط|فایل)"
+            r".{0,100}(?:\\bpr\\b|pull request)"
+        )
+        offenders = []
+        for path in paths:
+            if not path.is_file():
+                continue
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "prMaxLines" in line or "size:exception" in line or forward.search(line) or reverse.search(line):
+                    offenders.append(f"{path.relative_to(ROOT)}:{lineno}: {line.strip()}")
+        self.assertEqual(offenders, [], "numeric PR hard-cap prose returned:\n  " + "\n  ".join(offenders))
+
     def test_layer_O_uses_repository_token_without_shared_secret(self):
         """Deliberately 'break' Layer O: without its secret the workflow fails red; if it stops running entirely,
         nothing automated notices — the standard must say so honestly (#7)."""
