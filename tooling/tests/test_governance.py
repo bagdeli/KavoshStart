@@ -141,6 +141,37 @@ class AdapterWiring(unittest.TestCase):
             finally:
                 os.chdir(old)
 
+    def test_REL4_positive_default_make_release_artifact_adapter(self):
+        m = {
+            "runtime": "none",
+            "automation": {"interface": "make"},
+            "release": {"strategy": "release-please"},
+        }
+        self.assertEqual(fails(g.release_adapter_problems(m)), [])
+
+    def test_REL4_positive_explicit_non_make_release_artifact_adapter(self):
+        m = {
+            "runtime": "desktop",
+            "automation": {"interface": "package-scripts"},
+            "release": {
+                "strategy": "release-please",
+                "artifact": {
+                    "command": "corepack enable && pnpm install --frozen-lockfile && pnpm package",
+                    "paths": ["dist/*.zip"],
+                },
+            },
+        }
+        self.assertEqual(fails(g.release_adapter_problems(m)), [])
+
+    def test_REL4_negative_non_make_release_artifact_without_adapter(self):
+        m = {
+            "runtime": "none",
+            "automation": {"interface": "package-scripts"},
+            "release": {"strategy": "release-please"},
+        }
+        findings = fails(g.release_adapter_problems(m))
+        self.assertTrue(any(r[1] == "REL-4" and "release.artifact.command + paths" in r[3] for r in findings))
+
     def test_REL4_negative_changesets_adapter_without_equivalent_adr(self):
         old = os.getcwd()
         with tempfile.TemporaryDirectory() as td:
