@@ -2,7 +2,6 @@
 # by tooling/build_workflows.py — edit this file, then run `python3 tooling/build_workflows.py`.
 # Runs in the product repository checkout. Needs python3 (stdlib only) and, for PR checks, gh.
 import json
-import math
 import os
 import re
 import subprocess
@@ -178,10 +177,10 @@ def check_manifest(actual_repo=None):
                                        ("ui exception", "scope", "rtl", "accessibility", "tests"))
         add("fail" if problem else "ok", "UI-1", "KavoshUI pin or approved exception ADR",
             problem or ui["exceptionADR"])
-    budget = m["ci"]["monthlyMinutesBudget"]
-    if m["visibility"] == "private" and budget > 0:
-        add("fail", "CI-3", "Shared hosted quota disabled by default on private repos",
-            f"budget {budget}; a manifest is not authorization")
+    budget = m.get("ci", {}).get("monthlyMinutesBudget")
+    if budget not in (None, 0):
+        add("warn", "CI-3", "Portfolio budget hint is not a core authorization",
+            f"monthlyMinutesBudget={budget}; billable execution still follows owner/account policy")
     for level, rule, title, detail in runner_manifest_problems(m):
         add(level, rule, title, detail)
     return m
@@ -227,12 +226,11 @@ def runner_manifest_problems(m):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
-        zero_budget = m.get("ci", {}).get("monthlyMinutesBudget", 0) == 0
-        if not eligible or not zero_budget:
-            return [("fail", "CI-1", "Local-only validation is T1/static with zero budget",
-                     f"got tier={m.get('tier')}, runtime={m.get('runtime')}, monthlyMinutesBudget={m.get('ci', {}).get('monthlyMinutesBudget')}")]
+        if not eligible:
+            return [("fail", "CI-1", "Local-only validation is limited to the T1/static profile",
+                     f"got tier={m.get('tier')}, runtime={m.get('runtime')}")]
         return [("ok", "CI-1", "Local-only T1/static validation profile",
-                 "no GitHub Actions workflows; make check runs locally and its result is recorded in the PR")]
+                 "no GitHub Actions workflows; the project's semantic check contract runs locally and its result is recorded in the PR")]
     if runner not in ("github-hosted", "self-hosted"):
         return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
     out = [("ok", "CI-1", "Runner selected by trust/cost policy", f"{vis} → {runner}")]
@@ -668,13 +666,45 @@ def ui_render_files(files):
     return out
 
 
+RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+HIGH_RISK_PATH_RE = re.compile(
+    r"(^|/)(migrations?|deploy|security|auth|permissions?|\.github/workflows)(/|$)"
+    r"|(^|/)(kavosh\.project\.json|standard/RULES\.md|release-please-config\.json)$",
+    re.I,
+)
+
+
+def change_risk_problems(body, files, bot=False):
+    """CR-1/2: declare change risk independently of diff size; sensitive paths impose a high-risk floor."""
+    if bot:
+        return [("ok", "CR-1", "Automated dependency/change risk", "bot PR uses its automation policy")], "medium"
+    risk_match = re.search(r"(?im)^Risk:\s*(low|medium|high|critical)\s*$", body or "")
+    cap_match = re.search(r"(?im)^Capabilities:\s*(\S.+)$", body or "")
+    if not risk_match or not cap_match:
+        return [("fail", "CR-1", "Declared change risk and capabilities",
+                 "add Risk: low|medium|high|critical and a non-empty Capabilities: line")], None
+    risk = risk_match.group(1).lower()
+    out = [("ok", "CR-1", "Declared change risk and capabilities",
+            f"{risk}; {cap_match.group(1).strip()}")]
+    sensitive = []
+    for item in files:
+        name = item.get("filename", "") if isinstance(item, dict) else str(item)
+        if HIGH_RISK_PATH_RE.search(name):
+            sensitive.append(name)
+    if sensitive and RISK_ORDER[risk] < RISK_ORDER["high"]:
+        out.append(("fail", "CR-2", "Sensitive/control-plane change risk floor",
+                    f"{risk} is below high for {', '.join(sensitive[:5])}"))
+    else:
+        out.append(("ok", "CR-2", "Risk floor", "high-sensitive paths respected" if sensitive else "no machine-detected high-risk path"))
+    return out, risk
+
+
 def check_pr(m, event, repo):
     pr = event["pull_request"]
     default = event["repository"]["default_branch"]
     head, base = pr["head"]["ref"], pr["base"]["ref"]
     title, body = pr["title"] or "", pr.get("body") or ""
     limits = m.get("limits", {}) if m else {}
-    max_lines = int(limits.get("prMaxLines", 400))
     max_ready = int(limits.get("maxOpenReadyPRs", 3))
     bot = pr["user"]["type"] == "Bot" or bool(EXEMPT_BRANCH_RE.search(head))
 
@@ -694,19 +724,9 @@ def check_pr(m, event, repo):
             break
         page += 1
     counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]
-    lines = sum(f["additions"] + f["deletions"] for f in counted)
-    labels = {l["name"] for l in pr.get("labels", [])}
-    hard = math.ceil(max_lines * 2.5)
-    exception_requested = "size:exception" in labels
-    approved_size = False
-    if exception_requested:
-        reason = re.search(r"(?im)^size exception reason:\s*(\S.+)$", body)
-        reviews = gh("api", f"repos/{repo}/pulls/{pr['number']}/reviews") or []
-        owner = repo.split("/")[0].lower()
-        approved_size = bool(reason and any(
-            (r.get("user") or {}).get("login", "").lower() == owner
-            and r.get("state") == "APPROVED" and r.get("commit_id") == pr["head"].get("sha")
-            for r in reviews))
+    lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
+    for level, rule, t, d in change_risk_problems(body, files, bot):
+        add(level, rule, t, d)
     visual_files = ui_render_files(files)
     if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
         evidence = re.search(r"(?im)^ui evidence:\s*(https?://\S+|\S.+)$", body)
@@ -715,16 +735,8 @@ def check_pr(m, event, repo):
     else:
         add("ok", "UI-2", "No render evidence needed", "PR has no visual UI changes")
 
-    if (lines > hard or len(counted) > 50) and not approved_size:
-        add("fail", "PR-3", "PR size", f"{lines} lines / {len(counted)} files > {hard} / 50 — split it")
-    elif exception_requested and (lines > max_lines) and not approved_size:
-        add("fail", "PR-3", "Size exception authorization", "requires a written reason and owner approval on the current head")
-    elif exception_requested:
-        add("warn", "PR-3", "Owner-authorized size exception", f"{lines} lines / {len(counted)} files; reason and current-head owner approval recorded")
-    elif lines > max_lines:
-        add("warn", "PR-3", "PR size", f"{lines} lines > target {max_lines}")
-    else:
-        add("ok", "PR-3", "PR size", f"{lines} lines / {len(counted)} files")
+    add("ok", "PR-3", "Diff-size telemetry",
+        f"{lines} review-counted lines / {len(counted)} review-counted files; no universal size gate")
 
     if base == default:
         add("ok", "BR-4", "Targets main (stack depth)", base)
