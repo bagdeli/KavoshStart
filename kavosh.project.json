@@ -70,5 +70,8 @@
   },
   "automation": {
     "interface": "make"
-  }
+  },
+  "capabilities": [
+    "control-plane"
+  ]
 }
