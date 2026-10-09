@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.6](https://github.com/bagdeli/KavoshStart/compare/v2.0.5...v2.0.6) (2026-10-09)
+
+
+### Bug Fixes
+
+* **release:** add portable release artifact adapter ([#107](https://github.com/bagdeli/KavoshStart/issues/107)) ([d80536f](https://github.com/bagdeli/KavoshStart/commit/d80536fec3e0722d5bd331cca7a75578d65235d5))
+* **scaffold:** remove legacy PR line-cap rendering value ([#105](https://github.com/bagdeli/KavoshStart/issues/105)) ([11d488b](https://github.com/bagdeli/KavoshStart/commit/11d488b9db693642ba838cb504cf14ca451a410a))
+
 ## [2.0.5](https://github.com/bagdeli/KavoshStart/compare/v2.0.4...v2.0.5) (2026-10-09)
 
 
