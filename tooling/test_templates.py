@@ -199,7 +199,7 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-        private_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="github-hosted")
+        private_manifest = manifest("T1", "server", "pull-build", "admin", ["test"], runner="github-hosted")
         (repo / "kavosh.project.json").write_text(json.dumps(private_manifest, indent=2), encoding="utf-8")
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
                            capture_output=True, text=True, encoding="utf-8", errors="replace")
