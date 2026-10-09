@@ -1,11 +1,13 @@
 # KavoshStart governance check (layer P). Embedded into .github/workflows/kavosh-governance.yml
 # by tooling/build_workflows.py — edit this file, then run `python3 tooling/build_workflows.py`.
-# Runs in the product repository checkout. Needs python3 (stdlib only) and, for PR checks, gh.
+# Runs in the product repository checkout. Needs python3 stdlib and git only; GitHub API access uses GITHUB_TOKEN.
 import json
 import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 _SCHEMA_SRC = r"""__SCHEMA_JSON__"""
@@ -699,9 +701,37 @@ def acceptance_mapping_problems(m, body, bot=False):
 
 
 # ---------------------------------------------------------------- pull request
+def github_api(path, method="GET", payload=None, allow_missing=False):
+    """GitHub REST through Python stdlib; consumer runners do not need the GitHub CLI."""
+    base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise RuntimeError("GitHub API token is unavailable")
+    url = path if path.startswith("https://") else f"{base}/{path.lstrip('/')}"
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        url, data=data, method=method,
+        headers={"Authorization": f"Bearer {token}",
+                 "Accept": "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28",
+                 "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        if allow_missing and exc.code == 404:
+            return None
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
+    return json.loads(raw) if raw.strip() else None
+
+
 def gh(*args):
-    out = subprocess.run(["gh", *args], check=True, capture_output=True, text=True, encoding="utf-8").stdout
-    return json.loads(out) if out.strip() else None
+    """Compatibility seam for offline tests; only the old gh('api', path) shape is accepted."""
+    if len(args) == 2 and args[0] == "api":
+        return github_api(args[1])
+    raise RuntimeError(f"unsupported GitHub API compatibility call: {args!r}")
 
 
 def ui_render_files(files):
