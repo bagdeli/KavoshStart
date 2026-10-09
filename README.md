@@ -15,9 +15,9 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 
 ```text
 1 Intake     → پرسش‌نامه‌ی intake/QUESTIONNAIRE.md؛ هر چه نامعلوم است می‌پرسد، حدس نمی‌زند
-2 Classify   → Tier (T0/T1/T2) و Runtime (none/static/server/desktop) طبق intake/CLASSIFICATION.md؛ مالک تأیید می‌کند
+2 Classify   → Tier + Runtime + composable Capabilities طبق intake/CLASSIFICATION.md؛ مالک facts و capabilityهای غیرقابل‌استنتاج را تأیید می‌کند
 3 Manifest   → kavosh.project.json (ماشین‌خوان) + PROJECT.md (یک صفحه)
-4 Scaffold   → scripts/scaffold.py: فایل‌های مشترک + فایل‌های Tier + فایل‌های Runtime
+4 Scaffold   → scripts/scaffold.py: فایل‌های مشترک + overlayهای Tier/Runtime؛ capabilityها applicability/evidence را در manifest اعلام می‌کنند
 5 Backlog    → Milestone و Issueها در GitHub (نه در فایل)
 6 Deliver    → هر Issue = یک تغییر coherent و reviewable؛ risk/evidence مستقل از اندازهٔ diff → ادغام فقط به main
 7 Decide     → low/medium پس از gate کامل delegated merge؛ high/critical نیازمند تصمیم انسانی، نه کلیک مکانیکی Merge
