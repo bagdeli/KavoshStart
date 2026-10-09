@@ -93,6 +93,123 @@ class AcceptanceReleaseGate(unittest.TestCase):
                 self.assertTrue(rg.acceptance_reasons("o/r", SHA, api=api))
 
 
+class ReleasePrBridge(unittest.TestCase):
+    def trusted_pr(self):
+        return {
+            "number": 111,
+            "base": {"ref": "main"},
+            "head": {
+                "ref": "release-please--branches--main--components--KavoshStart",
+                "sha": "b" * 40,
+                "repo": {"full_name": "o/r"},
+            },
+            "user": {"login": "github-actions[bot]"},
+        }
+
+    def test_REL5_positive_dispatches_and_publishes_ruleset_checks(self):
+        pr = self.trusted_pr()
+        calls = []
+        run_state = {
+            ".github/workflows/ci.yml": [
+                {"id": 10, "head_sha": pr["head"]["sha"], "status": "completed",
+                 "conclusion": "success", "html_url": "https://example/ci", "created_at": "2026-10-10T00:00:00Z"}
+            ],
+            ".github/workflows/kavosh.yml": [
+                {"id": 20, "head_sha": pr["head"]["sha"], "status": "completed",
+                 "conclusion": "success", "html_url": "https://example/kavosh", "created_at": "2026-10-10T00:00:01Z"}
+            ],
+        }
+        dispatch_count = {".github/workflows/ci.yml": 0, ".github/workflows/kavosh.yml": 0}
+
+        def api(path, method="GET", payload=None):
+            calls.append((path, method, payload))
+            if "/pulls?" in path:
+                return [pr]
+            if "/actions/workflows/" in path and path.endswith("/dispatches"):
+                workflow = (
+                    ".github/workflows/ci.yml"
+                    if "%2Fci.yml" in path
+                    else ".github/workflows/kavosh.yml"
+                )
+                dispatch_count[workflow] += 1
+                return {}
+            if "/actions/workflows/" in path and "/runs?" in path:
+                workflow = (
+                    ".github/workflows/ci.yml"
+                    if "%2Fci.yml" in path
+                    else ".github/workflows/kavosh.yml"
+                )
+                if dispatch_count[workflow] == 0:
+                    return {"workflow_runs": []}
+                return {"workflow_runs": run_state[workflow]}
+            if path.endswith("/check-runs") and method == "POST":
+                return {"id": 100}
+            raise AssertionError((path, method, payload))
+
+        result = rg.verify_release_pr(
+            "o/r", "main", ".github/workflows/ci.yml", ".github/workflows/kavosh.yml",
+            wait=1, interval=0, api=api, sleep=lambda _: None,
+        )
+        self.assertTrue(result["ok"])
+        published = [payload for path, method, payload in calls
+                     if path.endswith("/check-runs") and method == "POST"]
+        self.assertEqual([p["name"] for p in published], ["required", "kavosh / governance"])
+        self.assertTrue(all(p["head_sha"] == pr["head"]["sha"] for p in published))
+        self.assertTrue(all(p["conclusion"] == "success" for p in published))
+
+    def test_REL5_negative_untrusted_release_like_pr_is_ignored(self):
+        pr = self.trusted_pr()
+        pr["user"] = {"login": "someone"}
+        def api(path, method="GET", payload=None):
+            if "/pulls?" in path:
+                return [pr]
+            raise AssertionError(path)
+        self.assertIsNone(rg.verify_release_pr(
+            "o/r", "main", ".github/workflows/ci.yml", ".github/workflows/kavosh.yml",
+            api=api,
+        ))
+
+    def test_REL5_negative_failed_dispatched_check_publishes_failure(self):
+        pr = self.trusted_pr()
+        calls = []
+        dispatched = {"ci": False, "k": False}
+        def api(path, method="GET", payload=None):
+            calls.append((path, method, payload))
+            if "/pulls?" in path:
+                return [pr]
+            if path.endswith("/dispatches"):
+                if "%2Fci.yml" in path:
+                    dispatched["ci"] = True
+                else:
+                    dispatched["k"] = True
+                return {}
+            if "/runs?" in path:
+                is_ci = "%2Fci.yml" in path
+                ready = dispatched["ci"] if is_ci else dispatched["k"]
+                if not ready:
+                    return {"workflow_runs": []}
+                return {"workflow_runs": [{
+                    "id": 10 if is_ci else 20,
+                    "head_sha": pr["head"]["sha"],
+                    "status": "completed",
+                    "conclusion": "failure" if is_ci else "success",
+                    "html_url": "https://example/run",
+                    "created_at": "2026-10-10T00:00:00Z",
+                }]}
+            if path.endswith("/check-runs") and method == "POST":
+                return {}
+            raise AssertionError(path)
+        result = rg.verify_release_pr(
+            "o/r", "main", ".github/workflows/ci.yml", ".github/workflows/kavosh.yml",
+            wait=1, interval=0, api=api, sleep=lambda _: None,
+        )
+        self.assertFalse(result["ok"])
+        published = [payload for path, method, payload in calls
+                     if path.endswith("/check-runs") and method == "POST"]
+        self.assertEqual(published[0]["conclusion"], "failure")
+        self.assertEqual(published[1]["conclusion"], "success")
+
+
 class ReleaseGate(unittest.TestCase):
     def gate(self, runs_seq, head=SHA, wait=0, api=None):
         return rg.gate("o/r", SHA, REQ, api=api or fake_api(runs_seq, head), wait=wait, interval=0, sleep=lambda s: None)
