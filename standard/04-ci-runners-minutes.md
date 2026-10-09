@@ -56,3 +56,7 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 CI هیچ‌وقت ابزار زبان خاصی را مستقیم صدا نمی‌زند؛ فقط `make setup` و `make check`. پس:
 - عامل و CI دقیقاً یک کار را انجام می‌دهند (سبز محلی ≈ سبز CI).
 - تغییر ابزار (ruff → x) فقط `Makefile` را عوض می‌کند.
+## pull_request_target برای Release PR
+
+`pull_request_target` فقط برای حل محدودیت GitHub روی Release Please PR استفاده می‌شود و یک مسیر عمومی اجرای PR نیست. مسیر canonical باید هم‌زمان این شروط را machine-enforce کند: head repository همان repository، actor برابر `github-actions[bot]`، source branch با الگوی release-please، exact head checkout با `persist-credentials:false`، بدون Production secrets. برای PRهای دیگر job name باید context required تولید نکند. governance روی target از کد workflow پایه اجرا می‌شود و write-path اختیاری comment خاموش است.
+
