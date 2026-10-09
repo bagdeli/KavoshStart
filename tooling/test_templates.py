@@ -30,6 +30,7 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
     m = json.loads(json.dumps(EXAMPLE))
     m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
+    m["acceptance"] = {"mode": "continuous" if tier == "T2" else "none"}
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "kavoshui": None if ui == "none" else "1.0.0", "locales": ["fa-IR"]}
     m["ci"]["monthlyMinutesBudget"] = 0
