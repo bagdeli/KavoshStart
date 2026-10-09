@@ -45,6 +45,20 @@ class DirectPushes(unittest.TestCase):
         self.assertEqual(h.trailer_ratio(cs), (1, 2))
 
 
+class StandardFreshness(unittest.TestCase):
+    def test_STD1_positive_current_pin(self):
+        """Covers: STD-1 (positive)"""
+        self.assertTrue(h.kavoshstart_freshness_level("v1.7.0", "v1.7.0"))
+
+    def test_STD1_negative_older_pin_warns(self):
+        """Covers: STD-1 (negative)"""
+        self.assertEqual(h.kavoshstart_freshness_level("v1.6.0", "v1.7.0"), "warn")
+
+    def test_STD1_negative_invalid_or_future_pin_warns(self):
+        self.assertEqual(h.kavoshstart_freshness_level("main", "v1.7.0"), "warn")
+        self.assertEqual(h.kavoshstart_freshness_level("v1.8.0", "v1.7.0"), "warn")
+
+
 class ReportLifecycle(unittest.TestCase):
     def test_healthy_report_can_close(self):
         self.assertTrue(h.report_is_green([("✅", "CI-1", "runner", "ok", "ok")]))
