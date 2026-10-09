@@ -14,53 +14,79 @@
 | Reusable workflow از ریپوی private دیگر همان کاربر | ✅ با تنظیم Access | KavoshStart مرکز workflowهاست |
 | Squash-only، حذف خودکار شاخه | ✅ | لایه‌ی S |
 
-## پنج لایه‌ی جایگزین
+## لایه‌های کنترل
 
 ```text
    عامل AI / توسعه‌دهنده
           │
-   [A] محافظ عامل ─── .githooks/pre-push  +  .claude/settings.json (deny)
-          │              ✗ push به main   ✗ force-push   ✗ --no-verify   ✗ gh pr merge
+   [A] محافظ عامل ─── .githooks/pre-push + agent deny rules
           ▼
    شاخه‌ی کوتاه ──► PR
           │
-   [P] kavosh-governance ── قرمز اگر: عنوان، شاخه، Issue، اندازه، base، AI، مانیفست، AGENTS.md، docs
+   [P] governance ── ساختار repo/PR/manifest/workflow
           │
-   [R] مالک: فقط PR سبز را Squash merge می‌کند   ← تنها نقطه‌ی کاملاً انسانی (PR-7)
+   [R] بازبینی انسانی در نقاطی که ماشین context کافی ندارد
           ▼
         main
           │
-   [M] kavosh-main-guard ── بعد از هر push: commit بدون PR؟ PR با check قرمز؟ → Issue «kavosh:violation»
+   [M] main-guard ── merge/direct-push violations
           │
-   [H] kavosh-health (هفتگی) ── شاخه‌ها، دقیقه‌ها، Issueها، CI، releaseها → Issue «Repository health»
-
-   [O] kavosh-portfolio (روزانه، در KavoshStart عمومی) ── فقط repoهای public: محافظ‌ها حذف/خنثی شده‌اند؟ M و H اجرا می‌شوند؟ → Issue «kavosh:portfolio»
+   [G] release gate ── exact-main required checks
+          │
+   [H] health ── repository drift / backlog / CI / release hygiene
+          │
+   [E] environment conformance ── روی host persistent:
+       release layout + project-scoped deploy service/timer
+       exact expected SemVer + SHA
+       independent local /version + /health
+       canonical /version + /health through the real proxy route
+          │
+   [O] portfolio ── public control surface only
 ```
 
-- **لایه‌ی A** جلوی ۹۰٪ خطاهای عامل را پیش از رسیدن به GitHub می‌گیرد. قابل دور زدن است (مثلاً `--no-verify`)، برای همین آن را هم در deny گذاشته‌ایم و لایه‌ی M پشتیبان است.
-- **لایه‌ی M** برای هر PR ادغام‌شده، **وجود و موفقیت** checkهای الزامی (`kavosh / governance`، `required`) را روی head آن PR بررسی می‌کند: check غایب، در حال اجرا، ردشده، لغوشده یا skip‌شده همگی تخلف‌اند (مثلاً ادغام Release PR پیش از «Approve and run»). هنگام ثبت تخلف خودش قرمز می‌شود و در نتیجه دروازه‌ی انتشار (REL-5) برای آن commit بسته است.
-- **لایه‌ی M** چیزی را برنمی‌گرداند (revert خودکار روی `main` خودش خطرناک است)، بلکه **هیچ تخلفی را بی‌صدا نمی‌گذارد**: Issue تخلف باز می‌شود و تا رفع (معمولاً یک PR اصلاحی یا revert) باز می‌ماند.
-- **قاعده‌ی انسانی واحد:** «PR قرمز را ادغام نکن» (PR-7). دکمه‌ی Merge در دسترس است؛ این تنها جایی است که به انضباط شما تکیه می‌کنیم — و اگر نقض شود، لایه‌ی M آن را ثبت می‌کند.
+**مرز مهم:** لایه‌های A/P/M/G/H کیفیت repository و release candidate را کنترل می‌کنند؛ آن‌ها ثابت نمی‌کنند canonical Test/Production واقعاً همان artifact را اجرا می‌کند. این وظیفه‌ی **E** است. یک Compose موقت، runner proof یا localhost smoke حتی با CI سبز، تا وقتی `ENVIRONMENT_CONFORMANCE=PASS` ندهد environment رسمی نیست.
+
+- **A** خطاهای متداول عامل را قبل از GitHub می‌گیرد؛ bypass مجاز نیست.
+- **P** ساختار PR/repo و ruleهای قابل مشاهده از GitHub را می‌سنجد.
+- **M** merge ناسالم یا direct push را پس از وقوع آشکار می‌کند و release gate را می‌بندد.
+- **G** فقط release از exact current `main` با checkهای required سبز می‌سازد.
+- **H** سلامت repository را دوره‌ای گزارش می‌کند؛ H جای E را نمی‌گیرد.
+- **E** توسط deployer استاندارد روی همان host اجرا می‌شود و fail-closed است. اگر `current`، service/timer، target، exact SHA/version، health یا canonical proxy با انتظار سازگار نباشند، environment پذیرفته نیست.
+- **O** فقط repoهای public را از بیرون می‌بیند؛ metadata پروژه‌ی private وارد سطح عمومی نمی‌شود.
+- **R** برای تصمیم‌هایی که نیازمند judgment انسانی‌اند باقی می‌ماند؛ وجود R مجوز نداشتن check ارزان و قابل‌اتکا نیست.
+
+## لایه‌ی E — چرا لازم است
+
+سه چیز مستقل‌اند و نباید با هم اشتباه شوند:
+
+1. **CI proof:** کد/Artifact در محیط ایزوله تست شده است.
+2. **Release proof:** tag/release immutable از exact main سبز ساخته شده است.
+3. **Environment proof:** host canonical همان release را واقعاً اجرا می‌کند.
+
+شکاف بین 2 و 3 همان جایی است که deployment drift، image قدیمی، reverse proxy متصل به runtime موقت یا service/timer نصب‌نشده می‌تواند هفته‌ها پنهان بماند. برای runtimeهای server/static استاندارد، `deploy/kavosh-deploy.sh --verify-environment` این شکاف را می‌بندد (DEP-7/8).
 
 ## لایه‌ی O — ناظر پرتفوی عمومی
+
 هیچ ریپویی نمی‌تواند حذف شدن محافظ خودش را به‌طور قابل‌اتکا گزارش کند. برای repoهای **public**، KavoshStart یک ناظر بیرونی عمومی دارد:
 
 - `scripts/portfolio_guard.py` و workflow روزانه‌ی `kavosh-portfolio` فقط repoهای public را بررسی می‌کنند.
 - اگر credential به اشتباه repoهای private را هم ببیند، script آن‌ها را **پیش از inspection و report** نادیده می‌گیرد (SEC-5).
 - نتیجه فقط درباره‌ی repoهای public در Issue عمومی `kavosh:portfolio` نوشته می‌شود.
-- Layer O با `GITHUB_TOKEN` محدود به همان مخزن و مجوزهای حداقلی اجرا می‌شود؛ PAT مشترک یا secret حساب لازم نیست. تنظیماتی که نیازمند دسترسی مدیریتی‌اند باید توسط مالک بررسی شوند.
+- Layer O با `GITHUB_TOKEN` محدود به همان مخزن و مجوزهای حداقلی اجرا می‌شود؛ PAT مشترک یا secret حساب لازم نیست.
 - نام، URL، هدف، audit، plan، finding یا runtime metadata پروژه‌ی private نباید وارد file، Issue، PR، commit message، Release یا log عمومی شود.
 
-برای repoهای **private**، ناظر بیرونی — در صورت نیاز — باید در یک control surface private مستقل اجرا شود. KavoshStart عمومی منبع گزارش یا inventory پروژه‌های private نیست. الزام‌های داخل خود repo (governance و runner policy) باقی می‌مانند؛ ظرفیت/سلامت عملیاتی runner private تا زمان وجود ناظر private با بازبینی مالک تأیید می‌شود.
+برای repoهای **private**، ناظر بیرونی — در صورت نیاز — باید در یک control surface private مستقل اجرا شود. KavoshStart عمومی منبع گزارش یا inventory پروژه‌های private نیست.
 
 **مرز اعتماد:** Layer O عمومی به همین repo و GitHub Actions وابسته است. اگر خودش از کار بیفتد، فقط انسان متوجه می‌شود که Issue پرتفوی عمومی دیگر به‌روز نشده است. این لایه هیچ ادعایی درباره‌ی مشاهده یا سلامت پروژه‌های private ندارد.
 
 ## هزینه‌ی دقیقه‌ی خود KavoshStart
-- `kavosh-governance`: یک job، حدود 1 دقیقه به ازای هر رویداد PR (opened/synchronize/ready/edited عنوان-بدنه).
-- `kavosh-main-guard`: یک job، حدود 1 دقیقه به ازای هر ادغام.
-- `kavosh-health`: هفته‌ای یک job، حدود 1–2 دقیقه.
-- `kavosh-portfolio` (فقط در KavoshStart): روزی یک job، حدود 1–2 دقیقه (≈ 30–60 دقیقه در ماه).
-- جمع برای پروژه‌ای با 30 PR در ماه: حدود 30–60 دقیقه. در بودجه‌ی Tier حساب شده است.
 
-## اگر روزی پلن پولی شد یا ریپو public شد
-هیچ‌چیز دور ریخته نمی‌شود: `templates/rulesets/main.json` را اعمال کنید (`bootstrap-repo.sh --rulesets`) و check‌های `kavosh` و `required` را required کنید. لایه‌های A، M و H همچنان مفیدند.
+- `kavosh-governance`: یک job کوتاه روی رویدادهای PR.
+- `kavosh-main-guard`: یک job پس از push/merge به main.
+- `kavosh-health`: هفتگی.
+- `kavosh-portfolio`: فقط در KavoshStart عمومی.
+- **Layer E روی host خود پروژه اجرا می‌شود و GitHub-hosted minute مصرف نمی‌کند.**
+
+## اگر روزی پلن پولی شد یا repo public شد
+
+Rulesetها را می‌توان required کرد، ولی A/M/H/E همچنان لازم‌اند. Branch protection هرگز جای environment admission و exact runtime verification را نمی‌گیرد.
