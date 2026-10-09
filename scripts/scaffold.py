@@ -64,6 +64,7 @@ def values(m: dict) -> dict:
         "SUMMARY": m["summary"],
         "TIER": m["tier"],
         "CI_TIMEOUT": {"T0": "10", "T1": "15", "T2": "20"}.get(m.get("tier"), "10"),
+        "CI_WORKFLOW": m.get("ci", {}).get("requiredWorkflow") or ".github/workflows/ci.yml",
         "RUNTIME": m["runtime"],
         "KAVOSHSTART": m["kavoshStart"],
         "KAVOSHUI": ui.get("kavoshui") or "(not used)",
