@@ -34,7 +34,7 @@ Issue (feature) → PR#1: specs/<n>-<slug>/spec.md  (چه و چرا، ≤ 400 خ
 ## کنترل سرعت
 - حداکثر PRهای باز غیر-Draft: 3 (PR-8). عامل‌ها می‌توانند موازی کار کنند، ولی بازبینی شما سریالی است.
 - یک جلسه = یک Issue؛ برای Claude Code بین کارها `/clear`.
-- شروع جلسه: `gh issue view` + `AGENTS.md`؛ پایان جلسه: به‌روزرسانی بدنه‌ی PR.
+- شروع جلسه: `START.md §0` + `AGENTS.md` + Issue؛ pin KavoshStart را با آخرین release مقایسه کن و control-plane upgrade لازم را قبل از feature/gate جدید حل یا با owner محدود defer کن. پایان جلسه: بدنه‌ی PR و acceptance mapping را به‌روز کن.
 
 ## نسبت‌دهی
 ```text
@@ -46,8 +46,11 @@ Co-Authored-By: Copilot <copilot@github.com>
 
 ## جمله‌ی استاندارد برای شروع کار با هر عامل
 ```text
-Use KavoshStart (bagdeli/KavoshStart, START.md §4). Work on issue #<n> in bagdeli/<repo> only.
-Branch <type>/<n>-<slug> from origin/main and open a draft PR with your plan. Keep it reviewable, run
-`make check` locally, and update the PR body. Merge only when the owner explicitly authorizes this PR and current
-head, after rechecking base, green required checks, mergeability and review threads. Never use `--admin`.
+Use KavoshStart (bagdeli/KavoshStart, START.md §0 then the selected mode). Stay in bagdeli/<repo> only.
+First verify repository identity, live main/task state, the project's exact KavoshStart pin, and the latest stable
+KavoshStart release. If a newer control-plane release materially affects governance/acceptance/security/release/deploy/CI,
+upgrade it in a separate PR before normal feature work unless the owner has recorded a bounded defer.
+For WORK, handle exactly issue #<n>, branch <type>/<n>-<slug> from origin/main, open a draft PR, keep the diff reviewable,
+run `make check`, map T2 acceptance IDs, and update the PR body. Merge only when the owner explicitly authorizes this
+PR and current head after fresh base/check/review preflight. Never use `--admin`, report-only governance, or silent auto-upgrades.
 ```
