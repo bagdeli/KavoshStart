@@ -17,8 +17,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
+SELF_STANDARD_REPO = "bagdeli/KavoshStart"
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
 EXECUTABLE = {".githooks/pre-push", ".githooks/pre-commit", "deploy/kavosh-deploy.sh"}
+
+
+def validate_standard_pin(manifest: dict) -> None:
+    """Fail closed before rendering templates if the reserved self pin leaks into a consumer manifest."""
+    repo, pin = manifest.get("repo"), manifest.get("kavoshStart")
+    if pin == "self" and repo != SELF_STANDARD_REPO:
+        raise SystemExit(f"kavoshStart 'self' is reserved for {SELF_STANDARD_REPO}; consumers must pin vX.Y.Z")
+    if repo == SELF_STANDARD_REPO and pin != "self":
+        raise SystemExit("canonical KavoshStart must use kavoshStart 'self'")
 
 
 def layers(manifest: dict) -> list:
@@ -82,6 +92,7 @@ def main() -> int:
     if not mpath.exists():
         raise SystemExit(f"{mpath} not found — complete the intake first (START.md §1 steps 1–3)")
     manifest = json.loads(mpath.read_text(encoding="utf-8"))
+    validate_standard_pin(manifest)
     vals = values(manifest)
 
     plan = {}  # rel -> source file (later layers override earlier ones)
