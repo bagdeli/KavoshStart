@@ -17,7 +17,7 @@ class RuleRegistryContract(unittest.TestCase):
     def test_registry_has_every_rule_once(self):
         registry = rr.build_registry()
         ids = [rule["id"] for rule in registry["rules"]]
-        self.assertEqual(len(ids), 87)
+        self.assertEqual(len(ids), len(rr.parse_rules()))
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_machine_musts_declare_positive_negative_coverage_contract(self):
