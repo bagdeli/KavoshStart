@@ -1,5 +1,7 @@
 """Offline tests for layer P checks added in #6 (tooling/src/governance.py)."""
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -95,6 +97,66 @@ class Wiring(unittest.TestCase):
         text = KAVOSH_OK.replace("bagdeli/KavoshStart/.github/workflows/", "./.github/workflows/").replace("@v1.1.0", "")
         rel = REL_OK.replace("bagdeli/KavoshStart/.github/workflows/", "./.github/workflows/").replace("@v1.1.0", "")
         self.assertEqual(fails(g.wiring_problems(wf(kavosh=text, rel=rel), own)), [])
+
+
+class AdapterWiring(unittest.TestCase):
+    def test_CI7_REL5_positive_declared_nondefault_workflows(self):
+        manifest = dict(M)
+        manifest["ci"] = {"requiredWorkflow": ".github/workflows/foundation-conformance.yml"}
+        manifest["release"] = {
+            "strategy": "changesets",
+            "workflow": ".github/workflows/publish-foundation-release.yml",
+        }
+        workflows = {
+            ".github/workflows/kavosh.yml": KAVOSH_OK,
+            ".github/workflows/foundation-conformance.yml": "jobs:\n  required:\n    runs-on: ubuntu-latest\n",
+            ".github/workflows/publish-foundation-release.yml": "jobs:\n  publish:\n    runs-on: ubuntu-latest\n",
+        }
+        self.assertEqual(fails(g.wiring_problems(workflows, manifest)), [])
+
+    def test_CI7_negative_declared_required_workflow_missing(self):
+        manifest = dict(M)
+        manifest["ci"] = {"requiredWorkflow": ".github/workflows/foundation-conformance.yml"}
+        findings = fails(g.wiring_problems(wf(), manifest))
+        self.assertTrue(any(r[1] == "CI-7" and "missing" in r[3] for r in findings))
+
+    def test_REL4_positive_changesets_adapter_with_equivalent_adr(self):
+        old = os.getcwd()
+        with tempfile.TemporaryDirectory() as td:
+            os.chdir(td)
+            try:
+                Path(".github/workflows").mkdir(parents=True)
+                Path(".github/workflows/publish.yml").write_text("name: release\n", encoding="utf-8")
+                Path(".changeset").mkdir()
+                Path(".changeset/config.json").write_text("{}", encoding="utf-8")
+                Path("docs/decisions").mkdir(parents=True)
+                Path("docs/decisions/0001-release.md").write_text(
+                    "# Release strategy\nSemVer vX.Y.Z immutable tag from exact source with provenance and release gate.\n",
+                    encoding="utf-8",
+                )
+                m = {"release": {"strategy": "changesets",
+                                 "workflow": ".github/workflows/publish.yml",
+                                 "strategyADR": "docs/decisions/0001-release.md"}}
+                self.assertEqual(fails(g.release_adapter_problems(m)), [])
+            finally:
+                os.chdir(old)
+
+    def test_REL4_negative_changesets_adapter_without_equivalent_adr(self):
+        old = os.getcwd()
+        with tempfile.TemporaryDirectory() as td:
+            os.chdir(td)
+            try:
+                Path(".github/workflows").mkdir(parents=True)
+                Path(".github/workflows/publish.yml").write_text("name: release\n", encoding="utf-8")
+                Path(".changeset").mkdir()
+                Path(".changeset/config.json").write_text("{}", encoding="utf-8")
+                m = {"release": {"strategy": "changesets",
+                                 "workflow": ".github/workflows/publish.yml"}}
+                findings = fails(g.release_adapter_problems(m))
+                self.assertTrue(any(r[1] == "REL-4" for r in findings))
+                self.assertTrue(any(r[1] == "REL-3" for r in findings))
+            finally:
+                os.chdir(old)
 
 
 class WorkflowTimeoutChecks(unittest.TestCase):
