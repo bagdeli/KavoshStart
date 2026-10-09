@@ -125,12 +125,17 @@ def monthly_minutes(repo, exact_limit=120):
 
 
 def minute_budget_level(used, budget):
-    """CI-3 status for hosted minutes: ok below 80%, warn through 100%, fail above budget."""
+    """CI-3 status for billable hosted minutes: ok below 80%, warn through 100%, fail above budget."""
     if budget is None:
         return "warn", None
     used_n = int(str(used).lstrip("~"))
     pct = round(100 * used_n / budget) if budget else (0 if used_n == 0 else 101)
     return (True if pct < 80 else "warn" if pct <= 100 else False), pct
+
+
+def hosted_minutes_are_billable(visibility, runner):
+    """Standard GitHub-hosted minutes are not billable for public repositories; private hosted minutes are."""
+    return not (visibility == "public" and runner == "github-hosted")
 
 
 def report_is_green(rows):
@@ -290,14 +295,21 @@ def main():
     add(True, "AI-3", f"Commits on {default} with Co-Authored-By (30 d)", f"{attributed} of {total}",
         "informational: every agent-written change must carry one")
 
-    # Minutes
+    # Minutes. Standard GitHub-hosted runners are free/unlimited for public repositories; budgets guard billable paths.
     used, nruns = monthly_minutes(repo)
-    level, pct = minute_budget_level(used, budget)
-    if budget is not None:
-        add(level, "CI-3", "Minutes this month (estimate)",
-            f"{used} of {budget} ({pct}%, {nruns} runs)", "≤ budget")
+    visibility = manifest.get("visibility")
+    runner = manifest.get("ci", {}).get("runner")
+    if hosted_minutes_are_billable(visibility, runner):
+        level, pct = minute_budget_level(used, budget)
+        if budget is not None:
+            add(level, "CI-3", "Billable hosted minutes this month (estimate)",
+                f"{used} of {budget} ({pct}%, {nruns} runs)", "≤ budget")
+        else:
+            add(level, "CI-3", "Billable hosted minutes this month (estimate)",
+                f"{used} ({nruns} runs), no budget in manifest", "set ci.monthlyMinutesBudget")
     else:
-        add(level, "CI-3", "Minutes this month (estimate)", f"{used} ({nruns} runs), no budget in manifest", "set ci.monthlyMinutesBudget")
+        add(True, "CI-3", "Public standard hosted minutes",
+            f"{used} observed across {nruns} runs", "free/unlimited; storage and larger runners remain separately governed")
 
     # Releases and tags
     rel = gh(f"repos/{repo}/releases?per_page=1") or []

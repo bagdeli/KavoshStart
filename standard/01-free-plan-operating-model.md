@@ -8,7 +8,7 @@
 | Required reviewers / CODEOWNERS اجباری | ❌ | CODEOWNERS فقط درخواست بازبینی است |
 | Merge queue، Environments با reviewer | ❌ | — |
 | GitHub Pages | ❌ برای private | سایت ایستا روی سرور خودمان |
-| Actions | ✅ **2,000 دقیقه/ماه برای کل حساب**، هر job به دقیقه‌ی کامل گرد می‌شود | بودجه‌بندی اجباری (CI-3) |
+| Actions | ✅ standard GitHub-hosted runner در **repo عمومی رایگان و نامحدود** است؛ private GitHub-hosted تابع سهمیهٔ پلن است | budget فقط برای مسیرهای billable؛ storage/cache/Packages و larger runners جدا |
 | Issues، sub-issues، Projects، Milestones، Releases، Labels | ✅ | — |
 | Issue Types | ❌ (فقط Organization) | برچسب `type:*` |
 | Reusable workflow از ریپوی private دیگر همان کاربر | ✅ با تنظیم Access | KavoshStart مرکز workflowهاست |
@@ -80,6 +80,8 @@
 **مرز اعتماد:** Layer O عمومی به همین repo و GitHub Actions وابسته است. اگر خودش از کار بیفتد، فقط انسان متوجه می‌شود که Issue پرتفوی عمومی دیگر به‌روز نشده است. این لایه هیچ ادعایی درباره‌ی مشاهده یا سلامت پروژه‌های private ندارد.
 
 ## هزینه‌ی دقیقه‌ی خود KavoshStart
+
+KavoshStart عمومی است و workflowهای خودش روی **standard GitHub-hosted runner** اجرا می‌شوند؛ این دقیقه‌ها طبق مدل billing GitHub رایگان/نامحدودند و نباید CI-3 را قرمز کنند. این معافیت فقط minute billing همان runner استاندارد عمومی است، نه larger runners، artifact/storage، cache یا Packages.
 
 - `kavosh-governance`: یک job کوتاه روی رویدادهای PR.
 - `kavosh-main-guard`: یک job پس از push/merge به main.

@@ -71,6 +71,15 @@ class MinuteBudget(unittest.TestCase):
     def test_CI3_negative_over_budget(self):
         self.assertEqual(h.minute_budget_level(101, 100), (False, 101))
 
+    def test_CI3_public_standard_hosted_minutes_are_not_billable(self):
+        self.assertFalse(h.hosted_minutes_are_billable("public", "github-hosted"))
+
+    def test_CI3_private_hosted_minutes_remain_budgeted(self):
+        self.assertTrue(h.hosted_minutes_are_billable("private", "github-hosted"))
+
+    def test_CI3_self_hosted_is_not_treated_as_public_hosted(self):
+        self.assertTrue(h.hosted_minutes_are_billable("public", "self-hosted"))
+
 
 class AcceptanceDebt(unittest.TestCase):
     def test_ACC2_positive_closed_evidenced_and_approved_defer(self):
