@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/bagdeli/KavoshStart/compare/v2.0.2...v2.0.3) (2026-10-09)
+
+
+### Bug Fixes
+
+* **source:** allow exact SHAs in docs audit provenance ([#92](https://github.com/bagdeli/KavoshStart/issues/92)) ([4b6995a](https://github.com/bagdeli/KavoshStart/commit/4b6995a63ce1748f670b39350225470bcf874753))
+
 ## [2.0.2](https://github.com/bagdeli/KavoshStart/compare/v2.0.1...v2.0.2) (2026-10-09)
 
 
