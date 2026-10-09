@@ -84,8 +84,6 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
         m["ci"]["runner"] = runner
         m["ci"].pop("runnerLabels", None)
     m["capabilities"] = derive_capabilities(m)
-    if not m["capabilities"]:
-        m["capabilities"] = ["control-plane"] if m.get("repo") == "bagdeli/KavoshStart" else ["infrastructure"]
     return m
 
 
