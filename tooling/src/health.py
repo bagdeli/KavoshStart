@@ -125,12 +125,17 @@ def monthly_minutes(repo, exact_limit=120):
 
 
 def minute_budget_level(used, budget):
-    """CI-3 status for hosted minutes: ok below 80%, warn through 100%, fail above budget."""
+    """CI-3 status for billable hosted minutes: ok below 80%, warn through 100%, fail above budget."""
     if budget is None:
         return "warn", None
     used_n = int(str(used).lstrip("~"))
     pct = round(100 * used_n / budget) if budget else (0 if used_n == 0 else 101)
     return (True if pct < 80 else "warn" if pct <= 100 else False), pct
+
+
+def hosted_minutes_are_billable(visibility, runner):
+    """Standard GitHub-hosted minutes are not billable for public repositories; private hosted minutes are."""
+    return not (visibility == "public" and runner == "github-hosted")
 
 
 def report_is_green(rows):
