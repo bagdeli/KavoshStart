@@ -90,8 +90,12 @@ class RulesContract(unittest.TestCase):
         """PR size may be telemetry, but canonical prose must not turn line/file counts back into merge gates."""
         paths = [ROOT / "README.md", ROOT / "START.md",
                  ROOT / "templates/common/AGENTS.md",
-                 ROOT / "templates/common/.github/pull_request_template.md"]
+                 ROOT / "templates/common/.github/pull_request_template.md",
+                 ROOT / "scripts/scaffold.py"]
         paths += sorted((ROOT / "standard").glob("*.md"))
+        paths += sorted((ROOT / "templates").rglob("*.md"))
+        paths += sorted((ROOT / "templates").rglob("*.yml"))
+        paths += sorted((ROOT / "templates").rglob("*.yaml"))
         forward = re.compile(
             r"(?i)(?:\\bpr\\b|pull request|type:task|\\btask\\b).{0,140}"
             r"(?:<=|≥|≤|<|>|>=|max(?:imum)?|حداکثر)\\s*"
@@ -107,7 +111,7 @@ class RulesContract(unittest.TestCase):
             if not path.is_file():
                 continue
             for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                if "prMaxLines" in line or "size:exception" in line or forward.search(line) or reverse.search(line):
+                if "PR_MAX_LINES" in line or "prMaxLines" in line or "size:exception" in line or forward.search(line) or reverse.search(line):
                     offenders.append(f"{path.relative_to(ROOT)}:{lineno}: {line.strip()}")
         self.assertEqual(offenders, [], "numeric PR hard-cap prose returned:\n  " + "\n  ".join(offenders))
 
