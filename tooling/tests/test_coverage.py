@@ -68,6 +68,15 @@ class GovernanceFiles(unittest.TestCase):
         """Covers: AI-1, SRC-2, SRC-3, DOC-1, CI-1, SEC-3, SEC-4, SRC-7, SRC-5, UI-1 (positive)"""
         self.assertEqual([r for r in run_files() if r[0] == "fail"], [])
 
+    def test_CAP1_CAP2_positive_example_capability_profile(self):
+        self.assertEqual(fails_for("CAP-1"), [])
+        self.assertEqual(fails_for("CAP-2"), [])
+
+    def test_CAP1_negative_manifest_requires_capabilities(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m.pop("capabilities", None)
+        self.assertTrue(fails_for("CAP-1", manifest=m))
+
     def test_AI1_negative_agents_md_too_long(self):
         self.assertTrue(fails_for("AI-1", lambda d: (d / "AGENTS.md").write_text("x\n" * 200, encoding="utf-8")))
 
