@@ -5,6 +5,8 @@ name: ci
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   workflow_dispatch:
@@ -33,12 +35,22 @@ permissions:
 
 jobs:
   required:
+    name: >-
+      ${{ github.event_name == 'pull_request_target' &&
+          !(github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.user.login == 'github-actions[bot]' &&
+            startsWith(github.event.pull_request.head.ref, 'release-please--branches--'))
+          && 'release-pr-target-ignored' || 'required' }}
     if: >-
       (github.event_name == 'push' && !{{PRIVATE_HOSTED}}) ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && !{{PRIVATE_HOSTED}} &&
        (!github.event.pull_request.draft || (github.event.action == 'labeled' && github.event.label.name == 'ci:full')) &&
-       (!{{SELF_HOSTED}} || github.event.pull_request.head.repo.full_name == github.repository))
+       (!{{SELF_HOSTED}} || github.event.pull_request.head.repo.full_name == github.repository)) ||
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login == 'github-actions[bot]' &&
+       startsWith(github.event.pull_request.head.ref, 'release-please--branches--'))
     runs-on: {{RUNS_ON_YAML}}   # CI-1 (from kavosh.project.json)
     timeout-minutes: {{CI_TIMEOUT}}
     steps:
@@ -64,6 +76,9 @@ jobs:
           print(f"one-run authorization: @{os.environ['GITHUB_ACTOR']} for PR #{pr['number']} @ {pr['head']['sha']}")
           PY
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: hashFiles('pyproject.toml', 'requirements*.txt') != ''
         with:

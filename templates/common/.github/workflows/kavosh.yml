@@ -5,6 +5,8 @@ name: kavosh
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, edited, labeled]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   schedule:
@@ -43,16 +45,27 @@ permissions:
 
 jobs:
   kavosh:
+    name: >-
+      ${{ github.event_name == 'pull_request_target' &&
+          !(github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.user.login == 'github-actions[bot]' &&
+            startsWith(github.event.pull_request.head.ref, 'release-please--branches--'))
+          && 'release-pr-target-ignored' || 'kavosh' }}
     if: >-
       (github.event_name == 'pull_request' && !{{PRIVATE_HOSTED}} &&
        (!{{SELF_HOSTED}} || github.event.pull_request.head.repo.full_name == github.repository)) ||
-      (github.event_name == 'workflow_dispatch' && inputs.mode == 'pr-check')
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'pr-check') ||
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login == 'github-actions[bot]' &&
+       startsWith(github.event.pull_request.head.ref, 'release-please--branches--'))
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@{{KAVOSHSTART}}
     with:
       enforce: true
       runs-on: '{{RUNS_ON_JSON}}'
-      authorization-pr: ${{ inputs.pr-number }}
-      authorization-head: ${{ inputs.expected-head }}
+      authorization-pr: ${{ inputs.pr-number || github.event.pull_request.number }}
+      authorization-head: ${{ inputs.expected-head || github.event.pull_request.head.sha }}
+      comment: ${{ github.event_name != 'pull_request_target' }}
   main-guard:
     if: >-
       (github.event_name == 'push' && !{{PRIVATE_HOSTED}}) ||

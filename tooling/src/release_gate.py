@@ -18,7 +18,6 @@ import os
 import sys
 import urllib.error
 import urllib.request
-import urllib.parse
 import time
 
 DEFAULT_REQUIRED = ["required", "main-guard / main-guard"]
@@ -45,66 +44,6 @@ def gh_api(path, method="GET", payload=None):
         detail = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
     return json.loads(raw) if raw.strip() else {}
-
-
-RELEASE_PR_BRANCH_RE = re.compile(r"^release-please--branches--.+--components--.+$")
-
-
-def release_pr(repo, base="main", api=None):
-    """Return the single trusted open release-please PR for base, or None."""
-    api = api or gh_api
-    encoded_base = urllib.parse.quote(base, safe="")
-    pulls = api(f"repos/{repo}/pulls?state=open&base={encoded_base}&per_page=100") or []
-    candidates = []
-    for pr in pulls:
-        head = pr.get("head") or {}
-        user = pr.get("user") or {}
-        if (
-            (pr.get("base") or {}).get("ref") == base
-            and head.get("repo", {}).get("full_name") == repo
-            and RELEASE_PR_BRANCH_RE.fullmatch(head.get("ref") or "")
-            and user.get("type") == "Bot"
-        ):
-            candidates.append(pr)
-    if len(candidates) > 1:
-        raise RuntimeError(f"multiple trusted release-please PRs target {base}: {[p.get('number') for p in candidates]}")
-    return candidates[0] if candidates else None
-
-
-def dispatch_release_pr_checks(repo, base, required_workflow, kavosh_workflow, api=None):
-    """Dispatch the repository's real CI/governance workflows on the exact trusted release PR head."""
-    api = api or gh_api
-    pr = release_pr(repo, base, api)
-    if not pr:
-        return None
-    number = pr.get("number")
-    head = pr.get("head") or {}
-    head_sha, head_ref = head.get("sha"), head.get("ref")
-    if not isinstance(number, int) or not re.fullmatch(r"[0-9a-f]{40}", head_sha or "") or not head_ref:
-        raise RuntimeError("trusted release PR is missing number/head identity")
-
-    dispatches = [
-        (required_workflow, {
-            "pr-number": str(number),
-            "expected-head": head_sha,
-            "ci-full": False,
-        }),
-        (kavosh_workflow, {
-            "mode": "pr-check",
-            "pr-number": str(number),
-            "expected-head": head_sha,
-        }),
-    ]
-    for workflow, inputs in dispatches:
-        if not isinstance(workflow, str) or not re.fullmatch(r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml", workflow):
-            raise RuntimeError(f"invalid workflow adapter path: {workflow!r}")
-        workflow_id = urllib.parse.quote(workflow, safe="")
-        api(
-            f"repos/{repo}/actions/workflows/{workflow_id}/dispatches",
-            method="POST",
-            payload={"ref": head_ref, "inputs": inputs},
-        )
-    return {"number": number, "head_sha": head_sha, "head_ref": head_ref}
 
 
 def check_runs(repo, sha, api=None):
@@ -294,34 +233,11 @@ def gate(repo, sha, required, branch="main", wait=300, interval=15, api=None, sl
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--repo", required=True)
-    p.add_argument("--sha")
+    p.add_argument("--sha", required=True)
     p.add_argument("--branch", default="main")
     p.add_argument("--required", default=",".join(DEFAULT_REQUIRED))
     p.add_argument("--wait", type=int, default=300, help="seconds to wait for pending required checks")
-    p.add_argument("--dispatch-release-pr", action="store_true")
-    p.add_argument("--required-workflow", default=".github/workflows/ci.yml")
-    p.add_argument("--kavosh-workflow", default=".github/workflows/kavosh.yml")
     a = p.parse_args(argv)
-
-    if a.dispatch_release_pr:
-        try:
-            dispatched = dispatch_release_pr_checks(
-                a.repo, a.branch, a.required_workflow, a.kavosh_workflow
-            )
-        except RuntimeError as e:
-            print(f"Release PR verification dispatch FAILED: {e}")
-            return 1
-        if dispatched is None:
-            print(f"No trusted open release-please PR targets {a.branch}; nothing to dispatch")
-            return 0
-        print(
-            f"Dispatched required CI and Kavosh governance for release PR "
-            f"#{dispatched['number']} @ {dispatched['head_sha']}"
-        )
-        return 0
-
-    if not a.sha:
-        p.error("--sha is required unless --dispatch-release-pr is used")
     required = [x.strip() for x in a.required.split(",") if x.strip()]
     if not required:
         print("REL-5: no required checks configured — refusing to open the gate")

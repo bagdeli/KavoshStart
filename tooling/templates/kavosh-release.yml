@@ -4,8 +4,8 @@
 #   2. release-please: keeps the Release PR up to date; merging it creates tag vX.Y.Z + GitHub Release.
 #   3. package (deploy.method=release-artifact): resolves the repository release.artifact adapter (or compatible Make default),
 #      builds declared assets and uploads them to that Release in the SAME run because GITHUB_TOKEN releases do not trigger other workflows.
-# Release PRs created with GITHUB_TOKEN get approval-required pull_request runs. This workflow immediately dispatches
-# the repository's real CI + Kavosh governance on the exact trusted release-please head, preserving PR-7 without an owner click.
+# Release PRs created with GITHUB_TOKEN may get approval-required pull_request runs. Repository CI/Kavosh wrappers
+# provide a narrowly trusted pull_request_target path for the exact same required contexts; this release workflow never bypasses them.
 name: kavosh-release
 
 on:
@@ -23,14 +23,6 @@ on:
         description: Build and attach release artifacts using kavosh.project.json release.artifact (or the default Make adapter)
         type: boolean
         default: false
-      required-workflow:
-        description: Repository workflow path that exposes the stable required job
-        type: string
-        default: ".github/workflows/ci.yml"
-      kavosh-workflow:
-        description: Repository Kavosh workflow path used for the pr-check dispatch
-        type: string
-        default: ".github/workflows/kavosh.yml"
     outputs:
       release-created:
         value: ${{ jobs.release.outputs.created }}
@@ -42,7 +34,7 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
-  actions: write
+  actions: read
 
 jobs:
   release:
@@ -75,19 +67,6 @@ __PYTHON__
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-      - name: Dispatch exact-head verification for the release PR
-        if: steps.gate.outputs.open == 'true' && steps.rp.outputs.release_created != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          BASE: ${{ github.event.repository.default_branch }}
-          REQUIRED_WORKFLOW: ${{ inputs.required-workflow }}
-          KAVOSH_WORKFLOW: ${{ inputs.kavosh-workflow }}
-        run: |
-          python3 - --dispatch-release-pr --repo "$REPO" --branch "$BASE" \
-            --required-workflow "$REQUIRED_WORKFLOW" --kavosh-workflow "$KAVOSH_WORKFLOW" <<'PY'
-__PYTHON__
-          PY
 
   package:
     name: package
