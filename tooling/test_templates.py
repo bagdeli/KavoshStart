@@ -84,8 +84,8 @@ def main():
                     print(f"FAIL rendered YAML/JSON {combo}: {path}: {e}")
                     failures += 1
                     continue
-            # REL-4/5/6: gated release in every repo, exact KavoshStart pins, package only for artifact runtimes
-            pin = EXAMPLE["kavoshStart"]
+            # REL-4/5/6: gated release in every repo, exact resolved KavoshStart pins, package only for artifact runtimes
+            pin = json.loads((repo / "kavosh.project.json").read_text(encoding="utf-8"))["kavoshStart"]
             rel = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
             kav = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
             want_pkg = "true" if combo[1] in ("none", "desktop") else "false"
