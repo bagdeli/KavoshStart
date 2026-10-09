@@ -92,6 +92,18 @@ def main():
                 problems.append("REL-6 exact pins")
             if want_pkg == "true" and "\npackage: " not in (repo / "Makefile").read_text(encoding="utf-8"):
                 problems.append("CI-8 make package target")
+            rc_path = repo / ".github/workflows/rc.yml"
+            need_rc = combo[1] in ("server", "static") and "test" in combo[4]
+            if need_rc:
+                if not rc_path.exists():
+                    problems.append("REL-7 rc.yml missing for Test-capable server/static")
+                else:
+                    rc_text = rc_path.read_text(encoding="utf-8")
+                    if (f"kavosh-rc.yml@{pin}" not in rc_text or "workflow_dispatch:" not in rc_text or
+                            "expected-sha:" not in rc_text or "authorization-confirmed:" not in rc_text):
+                        problems.append("REL-7 exact RC dispatch contract")
+            elif rc_path.exists():
+                problems.append("REL-7 rc.yml should only scaffold for Test-capable server/static")
             if problems:
                 print(f"FAIL release contract {combo}: {', '.join(problems)}")
                 failures += 1
@@ -187,7 +199,7 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-        private_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="github-hosted")
+        private_manifest = manifest("T1", "server", "pull-build", "admin", ["test"], runner="github-hosted")
         (repo / "kavosh.project.json").write_text(json.dumps(private_manifest, indent=2), encoding="utf-8")
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
                            capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -195,7 +207,7 @@ def main():
             print(f"FAIL private hosted scaffold:\n{r.stdout}{r.stderr}")
             failures += 1
         else:
-            for name in ("ci.yml", "kavosh.yml", "release.yml"):
+            for name in ("ci.yml", "kavosh.yml", "release.yml", "rc.yml"):
                 text = (repo / ".github/workflows" / name).read_text(encoding="utf-8")
                 if "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in text or "workflow_dispatch" not in text:
                     print(f"FAIL private hosted dispatch guard missing in {name}")

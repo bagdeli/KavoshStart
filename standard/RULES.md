@@ -66,6 +66,7 @@
 | REL-4 | release-please نسخه و `CHANGELOG.md` را از Conventional Commits می‌سازد (workflow مشترک `kavosh-release`). | MUST | All | G |
 | REL-5 | **دروازه‌ی انتشار:** نسخه فقط از commit فعلی `main` ساخته می‌شود که checkهای الزامی (`required`، `main-guard / main-guard`) آن **وجود داشته و موفق** باشند. در دسترس نبودن CI مجوز انتشار نیست. | MUST | All | G |
 | REL-6 | پروژه‌ها workflowهای KavoshStart را با **tag دقیق** (`@vX.Y.Z`) فرا می‌خوانند، برابر با `kavoshStart` مانیفست؛ tag متحرک (`v1`) ممنوع و منجمد است. ارتقا فقط با PR (Dependabot). | MUST | All | P |
+| REL-7 | RC برای Test فقط با dispatch مستقیم مالک برای `vX.Y.Z-rc.N` و exact current-main SHA ساخته می‌شود؛ required checks همان SHA باید سبز باشند، نسخه باید از آخرین final جدیدتر باشد، شماره RC جلو برود و collision با tag/Release/final fail-closed است. RC branch یا tag متحرک وجود ندارد. | MUST | T1, T2 | G |
 
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |

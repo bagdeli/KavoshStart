@@ -1,0 +1,35 @@
+# Owner-dispatched Test release-candidate creation (REL-7).
+# PRIVATE_HOSTED_DISPATCH_REQUIRED: this workflow has no automatic trigger; one owner dispatch authorizes one exact tag/SHA.
+# This does not deploy anything. The server Test channel may later pull the immutable RC through DEP-2.
+name: rc
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Exact new RC tag (vX.Y.Z-rc.N)
+        required: true
+        type: string
+      expected-sha:
+        description: Exact current main SHA
+        required: true
+        type: string
+      authorization-confirmed:
+        description: I authorize creation of this exact RC from this exact SHA
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  checks: read
+
+jobs:
+  rc:
+    if: inputs.authorization-confirmed && github.ref == 'refs/heads/main'
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-rc.yml@{{KAVOSHSTART}}
+    with:
+      runs-on: '{{RUNS_ON_JSON}}'
+      tag: ${{ inputs.tag }}
+      expected-sha: ${{ inputs.expected-sha }}
+      authorization-confirmed: ${{ inputs.authorization-confirmed }}

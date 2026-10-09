@@ -93,6 +93,8 @@ def main() -> int:
                     rel = f.relative_to(base).as_posix()
                     if manifest.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
                         continue
+                    if rel == ".github/workflows/rc.yml" and "test" not in manifest.get("deploy", {}).get("environments", []):
+                        continue
                     if manifest.get("deploy", {}).get("method") == "custom" and layer == "runtime/server" and rel.startswith("deploy/"):
                         continue
                     plan[rel] = f
