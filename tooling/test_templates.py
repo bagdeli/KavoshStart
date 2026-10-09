@@ -28,6 +28,9 @@ COMBOS = [
 
 def manifest(tier, runtime, method, ui, envs, runner=None):
     m = json.loads(json.dumps(EXAMPLE))
+    # The checked-in example deliberately uses vX.Y.Z so it cannot be copied as a stale valid pin.
+    # Template tests resolve it to a syntactically valid exact release tag before scaffolding.
+    m["kavoshStart"] = "v1.7.0"
     m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
     m["acceptance"] = {"mode": "continuous" if tier == "T2" else "none"}
