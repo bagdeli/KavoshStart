@@ -4,8 +4,9 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 RC_RE = re.compile(r"^v([0-9]+)[.]([0-9]+)[.]([0-9]+)-rc[.]([0-9]+)$")
 FINAL_RE = re.compile(r"^v([0-9]+)[.]([0-9]+)[.]([0-9]+)$")
@@ -86,19 +87,27 @@ def candidate_reasons(tag, sha, required, current_head, runs, tag_names):
 
 
 def gh_api(path, method="GET", payload=None, allow_missing=False):
-    cmd = ["gh", "api"]
-    if method != "GET":
-        cmd += ["-X", method]
-    cmd.append(path)
-    if payload is not None:
-        cmd += ["--input", "-"]
-    result = subprocess.run(cmd, input=json.dumps(payload) if payload is not None else None,
-                            capture_output=True, text=True, encoding="utf-8")
-    if result.returncode != 0:
-        if allow_missing and ("404" in result.stderr or "Not Found" in result.stderr):
+    base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise RuntimeError("GitHub API token is unavailable")
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        f"{base}/{path.lstrip('/')}", data=data, method=method,
+        headers={"Authorization": f"Bearer {token}",
+                 "Accept": "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28",
+                 "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        if allow_missing and exc.code == 404:
             return None
-        raise RuntimeError(f"gh api {path}: {result.stderr.strip()}")
-    return json.loads(result.stdout) if result.stdout.strip() else {}
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
+    return json.loads(raw) if raw.strip() else {}
 
 
 def paged(repo, suffix, key=None):

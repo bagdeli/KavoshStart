@@ -47,8 +47,10 @@ jobs:
           import json
           import os
           import re
-          import subprocess
           import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
           from datetime import datetime, timezone
 
           SCAFFOLD_PREFIX = "chore: scaffold from KavoshStart"
@@ -56,11 +58,30 @@ jobs:
           MAX_COMMITS = 20  # GitHub push payloads list at most 20 commits
 
 
-          def gh_api(path):
-              r = subprocess.run(["gh", "api", path], capture_output=True, text=True, encoding="utf-8")
-              if r.returncode != 0:
-                  raise RuntimeError(f"gh api {path}: {r.stderr.strip()}")
-              return json.loads(r.stdout) if r.stdout.strip() else None
+          def gh_api(path, method="GET", payload=None, allow_status=()):
+              """GitHub REST via Python stdlib; no GitHub CLI dependency on consumer runners."""
+              base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+              token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+              if not token:
+                  raise RuntimeError("GitHub API token is unavailable")
+              url = path if path.startswith("https://") else f"{base}/{path.lstrip('/')}"
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
+              request = urllib.request.Request(
+                  url, data=data, method=method,
+                  headers={"Authorization": f"Bearer {token}",
+                           "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2022-11-28",
+                           "Content-Type": "application/json"},
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      raw = response.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                  if exc.code in set(allow_status):
+                      return None
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
+              return json.loads(raw) if raw.strip() else None
 
 
           def check_state(runs, required):
@@ -167,24 +188,29 @@ jobs:
               return violations
 
 
-          def record(repo, event, violations):
+          def record(repo, event, violations, api=None):
               now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
               entry = f"### {now} — push `{(event.get('after') or '')[:7]}`\n" + "\n".join(f"- [ ] {v}" for v in violations) + "\n"
+              api = api or gh_api
 
-              def gh(*a, check=True):
-                  return subprocess.run(["gh", *a], capture_output=True, text=True, encoding="utf-8", check=check)
-
-              gh("label", "create", "kavosh:violation", "-R", repo, "--color", "B60205",
-                 "--description", "KavoshStart rule violation detected on main", "--force", check=False)
-              existing = json.loads(gh("issue", "list", "-R", repo, "--label", "kavosh:violation", "--state", "open",
-                                       "--json", "number,body").stdout or "[]")
+              api(f"repos/{repo}/labels", method="POST",
+                  payload={"name": "kavosh:violation", "color": "B60205",
+                           "description": "KavoshStart rule violation detected on main"},
+                  allow_status=(422,))
+              label = urllib.parse.quote("kavosh:violation", safe="")
+              existing = api(f"repos/{repo}/issues?labels={label}&state=open&per_page=100") or []
+              existing = [item for item in existing if "pull_request" not in item]
               if existing:
-                  gh("issue", "edit", str(existing[0]["number"]), "-R", repo, "--body", (existing[0]["body"] or "") + "\n" + entry)
+                  number = existing[0]["number"]
+                  api(f"repos/{repo}/issues/{number}", method="PATCH",
+                      payload={"body": (existing[0].get("body") or "") + "\n" + entry})
               else:
                   body = ("Violations of KavoshStart rules detected on `main`. Fix each with a PR (revert or correction), tick it, "
                           "and close this issue when all are resolved.\n"
                           "Rules: https://github.com/bagdeli/KavoshStart/blob/main/standard/RULES.md\n\n" + entry)
-                  gh("issue", "create", "-R", repo, "--title", "KavoshStart: rule violations on main", "--label", "kavosh:violation", "--body", body)
+                  api(f"repos/{repo}/issues", method="POST",
+                      payload={"title": "KavoshStart: rule violations on main",
+                               "labels": ["kavosh:violation"], "body": body})
               return entry
 
 
@@ -206,7 +232,7 @@ jobs:
               print("\n".join(violations) or "no violations")
               if not violations:
                   return 0
-              entry = record(repo, event, violations)
+              entry = record(repo, event, violations, gh_api)
               summary = os.environ.get("GITHUB_STEP_SUMMARY")
               if summary:
                   with open(summary, "a", encoding="utf-8") as fh:

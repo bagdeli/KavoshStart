@@ -2,6 +2,10 @@
 
 قواعد: CI-1…9
 
+## Runtime contract for reusable controls
+
+Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer self-hosted runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
+
 ## runner و هزینه (CI-1…3 — ADR-0009)
 | ریپو | پیش‌فرض | شرط |
 |---|---|---|

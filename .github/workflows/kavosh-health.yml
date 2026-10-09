@@ -39,19 +39,45 @@ jobs:
           import math
           import os
           import re
-          import subprocess
+          import urllib.error
+          import urllib.parse
+          import urllib.request
           from datetime import datetime, timedelta, timezone
 
           NOW = datetime.now(timezone.utc)
 
 
-          def gh(path, check=True):
-              r = subprocess.run(["gh", "api", path], capture_output=True, text=True, encoding="utf-8")
-              if r.returncode != 0:
+          def api_request(path, method="GET", payload=None, check=True, allow_status=()):
+              base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+              token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+              if not token:
                   if check:
-                      raise RuntimeError(f"{path}: {r.stderr.strip()}")
+                      raise RuntimeError("GitHub API token is unavailable")
                   return None
-              return json.loads(r.stdout) if r.stdout.strip() else None
+              url = path if path.startswith("https://") else f"{base}/{path.lstrip('/')}"
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
+              request = urllib.request.Request(
+                  url, data=data, method=method,
+                  headers={"Authorization": f"Bearer {token}",
+                           "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2022-11-28",
+                           "Content-Type": "application/json"},
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      raw = response.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                  if exc.code in set(allow_status):
+                      return None
+                  if not check:
+                      return None
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"{path}: HTTP {exc.code} {detail}") from exc
+              return json.loads(raw) if raw.strip() else None
+
+
+          def gh(path, check=True):
+              return api_request(path, check=check)
 
 
           def paged(path, key=None, max_pages=10):
@@ -395,18 +421,26 @@ jobs:
                   with open(summary, "a", encoding="utf-8") as fh:
                       fh.write(text)
               if os.environ.get("UPDATE_ISSUE", "true") == "true":
-                  def run(*a):
-                      return subprocess.run(["gh", *a], capture_output=True, text=True, encoding="utf-8")
-                  run("label", "create", "kavosh:health", "-R", repo, "--color", "0E8A16", "--description", "KavoshStart weekly repository health", "--force")
-                  found = json.loads(run("issue", "list", "-R", repo, "--label", "kavosh:health", "--state", "open", "--json", "number").stdout or "[]")
+                  api_request(f"repos/{repo}/labels", method="POST",
+                              payload={"name": "kavosh:health", "color": "0E8A16",
+                                       "description": "KavoshStart weekly repository health"},
+                              allow_status=(422,))
+                  label = urllib.parse.quote("kavosh:health", safe="")
+                  found = api_request(f"repos/{repo}/issues?labels={label}&state=open&per_page=100") or []
+                  found = [item for item in found if "pull_request" not in item]
                   if report_is_green(rows):
                       if found:
-                          run("issue", "close", str(found[0]["number"]), "-R", repo, "--reason", "completed",
-                              "--comment", "Latest weekly health report is fully green; reopening a new issue if a future report finds a problem.")
+                          number = found[0]["number"]
+                          api_request(f"repos/{repo}/issues/{number}", method="PATCH",
+                                      payload={"state": "closed", "state_reason": "completed"})
+                          api_request(f"repos/{repo}/issues/{number}/comments", method="POST",
+                                      payload={"body": "Latest weekly health report is fully green; reopening a new issue if a future report finds a problem."})
                   elif found:
-                      run("issue", "edit", str(found[0]["number"]), "-R", repo, "--body", text)
+                      api_request(f"repos/{repo}/issues/{found[0]['number']}", method="PATCH", payload={"body": text})
                   else:
-                      run("issue", "create", "-R", repo, "--title", "Repository health (KavoshStart)", "--label", "kavosh:health", "--body", text)
+                      api_request(f"repos/{repo}/issues", method="POST",
+                                  payload={"title": "Repository health (KavoshStart)",
+                                           "labels": ["kavosh:health"], "body": text})
 
 
           if __name__ == "__main__":

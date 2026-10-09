@@ -8,15 +8,16 @@ CI being unavailable (e.g. billing) is never permission to release.
 
 Exit 0 = gate open, or the commit was superseded by a newer main head (nothing to do, not an error).
 Exit 1 = gate closed (reason printed). Writes open=true|false to $GITHUB_OUTPUT when available.
-Needs gh (GH_TOKEN) and python3 stdlib only. Embedded into kavosh-release.yml by build_workflows.py.
+Needs Python stdlib and GITHUB_TOKEN only. Embedded into kavosh-release.yml by build_workflows.py.
 """
 import argparse
 import base64
 import json
 import re
 import os
-import subprocess
 import sys
+import urllib.error
+import urllib.request
 import time
 
 DEFAULT_REQUIRED = ["required", "main-guard / main-guard"]
@@ -24,10 +25,23 @@ PENDING = {"queued", "in_progress", "waiting", "requested", "pending"}
 
 
 def gh_api(path):
-    r = subprocess.run(["gh", "api", path], capture_output=True, text=True, encoding="utf-8")
-    if r.returncode != 0:
-        raise RuntimeError(f"gh api {path}: {r.stderr.strip()}")
-    return json.loads(r.stdout) if r.stdout.strip() else {}
+    base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise RuntimeError("GitHub API token is unavailable")
+    request = urllib.request.Request(
+        f"{base}/{path.lstrip('/')}",
+        headers={"Authorization": f"Bearer {token}",
+                 "Accept": "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub API GET {path}: HTTP {exc.code} {detail}") from exc
+    return json.loads(raw) if raw.strip() else {}
 
 
 def check_runs(repo, sha, api=None):
