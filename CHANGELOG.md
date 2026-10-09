@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.4](https://github.com/bagdeli/KavoshStart/compare/v2.0.3...v2.0.4) (2026-10-09)
+
+
+### Bug Fixes
+
+* **runtime:** remove hidden gh dependency from reusable control plane ([#97](https://github.com/bagdeli/KavoshStart/issues/97)) ([ac9064c](https://github.com/bagdeli/KavoshStart/commit/ac9064ca39dbd68ace137b726842e442a11da7dd))
+
 ## [2.0.3](https://github.com/bagdeli/KavoshStart/compare/v2.0.2...v2.0.3) (2026-10-09)
 
 
