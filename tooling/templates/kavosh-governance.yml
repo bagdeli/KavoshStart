@@ -54,10 +54,26 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "$EXPECTED_HEAD" ] && [ "$EXPECTED_HEAD" = "$GITHUB_SHA" ]
-          gh api "repos/$REPO/pulls/$PR_NUMBER" > "$RUNNER_TEMP/kavosh-pr.json"
           python3 - <<'PY'
-          import json, os, pathlib, sys
-          pr = json.load(open(os.environ["RUNNER_TEMP"] + "/kavosh-pr.json", encoding="utf-8"))
+          import json, os, pathlib, sys, urllib.error, urllib.request
+
+          def api(path):
+              base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+              token = os.environ["GH_TOKEN"]
+              req = urllib.request.Request(
+                  f"{base}/{path.lstrip('/')}",
+                  headers={"Authorization": f"Bearer {token}",
+                           "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2022-11-28"},
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      return json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise SystemExit(f"GitHub API failed: HTTP {exc.code} {detail}") from exc
+
+          pr = api(f"repos/{os.environ['REPO']}/pulls/{os.environ['PR_NUMBER']}")
           if pr.get("state") != "open" or pr.get("head", {}).get("sha") != os.environ["EXPECTED_HEAD"]:
               sys.exit("authorization expired: PR is closed or its head changed")
           event = {"action": "opened", "number": pr["number"], "pull_request": pr,
@@ -87,11 +103,36 @@ __PYTHON__
           REPORT: ${{ runner.temp }}/kavosh-report.md
         run: |
           [ -f "$REPORT" ] || exit 0
-          marker='<!-- kavosh-governance -->'
-          body="$marker"$'\n'"$(cat "$REPORT")"
-          id=$(gh api "repos/$REPO/issues/$PR/comments?per_page=100" --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" >/dev/null
-          elif grep -q '\*\*FAIL\*\*' "$REPORT"; then
-            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null
-          fi
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.error, urllib.request
+
+          marker = "<!-- kavosh-governance -->"
+          report = pathlib.Path(os.environ["REPORT"]).read_text(encoding="utf-8")
+          body = marker + "\n" + report
+
+          def api(path, method="GET", payload=None):
+              base = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+              token = os.environ["GH_TOKEN"]
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
+              req = urllib.request.Request(
+                  f"{base}/{path.lstrip('/')}", data=data, method=method,
+                  headers={"Authorization": f"Bearer {token}",
+                           "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2022-11-28",
+                           "Content-Type": "application/json"},
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      raw = response.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise SystemExit(f"GitHub API failed: HTTP {exc.code} {detail}") from exc
+              return json.loads(raw) if raw.strip() else None
+
+          comments = api(f"repos/{os.environ['REPO']}/issues/{os.environ['PR']}/comments?per_page=100") or []
+          existing = next((item for item in comments if (item.get("body") or "").startswith(marker)), None)
+          if existing:
+              api(f"repos/{os.environ['REPO']}/issues/comments/{existing['id']}", method="PATCH", payload={"body": body})
+          elif "**FAIL**" in report:
+              api(f"repos/{os.environ['REPO']}/issues/{os.environ['PR']}/comments", method="POST", payload={"body": body})
+          PY
