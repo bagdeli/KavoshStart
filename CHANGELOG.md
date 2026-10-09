@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/bagdeli/KavoshStart/compare/v2.0.0...v2.0.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **governance:** honor declared CI and release adapters ([#85](https://github.com/bagdeli/KavoshStart/issues/85)) ([9d059c1](https://github.com/bagdeli/KavoshStart/commit/9d059c1ff8909a8307841d5cf6873c98b702dd6f))
+
 ## [2.0.0](https://github.com/bagdeli/KavoshStart/compare/v1.7.1...v2.0.0) (2026-10-09)
 
 
