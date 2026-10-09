@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bagdeli/KavoshStart/standard/rules.registry.schema.json",
+  "title": "KavoshStart Rule Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "source",
+    "generatedBy",
+    "coverageContract",
+    "historicalMetadataPolicy",
+    "rules"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./rules.registry.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "source": {
+      "const": "standard/RULES.md"
+    },
+    "generatedBy": {
+      "const": "tooling/rule_registry.py"
+    },
+    "coverageContract": {
+      "const": "tooling/tests/test_rules.py"
+    },
+    "historicalMetadataPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "existingRules",
+        "futureRules"
+      ],
+      "properties": {
+        "existingRules": {
+          "type": "string",
+          "minLength": 1
+        },
+        "futureRules": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "statement",
+          "level",
+          "tier",
+          "enforcement",
+          "lifecycle",
+          "coverage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z]+-[0-9]+$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "level": {
+            "enum": [
+              "MUST",
+              "SHOULD",
+              "MAY"
+            ]
+          },
+          "tier": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enforcement": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "raw",
+              "layers",
+              "delegatedVia",
+              "machineEnforced",
+              "humanReview"
+            ],
+            "properties": {
+              "raw": {
+                "type": "string"
+              },
+              "layers": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "A",
+                    "P",
+                    "M",
+                    "G",
+                    "H",
+                    "S",
+                    "O",
+                    "E",
+                    "R"
+                  ]
+                }
+              },
+              "delegatedVia": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z]+-[0-9]+$"
+                }
+              },
+              "machineEnforced": {
+                "type": "boolean"
+              },
+              "humanReview": {
+                "type": "boolean"
+              }
+            }
+          },
+          "lifecycle": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "owner",
+              "status",
+              "source",
+              "introducedAtOrBefore",
+              "deprecatedIn",
+              "replacement"
+            ],
+            "properties": {
+              "owner": {
+                "const": "KavoshStart"
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "deprecated",
+                  "retired"
+                ]
+              },
+              "source": {
+                "const": "standard/RULES.md"
+              },
+              "introducedAtOrBefore": {
+                "type": "string",
+                "pattern": "^v[0-9]+[.][0-9]+[.][0-9]+$"
+              },
+              "deprecatedIn": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^v[0-9]+[.][0-9]+[.][0-9]+$"
+                  }
+                ]
+              },
+              "replacement": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z]+-[0-9]+$"
+                  }
+                ]
+              }
+            }
+          },
+          "coverage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "positiveNegativeRequired",
+              "contract"
+            ],
+            "properties": {
+              "positiveNegativeRequired": {
+                "type": "boolean"
+              },
+              "contract": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "const": "tooling/tests/test_rules.py"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
