@@ -74,7 +74,7 @@
 | PR-4 | بخش `## AI involvement` در بدنه‌ی PR. | MUST | All | P |
 | PR-5 | فقط Squash merge؛ پیام commit = عنوان PR. | MUST | All | S, O |
 | PR-6 | merge عملیاتی از acceptance جداست: عامل می‌تواند PR با risk=low/medium را فقط روی exact current head، پس از سبز بودن همه checkهای لازم، نبود blocker/review unresolved و رعایت policy، به‌صورت Squash merge کند. risk=high/critical و تغییر control-plane/security/destructive/release-policy ابتدا تصمیم صریح انسانی برای scope فعلی می‌خواهد؛ سپس merge می‌تواند توسط عامل انجام شود. bypass/--admin ممنوع است. | MUST | All | A, R |
-| PR-7 | **PR با check قرمز `kavosh` یا `required` ادغام نمی‌شود.** | MUST | All | R, M |
+| PR-7 | **PR با check قرمز/غایب `kavosh` یا `required` ادغام نمی‌شود.** برای release-please PR که GitHub به‌علت ایجاد با `GITHUB_TOKEN` اجرای `pull_request` را approval-required می‌کند، KavoshStart همان workflowهای واقعی CI و governance را با trusted `workflow_dispatch` روی exact release-PR head اجرا می‌کند؛ نام check و معیار merge عوض نمی‌شود و no-op commit/owner click جزو قرارداد نیست. | MUST | All | G, R, M |
 | PR-8 | تعداد PRهای باز غیر-Draft ≤ `limits.maxOpenReadyPRs`. | SHOULD | All | P, H |
 | PR-9 | Draft بدون فعالیت بیش از 7 روز بسته یا به‌روز می‌شود. | SHOULD | All | H |
 
