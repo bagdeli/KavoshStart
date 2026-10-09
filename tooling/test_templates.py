@@ -95,6 +95,29 @@ def main():
             if problems:
                 print(f"FAIL release contract {combo}: {', '.join(problems)}")
                 failures += 1
+            if combo[1] in ("server", "static") and combo[2] != "custom":
+                deployer = (repo / "deploy/kavosh-deploy.sh").read_text(encoding="utf-8")
+                deploy_env = (repo / "deploy/deploy.env.example").read_text(encoding="utf-8")
+                runbook = (repo / "docs/runbooks/deploy.md").read_text(encoding="utf-8")
+                required_deployer = ("--verify-environment", "VERSION_URL", "HEALTH_URL", "PUBLIC_BASE_URL",
+                                     "ENVIRONMENT_CONFORMANCE=PASS", 'if [ "$target" = "$current" ]')
+                missing = [marker for marker in required_deployer if marker not in deployer]
+                if missing:
+                    print(f"FAIL DEP-7/8 deployer contract {combo}: missing {missing}")
+                    failures += 1
+                for marker in ("DEPLOY_METHOD=", "VERSION_URL=", "HEALTH_URL=", "PUBLIC_BASE_URL=", "ARTIFACT_VERIFY_CMD="):
+                    if marker not in deploy_env:
+                        print(f"FAIL DEP-7/9 deploy env contract {combo}: missing {marker}")
+                        failures += 1
+                if "kavosh-deploy-{{SLUG}}" in runbook:
+                    print(f"FAIL rendered runbook kept an unresolved slug placeholder {combo}")
+                    failures += 1
+                if f"kavosh-deploy-example.timer" not in runbook or "--verify-environment" not in runbook:
+                    print(f"FAIL DEP-7 project-scoped admission runbook {combo}")
+                    failures += 1
+                if combo[2] == "pull-image" and "pull-image requires ARTIFACT_VERIFY_CMD" not in deployer:
+                    print(f"FAIL DEP-9 pull-image provenance gate {combo}")
+                    failures += 1
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             (repo / "gov.py").write_text(gov, encoding="utf-8")
             env = dict(os.environ, REPO="bagdeli/Example", ENFORCE="true", GITHUB_EVENT_PATH="",
