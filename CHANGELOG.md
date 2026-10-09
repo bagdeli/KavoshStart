@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/bagdeli/KavoshStart/compare/v2.0.1...v2.0.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **ci:** make self-hosted trust contract implementation-neutral ([#88](https://github.com/bagdeli/KavoshStart/issues/88)) ([e04c807](https://github.com/bagdeli/KavoshStart/commit/e04c807afbdee84905ef4ffd4e681a029e4224ed))
+
 ## [2.0.1](https://github.com/bagdeli/KavoshStart/compare/v2.0.0...v2.0.1) (2026-10-09)
 
 
