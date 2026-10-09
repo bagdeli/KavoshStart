@@ -1028,13 +1028,15 @@
     },
     {
       "id": "PR-7",
-      "statement": "**PR با check قرمز `kavosh` یا `required` ادغام نمی‌شود.**",
+      "statement": "**PR با check قرمز/غایب `kavosh` یا `required` ادغام نمی‌شود.** برای release-please PR که GitHub به‌علت ایجاد با `GITHUB_TOKEN` اجرای `pull_request` را approval-required می‌کند، workflowهای CI/Kavosh یک مسیر محدود `pull_request_target` دارند که فقط same-repository + `github-actions[bot]` + branch استاندارد release-please را می‌پذیرد. checkهای واجد ruleset با همان contextهای `required` و `kavosh / governance` روی exact head تولید می‌شوند؛ checkout کد candidate credentialless/read-only است و مسیر target برای PRهای دیگر context required ایجاد نمی‌کند. owner click/no-op commit/bypass جزو قرارداد نیست.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
-        "raw": "R, M",
+        "raw": "P, G, R, M",
         "layers": [
+          "G",
           "M",
+          "P",
           "R"
         ],
         "delegatedVia": [],
