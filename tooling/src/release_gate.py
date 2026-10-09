@@ -232,9 +232,11 @@ def main(argv=None):
         print(f"REL-5 gate CLOSED: cannot read checks ({e}) — unavailable CI is not permission to release")
         return 1
     out = os.environ.get("GITHUB_OUTPUT")
-    if out:
-        with open(out, "a", encoding="utf-8") as fh:
-            fh.write(f"open={'true' if ok else 'false'}\n")
+    def write_open(value):
+        if out:
+            with open(out, "a", encoding="utf-8") as fh:
+                fh.write(f"open={'true' if value else 'false'}\n")
+    write_open(False)
     if ok is None:
         print(f"REL-5: {reasons[0]} — skipping")
         return 0
@@ -249,6 +251,7 @@ def main(argv=None):
             for reason in acceptance:
                 print(f"  - {reason}")
             return 1
+        write_open(True)
         print(f"REL-5/ACC-3 gate OPEN for {a.sha[:7]}: required checks and acceptance readiness succeeded")
         return 0
     print(f"REL-5 gate CLOSED for {a.sha[:7]}:")
