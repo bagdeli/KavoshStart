@@ -337,7 +337,7 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Required for any self-hosted runner; must establish rootless or disposable-VM isolation. Public use must address fork/untrusted code."
+          "description": "Required for self-hosted runners. Must document runner trust model, isolation/containment strategy, untrusted-code boundary and credential boundary. Mechanism may be ephemeral/disposable, sandbox/container/rootless/VM, or an equivalently bounded repository-dedicated runner; no single implementation is universal."
         },
         "requiredWorkflow": {
           "type": "string",
