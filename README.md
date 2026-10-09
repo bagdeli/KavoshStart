@@ -1,6 +1,6 @@
 # KavoshStart
 
-**استاندارد شروع، ساخت و نگهداری همه‌ی پروژه‌های Kavosh با همکاری انسان و عامل‌های هوش مصنوعی روی GitHub (پلن رایگان).**
+**استاندارد شروع، ساخت و نگهداری پروژه‌های Kavosh با همکاری انسان و عامل‌های هوش مصنوعی؛ مستقل از زبان، ابزار release و اندازهٔ diff، با policyهای platform/account به‌صورت overlay.**
 
 KavoshStart برای «روش کار» همان نقشی را دارد که [KavoshUI](https://github.com/bagdeli/KavoshUI) برای «ظاهر» دارد: یک مرجع نسخه‌دار که همه‌ی پروژه‌ها از آن پیروی می‌کنند، به‌جای این‌که هر پروژه قواعد خودش را از نو بنویسد.
 
@@ -19,8 +19,9 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 3 Manifest   → kavosh.project.json (ماشین‌خوان) + PROJECT.md (یک صفحه)
 4 Scaffold   → scripts/scaffold.py: فایل‌های مشترک + فایل‌های Tier + فایل‌های Runtime
 5 Backlog    → Milestone و Issueها در GitHub (نه در فایل)
-6 Deliver    → هر Issue = یک شاخه‌ی کوتاه = یک PR کوچک → ادغام فقط به main، فقط توسط مالک
-7 Maintain   → گزارش سلامت هفتگی، انتشار با tag، به‌روزرسانی نسخه‌ی KavoshStart/KavoshUI با PR
+6 Deliver    → هر Issue = یک تغییر coherent و reviewable؛ risk/evidence مستقل از اندازهٔ diff → ادغام فقط به main
+7 Decide     → low/medium پس از gate کامل delegated merge؛ high/critical نیازمند تصمیم انسانی، نه کلیک مکانیکی Merge
+8 Maintain   → گزارش سلامت، انتشار gated، و ارتقای KavoshStart/KavoshUI با PR
 ```
 
 ## محتوا
@@ -37,7 +38,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`docs/decisions/`](docs/decisions/) | ADRهای خود KavoshStart (چرا این قواعد) | EN |
 | [`adoption/`](adoption/) | راهنمای عمومی پذیرش پروژه‌های موجود | FA |
 
-## واقعیت پلن رایگان (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
+## واقعیت platform/account (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
 روی ریپوی private در GitHub Free **هیچ** branch protection، ruleset یا required check قابل اعمال نیست و GitHub Pages در دسترس نیست. GitHub-hosted Actions برای private از سهمیهٔ مشترک حساب استفاده می‌کند؛ KavoshStart هیچ private run را بدون dispatch مستقیم و محدود مالک اجرا نمی‌کند. انتخاب runner به trust، billing، شبکه و workload وابسته است: hosted با مجوز هر اجرا یا self-hosted ایزوله. برای public، runner استاندارد GitHub پیش‌فرض است (CI-1، [ADR-0009](docs/decisions/0009-human-authorized-operations.md)).
 
