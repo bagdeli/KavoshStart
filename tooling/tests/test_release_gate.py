@@ -71,6 +71,14 @@ class AcceptanceReleaseGate(unittest.TestCase):
     def test_ACC3_positive_owner_approved_future_defer(self):
         self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=acceptance_api(defer=True)), [])
 
+    def test_ACC3_positive_legacy_profile_is_backward_compatible(self):
+        def api(path):
+            if "contents/kavosh.project.json" in path:
+                payload = base64.b64encode(json.dumps({"tier": "T2"}).encode()).decode()
+                return {"content": payload}
+            raise AssertionError(path)
+        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=api), [])
+
     def test_ACC3_negative_issue_only_stale_failed_or_unapproved_evidence(self):
         issue_only = "Accepted-By: @bagdeli\nAcceptance-Merged-SHA: " + "b" * 40 + "\n"
         cases = [
