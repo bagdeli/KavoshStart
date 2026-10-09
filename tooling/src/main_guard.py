@@ -5,6 +5,7 @@
 # missing, pending, failed, cancelled or skipped are all violations.
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -68,6 +69,30 @@ def manual_dispatch_event(repo, expected_sha, actor, api):
             "commits": [{"id": expected_sha, "message": message}]}
 
 
+PR_SUFFIX_RE = re.compile(r"\(#([0-9]+)\)$")
+
+
+def merged_pr_for_commit(repo, sha, message, api):
+    """Resolve the exact merged PR without trusting eventually-consistent commit association alone."""
+    pulls = api(f"repos/{repo}/commits/{sha}/pulls") or []
+    merged = [p for p in pulls if p.get("merged_at") and p.get("merge_commit_sha") == sha
+              and p.get("base", {}).get("ref") in ("main", "master")]
+    if merged:
+        return merged[0]
+
+    # GitHub's squash commit title normally carries "(#<pr>)". Immediately after merge the
+    # commit→pull association endpoint can lag, while the pull itself is already authoritative.
+    # This fallback stays fail-closed: the fetched PR must be merged, target main/master, and
+    # report this exact commit as its merge_commit_sha.
+    suffix = PR_SUFFIX_RE.search(message or "")
+    if suffix:
+        candidate = api(f"repos/{repo}/pulls/{suffix.group(1)}") or {}
+        if (candidate.get("merged_at") and candidate.get("merge_commit_sha") == sha
+                and candidate.get("base", {}).get("ref") in ("main", "master")):
+            return candidate
+    return None
+
+
 def inspect(event, repo, required, api):
     violations = []
     required = list(dict.fromkeys(required or []))
@@ -82,15 +107,12 @@ def inspect(event, repo, required, api):
                           f"— a squash merge always adds exactly one")
     for c in commits[:MAX_COMMITS]:
         sha, msg = c["id"], (c.get("message") or "").splitlines()[0]
-        pulls = api(f"repos/{repo}/commits/{sha}/pulls") or []
-        merged = [p for p in pulls if p.get("merged_at") and p.get("merge_commit_sha") == sha
-                  and p.get("base", {}).get("ref") in ("main", "master")]
-        if not merged:
+        pr = merged_pr_for_commit(repo, sha, msg, api)
+        if not pr:
             if msg.startswith(SCAFFOLD_PREFIX) and not (api(f"repos/{repo}/commits/{sha}") or {}).get("parents"):
                 continue  # the initial scaffold of an empty repository is the single allowed direct commit
             violations.append(f"**BR-6 direct push** `{sha[:7]}` “{msg}” — no merged pull request")
             continue
-        pr = merged[0]
         runs, page = [], 1
         while True:
             batch = (api(f"repos/{repo}/commits/{pr['head']['sha']}/check-runs?per_page=100&page={page}") or {}).get("check_runs", [])
