@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.6.0](https://github.com/bagdeli/KavoshStart/compare/v1.5.0...v1.6.0) (2026-10-09)
+
+
+### Features
+
+* **acceptance:** enforce continuous evidence flow ([#61](https://github.com/bagdeli/KavoshStart/issues/61)) ([ec36661](https://github.com/bagdeli/KavoshStart/commit/ec36661cc66e5c76c68bd91cde52c17347513cdb))
+* **deploy:** enforce persistent environment conformance ([#59](https://github.com/bagdeli/KavoshStart/issues/59)) ([d8575ee](https://github.com/bagdeli/KavoshStart/commit/d8575ee83757de5a745ef7635a130ce6e3456b19))
+* **release:** add gated Test release candidates ([#60](https://github.com/bagdeli/KavoshStart/issues/60)) ([aaf4fd6](https://github.com/bagdeli/KavoshStart/commit/aaf4fd6cff32cdf90ad924ac1085336913ed5477))
+
+
+### Bug Fixes
+
+* **governance:** handle reusable caller timeouts ([#52](https://github.com/bagdeli/KavoshStart/issues/52)) ([9edab4c](https://github.com/bagdeli/KavoshStart/commit/9edab4cfe62a0516b06d762942dc8fc9cc3eee20))
+* **health:** treat public standard Actions minutes as free ([#63](https://github.com/bagdeli/KavoshStart/issues/63)) ([8ecbcc4](https://github.com/bagdeli/KavoshStart/commit/8ecbcc482888a8cf3d9f8db4930ac37c4f3b73ab))
+* **release:** repair interrupted 1.6 transaction ([#64](https://github.com/bagdeli/KavoshStart/issues/64)) ([02c81e6](https://github.com/bagdeli/KavoshStart/commit/02c81e690c01a0c2802175d9eab0c1d7173229ef))
+
 ## [1.5.0](https://github.com/bagdeli/KavoshStart/compare/v1.4.0...v1.5.0) (2026-10-02)
 
 
