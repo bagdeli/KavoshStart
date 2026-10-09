@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0](https://github.com/bagdeli/KavoshStart/compare/v1.5.0...v1.6.0) (2026-10-09)
+
+
+### Features
+
+* **acceptance:** enforce continuous evidence flow ([#61](https://github.com/bagdeli/KavoshStart/issues/61)) ([ec36661](https://github.com/bagdeli/KavoshStart/commit/ec36661cc66e5c76c68bd91cde52c17347513cdb))
+* **deploy:** enforce persistent environment conformance ([#59](https://github.com/bagdeli/KavoshStart/issues/59)) ([d8575ee](https://github.com/bagdeli/KavoshStart/commit/d8575ee83757de5a745ef7635a130ce6e3456b19))
+* **release:** add gated Test release candidates ([#60](https://github.com/bagdeli/KavoshStart/issues/60)) ([aaf4fd6](https://github.com/bagdeli/KavoshStart/commit/aaf4fd6cff32cdf90ad924ac1085336913ed5477))
+
+
+### Bug Fixes
+
+* **governance:** handle reusable caller timeouts ([#52](https://github.com/bagdeli/KavoshStart/issues/52)) ([9edab4c](https://github.com/bagdeli/KavoshStart/commit/9edab4cfe62a0516b06d762942dc8fc9cc3eee20))
+
 ## [1.5.0](https://github.com/bagdeli/KavoshStart/compare/v1.4.0...v1.5.0) (2026-10-02)
 
 
