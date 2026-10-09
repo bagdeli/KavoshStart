@@ -92,6 +92,7 @@ def parse_rules(text: str | None = None) -> list[dict]:
 
 def build_registry(text: str | None = None) -> dict:
     return {
+        "$schema": "./rules.registry.schema.json",
         "schemaVersion": 1,
         "source": "standard/RULES.md",
         "generatedBy": "tooling/rule_registry.py",
