@@ -38,8 +38,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 1. Write `kavosh.project.json` conforming to [`intake/kavosh.project.schema.json`](intake/kavosh.project.schema.json).
    Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`)
    and, if the project has a UI, `ui.kavoshui` to the latest KavoshUI release.
-2. Write `PROJECT.md` from `templates/common/PROJECT.md` — one page, Persian, no status.
-3. Show both to the owner. Continue only after confirmation.
+2. For a new T2 project set `acceptance.mode: continuous` unless the owner explicitly chooses a documented phased adoption; T0/T1 may opt in. This is an evidence-flow profile, not permission to invent acceptance status.
+3. Write `PROJECT.md` from `templates/common/PROJECT.md` — one page, Persian, no status.
+4. Show both to the owner. Continue only after confirmation.
 
 ### Step 4 — Repository and scaffold
 1. If the repository does not exist, **ask** the owner before creating it (`gh repo create bagdeli/<repo> --private`).
@@ -77,8 +78,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 1. Create milestone `v0.1.0` (first usable release).
 2. Create issues with the repository's issue forms: epics (T2), features (T1/T2), tasks. Every issue gets a
    `type:*` label (`WK-1`), acceptance criteria, and — for tasks — "Where to look".
-3. Prefer tasks small enough for focused review. Split work when that improves review or risk control (`WK-6`, `PR-3`).
-4. Post the backlog summary to the owner (issue links only; do not write the backlog into a file — `SRC-1`).
+3. If `acceptance.mode=continuous`, populate `acceptance/scope.json` for the first release from the approved scope: stable AC-* IDs, canonical GitHub issue, owner, risk and required evidence. The file declares scope only; never write live accepted/done status into it.
+4. Prefer tasks small enough for focused review. Split work when that improves review or risk control (`WK-6`, `PR-3`).
+5. Post the backlog summary to the owner (issue links only; do not write live backlog/status into a file — `SRC-1`).
 
 ### Step 6 — Hand over
 Report: repository URL, tier/runtime, budget, the first 3 tasks you recommend, anything the owner must do
