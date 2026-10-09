@@ -198,12 +198,26 @@ def check_manifest(actual_repo=None):
 
 
 def release_adapter_problems(m):
-    """REL-3/4/5: non-default release tools are adapters, but must prove the same release outcomes."""
+    """REL-3/4/5: release tools are adapters, but must prove the same release outcomes."""
     release = m.get("release", {}) or {}
     strategy = release.get("strategy", "release-please")
-    if strategy == "release-please":
-        return []
     out = []
+
+    deploy_method = (m.get("deploy", {}) or {}).get("method", "none")
+    if strategy == "release-please" and deploy_method == "release-artifact":
+        artifact = release.get("artifact")
+        interface = (m.get("automation", {}) or {}).get("interface", "make")
+        if artifact:
+            out.append(("ok", "REL-4", "Release artifact adapter",
+                        f"{interface}: explicit command + {len(artifact.get('paths', []))} path(s)"))
+        elif interface == "make":
+            out.append(("ok", "REL-4", "Release artifact adapter",
+                        "default Make adapter: make setup && make package → dist/*"))
+        else:
+            out.append(("fail", "REL-4", "Release artifact adapter",
+                        f"automation.interface={interface} requires release.artifact.command + paths"))
+    if strategy == "release-please":
+        return out
     workflow = release.get("workflow")
     if not workflow:
         out.append(("fail", "REL-4", "Declared release workflow adapter",
