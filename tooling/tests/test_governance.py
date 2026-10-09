@@ -268,6 +268,40 @@ class ContinuousAcceptance(unittest.TestCase):
         self.assertIn("requires test evidence", out[0][3])
 
 
+class ChangeRisk(unittest.TestCase):
+    def test_CR1_positive_declared_risk_and_capabilities(self):
+        """Covers: CR-1 (positive)"""
+        out, risk = g.change_risk_problems(
+            "## Change risk\nRisk: medium\nCapabilities: public-api, tests\nRationale: bounded behavior change\n",
+            [{"filename": "src/api.py"}],
+        )
+        self.assertEqual(fails(out), [])
+        self.assertEqual(risk, "medium")
+
+    def test_CR1_negative_missing_declaration(self):
+        """Covers: CR-1 (negative)"""
+        out, risk = g.change_risk_problems("## What and why\nx\n", [{"filename": "src/api.py"}])
+        self.assertTrue(any(r[1] == "CR-1" for r in fails(out)))
+        self.assertIsNone(risk)
+
+    def test_CR2_positive_sensitive_path_declared_high(self):
+        """Covers: CR-2 (positive)"""
+        out, risk = g.change_risk_problems(
+            "Risk: high\nCapabilities: governance\nRationale: control-plane change\n",
+            [{"filename": ".github/workflows/ci.yml"}],
+        )
+        self.assertEqual(fails(out), [])
+        self.assertEqual(risk, "high")
+
+    def test_CR2_negative_sensitive_path_cannot_claim_low(self):
+        """Covers: CR-2 (negative)"""
+        out, _ = g.change_risk_problems(
+            "Risk: low\nCapabilities: governance\nRationale: small diff\n",
+            [{"filename": "standard/RULES.md"}],
+        )
+        self.assertTrue(any(r[1] == "CR-2" for r in fails(out)))
+
+
 class Classification(unittest.TestCase):
     def test_SRC5_library_classifies_at_least_T1(self):
         m = {"runtime": "none", "projectKind": "library", "ui": {"kind": "none"},
