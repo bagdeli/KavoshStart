@@ -71,6 +71,7 @@ def values(m: dict) -> dict:
         "DEPLOY_METHOD": m.get("deploy", {}).get("method", "none"),
         "BUDGET": str(m.get("ci", {}).get("monthlyMinutesBudget", "")),
         "PACKAGE": "true" if m.get("deploy", {}).get("method") == "release-artifact" else "false",
+        "CI_WORKFLOW": m.get("ci", {}).get("requiredWorkflow") or ".github/workflows/ci.yml",
         "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")),
         "RUNS_ON_YAML": ("[" + ", ".join(labels) + "]") if labels != ["ubuntu-latest"] else "ubuntu-latest",
         "PRIVATE_HOSTED": "true" if m.get("visibility") == "private" and m.get("ci", {}).get("runner") == "github-hosted" else "false",
