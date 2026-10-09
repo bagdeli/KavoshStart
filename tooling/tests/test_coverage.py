@@ -268,7 +268,7 @@ class Manifest(unittest.TestCase):
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("# Runner trust model\nIsolation uses rootless Docker.", encoding="utf-8")
+            path.write_text("# Runner trust model\nIsolation uses rootless container execution. Untrusted code is excluded from this runner. Credential boundary excludes production credentials.", encoding="utf-8")
         self.assertTrue(fails_for("CI-2", setup, manifest=m))
 
     def test_CI2_positive_private_rootless_runner_with_exact_repo_labels(self):
@@ -279,8 +279,34 @@ class Manifest(unittest.TestCase):
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("# Runner trust model\nIsolation uses rootless Docker.", encoding="utf-8")
+            path.write_text("# Runner trust model\nIsolation uses rootless container execution. Untrusted code is excluded from this runner. Credential boundary excludes production credentials.", encoding="utf-8")
         self.assertEqual(fails_for("CI-2", setup, manifest=m), [])
+
+    def test_CI2_positive_private_dedicated_runner_with_bounded_trust(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
+                   "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
+                   "trustModelADR": "docs/decisions/0002-runner.md"}
+        def setup(d):
+            path=d / m["ci"]["trustModelADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                "# Runner trust model\nIsolation uses a dedicated repository runner. "
+                "Untrusted code is blocked by the same-repository PR boundary. "
+                "Credential boundary excludes production and unrelated product credentials.",
+                encoding="utf-8")
+        self.assertEqual(fails_for("CI-2", setup, manifest=m), [])
+
+    def test_CI2_negative_dedicated_runner_without_trust_boundaries(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
+                   "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
+                   "trustModelADR": "docs/decisions/0002-runner.md"}
+        def setup(d):
+            path=d / m["ci"]["trustModelADR"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Runner trust model\nIsolation uses a dedicated runner.", encoding="utf-8")
+        self.assertTrue(fails_for("CI-2", setup, manifest=m))
 
 
 def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main",

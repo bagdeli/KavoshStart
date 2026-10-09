@@ -19,7 +19,7 @@
 
 قواعد runner خودمیزبان (یک runner مشترک می‌تواند به صف و لغوهای زیاد منجر شود):
 - **برای هر ریپو** ثبت می‌شود، نه برای کل حساب؛ labelهای `self-hosted, linux, x64, <repo-slug>` دقیق‌اند.
-- عضویت در گروه Docker روت‌فل دسترسی root-equivalent است. installer این مخزن Docker روت‌فل را رد می‌کند و فقط Docker روت‌لس را می‌پذیرد؛ runner یک‌بارمصرف است. VM اختصاصی disposable نیز باید پس از هر job بیرون از installer حذف شود.
+- Core یک implementation واحد برای isolation تحمیل نمی‌کند. rootless container، sandbox، VM disposable/ephemeral و runner اختصاصیِ یک repo می‌توانند بخشی از trust model معتبر باشند، اما ADR باید isolation واقعی، مرز کد نامطمئن و credential boundary را توضیح دهد. rootful Docker بدون containment مستقل همچنان root-equivalent است و قابل‌قبول نیست. runner persistent/dedicated نباید credential تولید/production داشته باشد و workflowهای PR باید boundary کد نامطمئن را machine-enforce کنند.
 - Runner capacity به صف و SLO بستگی دارد؛ تعداد ثابت برای همهٔ T2 الزام نیست.
 - رازهای production هرگز روی ماشین runner نیستند (استقرار pull-based است — بخش 07).
 - ظرفیت runner (`ci.runners`) براساس صف و SLO توسط مالک تعیین و در همان control surface بررسی می‌شود.
