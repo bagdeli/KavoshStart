@@ -235,18 +235,20 @@ def decision_adr_problem(ref, required_terms):
 
 
 def runner_trust_adr_problem(ref, visibility):
-    """Self-hosted runners need a documented isolation choice; public ADRs must also address forks."""
+    """Self-hosted runners need an explicit trust/containment model without prescribing one implementation."""
     if not isinstance(ref, str) or not re.fullmatch(r"docs/decisions/[0-9]{4}-[a-z0-9-]+\.md", ref):
         return "an ADR path under docs/decisions/ is required"
     path = Path(ref)
     if not path.is_file():
         return f"ADR does not exist: {ref}"
     body = path.read_text(encoding="utf-8", errors="replace").lower()
-    missing = [term for term in ("runner trust model", "isolation") if term not in body]
-    if not any(term in body for term in ("rootless", "disposable")):
-        missing.append("rootless or disposable VM isolation")
-    if visibility == "public" and not any(term in body for term in ("fork", "untrusted")):
-        missing.append("fork/untrusted PR boundary")
+    missing = [term for term in ("runner trust model", "isolation", "untrusted code", "credential boundary")
+               if term not in body]
+    strategies = ("rootless", "disposable", "ephemeral", "sandbox", "container", "virtual machine", "dedicated")
+    if not any(term in body for term in strategies):
+        missing.append("a concrete containment strategy")
+    if visibility == "public" and not any(term in body for term in ("fork", "same-repository", "same repository")):
+        missing.append("fork/same-repository PR boundary")
     return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None
 
 
