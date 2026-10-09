@@ -56,12 +56,17 @@
     "monthlyMinutesBudget": 100
   },
   "limits": {
-    "prMaxLines": 600,
     "maxOpenReadyPRs": 3,
     "branchMaxAgeDays": 3
   },
   "agents": [
     "claude",
     "codex"
-  ]
+  ],
+  "release": {
+    "strategy": "release-please"
+  },
+  "automation": {
+    "interface": "make"
+  }
 }

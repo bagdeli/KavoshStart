@@ -1,4 +1,8 @@
-# 01 — مدل اجرا روی پلن رایگان GitHub
+# 01 — مدل اجرا، assurance و policy پلتفرم
+
+## Core در برابر Portfolio/Account Policy
+
+KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/isolation، checks، exact-source، release/deploy gates و evidence. هزینه، quota، plan و انتخاب تجاری runner یک **Portfolio/Account Policy overlay** است و نباید invariant کیفیت نرم‌افزار شود. این سند وضعیت فعلی GitHub را برای تصمیم عملی توضیح می‌دهد، اما تغییر billing نباید معنای Ruleهای مهندسی را عوض کند.
 
 ## چه چیزی روی ریپوی private در پلن Free وجود ندارد
 | قابلیت | وضعیت | پیامد |
@@ -75,7 +79,7 @@
 - Layer O با `GITHUB_TOKEN` محدود به همان مخزن و مجوزهای حداقلی اجرا می‌شود؛ PAT مشترک یا secret حساب لازم نیست.
 - نام، URL، هدف، audit، plan، finding یا runtime metadata پروژه‌ی private نباید وارد file، Issue، PR، commit message، Release یا log عمومی شود.
 
-برای repoهای **private**، ناظر بیرونی — در صورت نیاز — باید در یک control surface private مستقل اجرا شود. KavoshStart عمومی منبع گزارش یا inventory پروژه‌های private نیست.
+برای repoهای **private**، ناظر بیرونی باید در یک control surface private مستقل اجرا شود اگر سازمان می‌خواهد freshness/enforcement را portfolio-level تضمین کند. KavoshStart عمومی inventory خصوصی را نگه نمی‌دارد، اما contract آن ناظر را تعریف می‌کند: pin KavoshStart، enforce wiring، main/health freshness، acceptance profile و disabled/missing controlها را از بیرون بررسی کند و هیچ metadata خصوصی را وارد سطح عمومی نکند. target inventory و token فقط در سطح private نگه‌داری می‌شوند.
 
 **مرز اعتماد:** Layer O عمومی به همین repo و GitHub Actions وابسته است. اگر خودش از کار بیفتد، فقط انسان متوجه می‌شود که Issue پرتفوی عمومی دیگر به‌روز نشده است. این لایه هیچ ادعایی درباره‌ی مشاهده یا سلامت پروژه‌های private ندارد.
 

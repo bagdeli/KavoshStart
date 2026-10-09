@@ -20,6 +20,7 @@ EXAMPLE = json.loads((ROOT / "intake" / "kavosh.project.example.json").read_text
 COMBOS = [
     ("T0", "none", "release-artifact", "none", []),
     ("T1", "server", "pull-build", "admin", []),
+    ("T1", "none", "release-artifact", "none", []),  # reusable library/package profile
     ("T1", "desktop", "release-artifact", "desktop", []),
     ("T2", "server", "pull-image", "web", ["test", "production"]),
     ("T2", "static", "pull-build", "web", ["production"]),
@@ -33,6 +34,8 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
     m["kavoshStart"] = "v1.7.0"
     m["repo"] = "bagdeli/Example"
     m.update(tier=tier, runtime=runtime)
+    if tier == "T1" and runtime == "none":
+        m["projectKind"] = "library"
     m["acceptance"] = {"mode": "continuous" if tier == "T2" else "none"}
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "kavoshui": None if ui == "none" else "1.0.0", "locales": ["fa-IR"]}

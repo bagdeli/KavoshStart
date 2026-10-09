@@ -332,7 +332,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 2000,
-          "description": "Legacy estimate only; it cannot grant authorization or stop billing. Keep zero unless separately approved for a bounded run."
+          "description": "Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution."
         },
         "trustModelADR": {
           "type": "string",
@@ -348,7 +348,8 @@
         "prMaxLines": {
           "type": "integer",
           "minimum": 100,
-          "maximum": 2000
+          "maximum": 2000,
+          "description": "Deprecated compatibility field. KavoshStart v2 does not use line/file counts as a merge gate; remove on normal upgrade."
         },
         "maxOpenReadyPRs": {
           "type": "integer",
@@ -397,6 +398,50 @@
         }
       },
       "description": "Acceptance-flow profile. T2 consumers of the current standard must use mode=continuous; T0/T1 may opt in."
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy"
+      ],
+      "properties": {
+        "strategy": {
+          "enum": [
+            "release-please",
+            "changesets",
+            "custom"
+          ],
+          "description": "Release implementation strategy. This is an adapter choice, not the release safety contract; all strategies must preserve REL-1/2/5/6."
+        },
+        "strategyADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+          "description": "Required when strategy=custom to explain equivalent versioning, provenance and gating."
+        }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interface"
+      ],
+      "properties": {
+        "interface": {
+          "enum": [
+            "make",
+            "package-scripts",
+            "task-runner",
+            "custom"
+          ],
+          "description": "Adapter exposing semantic setup/lint/test/build/check operations. The underlying language/tool is not a KavoshStart invariant."
+        },
+        "customADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"
+        }
+      }
     }
   }
 }

@@ -149,10 +149,10 @@ class GovernanceFiles(unittest.TestCase):
         m["runtime"] = "server"
         self.assertTrue(fails_for("CI-1", manifest=m))
 
-    def test_CI1_negative_local_only_runner_with_nonzero_budget(self):
+    def test_CI3_positive_budget_hint_does_not_invalidate_local_only_profile(self):
         m = local_only_static_manifest()
         m["ci"]["monthlyMinutesBudget"] = 1
-        self.assertTrue(fails_for("CI-1", manifest=m))
+        self.assertEqual(fails_for("CI-1", manifest=m), [])
 
     def test_SEC3_negative_no_permissions(self):
         def mutate(d):
@@ -283,7 +283,9 @@ class Manifest(unittest.TestCase):
         self.assertEqual(fails_for("CI-2", setup, manifest=m), [])
 
 
-def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main", body="Closes #12", labels=(), private=True):
+def pr_event(title="feat(api): add x", head="feat/12-add-x", base="main",
+             body="Closes #12\n\n## Change risk\nRisk: medium\nCapabilities: api\nRationale: bounded behavior\n",
+             labels=(), private=True):
     return {"repository": {"default_branch": "main", "private": private},
             "pull_request": {"number": 7, "title": title, "body": body, "head": {"ref": head}, "base": {"ref": base},
                              "user": {"type": "User"}, "labels": [{"name": l} for l in labels]}}
@@ -325,8 +327,8 @@ class PullRequest(unittest.TestCase):
     def test_PR2_negative_title(self):
         self.assertEqual(run_pr(title="Post-v1.1 canonical continuation")["PR-2"], "fail")
 
-    def test_PR3_negative_too_large(self):
-        self.assertEqual(run_pr(lines=1500)["PR-3"], "fail")
+    def test_PR3_positive_large_diff_is_telemetry_not_gate(self):
+        self.assertEqual(run_pr(lines=1500)["PR-3"], "ok")
 
     def test_UI2_positive_no_visual_change_needs_no_evidence(self):
         self.assertEqual(run_pr().get("UI-2"), "ok")
@@ -335,7 +337,7 @@ class PullRequest(unittest.TestCase):
         self.assertEqual(run_pr(filename="src/components/button.tsx").get("UI-2"), "fail")
 
     def test_UI2_positive_visual_change_with_evidence(self):
-        body = "Closes #12\n\nUI evidence: https://example.test/rendered.png"
+        body = "Closes #12\n\n## Change risk\nRisk: medium\nCapabilities: ui\nRationale: rendered component change\n\nUI evidence: https://example.test/rendered.png"
         self.assertEqual(run_pr(filename="src/components/button.tsx", body=body).get("UI-2"), "ok")
 
     def test_BR2_negative_branch_name(self):
