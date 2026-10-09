@@ -203,7 +203,8 @@ def release_adapter_problems(m):
     strategy = release.get("strategy", "release-please")
     out = []
 
-    if strategy == "release-please" and m.get("runtime") in ("none", "desktop"):
+    deploy_method = (m.get("deploy", {}) or {}).get("method", "none")
+    if strategy == "release-please" and deploy_method == "release-artifact":
         artifact = release.get("artifact")
         interface = (m.get("automation", {}) or {}).get("interface", "make")
         if artifact:
