@@ -428,6 +428,34 @@
           "type": "string",
           "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
           "description": "Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "command",
+            "paths"
+          ],
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "Repository-owned shell command that prepares and builds release assets. Required for release-please artifact packaging when automation.interface is not make; Make consumers may use the default make setup + make package adapter."
+            },
+            "paths": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+",
+                "description": "Relative glob under the repository checkout. Absolute paths and parent traversal are forbidden."
+              },
+              "description": "One or more relative globs whose regular files are attached to the GitHub Release."
+            }
+          },
+          "description": "Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."
         }
       }
     },
