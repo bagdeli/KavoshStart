@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.1.0](https://github.com/bagdeli/KavoshStart/compare/v2.0.6...v2.1.0) (2026-10-09)
+
+
+### Features
+
+* **portfolio:** add private supervisor reference implementation ([#116](https://github.com/bagdeli/KavoshStart/issues/116)) ([2a6a0c9](https://github.com/bagdeli/KavoshStart/commit/2a6a0c9f1d8c5e7f85c2a3e13c99aa66ec9ee0de))
+* **profile:** add composable project capability axis ([#113](https://github.com/bagdeli/KavoshStart/issues/113)) ([ad9798c](https://github.com/bagdeli/KavoshStart/commit/ad9798c122e697ad7ec3b28d013b881f2c79f08a))
+* **standard:** add generated machine-readable rule registry ([#112](https://github.com/bagdeli/KavoshStart/issues/112)) ([1bef8bd](https://github.com/bagdeli/KavoshStart/commit/1bef8bd8bfb2d83862e0ee2c8f66e67001040cd7))
+
+
+### Bug Fixes
+
+* **release:** bridge trusted release verification into required checks ([#115](https://github.com/bagdeli/KavoshStart/issues/115)) ([7f97dd1](https://github.com/bagdeli/KavoshStart/commit/7f97dd17c00e894708edd0e7dd01ca1efec2f722))
+* **release:** make release PR checks ruleset eligible ([#114](https://github.com/bagdeli/KavoshStart/issues/114)) ([258c867](https://github.com/bagdeli/KavoshStart/commit/258c86763e68fa15a6c26059ae5565481b47abba))
+* **release:** publish trusted verification as commit statuses ([#118](https://github.com/bagdeli/KavoshStart/issues/118)) ([bb52ddc](https://github.com/bagdeli/KavoshStart/commit/bb52ddc4c37037f707737a5c3152b41f1958aeec))
+* **release:** verify bot release PRs by trusted dispatch ([#108](https://github.com/bagdeli/KavoshStart/issues/108)) ([9830b80](https://github.com/bagdeli/KavoshStart/commit/9830b804feeb67f61d98158fee5c3c445261cfc2))
+
 ## [2.0.6](https://github.com/bagdeli/KavoshStart/compare/v2.0.5...v2.0.6) (2026-10-09)
 
 
