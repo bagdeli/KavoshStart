@@ -67,6 +67,11 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    For T1/static, the owner may select `ci.runner: none`: scaffold omits all workflows. Run `make check` locally and
    attach its successful output to every PR. Bootstrap selects a PR-protected ruleset without CI status checks for
    this profile. Never merge a red result or bypass an actual required check.
+9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
+   Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
+   deploy units, configure distinct version/health plus the canonical origin, and require
+   `kavosh-deploy-<slug> --verify-environment` to emit `ENVIRONMENT_CONFORMANCE=PASS` before representing that host
+   as canonical Test/Production. Temporary runner/Compose previews stay non-canonical and isolated.
 
 ### Step 5 — Backlog
 1. Create milestone `v0.1.0` (first usable release).

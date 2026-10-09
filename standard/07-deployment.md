@@ -1,66 +1,169 @@
 # 07 — استقرار (Runtime: server / static)
 
-قواعد: DEP-1…4، CI-2
+قواعد: DEP-1…9، CI-2
 
-## اصل: سرور می‌کشد، GitHub هل نمی‌دهد (pull-based)
-runnerهای GitHub خارج از ایران‌اند و نباید (و معمولاً نمی‌توانند) به سرورهای داخلی وصل شوند. پس سرور خودش هر چند دقیقه یک‌بار بررسی می‌کند که نسخه‌ی جدیدی منتشر شده یا نه.
+## اصل: repository سبز با environment سالم یکی نیست
+
+KavoshStart چهار وضعیت جدا دارد:
 
 ```text
-GitHub                                   سرور Kavosh (test / production)
-──────                                   ─────────────────────────────
-main ── release-please ── tag v1.4.0-rc.1        systemd timer (هر 5 دقیقه)
-                                 ▲                      │
-                                 └──── git fetch --tags ┘   (یا docker pull)
-                                                        │ نسخه‌ی هدف ≠ نسخه‌ی فعلی؟
-                                                        ▼
-                  export تمیز → backup → migrate → build/up → health-check ── ✗ → بازگشت «برنامه» به نسخه‌ی قبل
-                                                        │ ✓
-                                                        ▼
-                                                /version = v1.4.0-rc.1 (sha)
+source reviewed
+  → CI candidate proven
+  → immutable release/tag
+  → persistent environment admitted
 ```
 
-## دو روش (`deploy.method`)
-| روش | ساخت کجا | دقیقه‌ی Actions | نیاز سرور | پیشنهاد |
-|---|---|---|---|---|
-| **`pull-build`** | روی خود سرور از روی tag | صفر | دسترسی خواندن به ریپو (deploy key فقط‌خواندنی) + Docker | **پیش‌فرض در Free** |
-| `pull-image` | GitHub Actions روی tag → GHCR | هر release چند دقیقه | دسترسی به ghcr.io + توکن read:packages | وقتی ساخت روی سرور سنگین است |
-| `custom` | روش جایگزین در ADR پروژه | وابسته به روش | حداقل‌دسترسی و همان gateهای release | فقط استثنای بررسی‌شده؛ pull-based پیش‌فرض می‌ماند |
+سبز بودن CI یا Compose موقت فقط candidate را اثبات می‌کند. Test/Production رسمی فقط وقتی پذیرفته می‌شود که **لایه E (Environment)** روی همان host و canonical route قرارداد deployment را پاس کند.
 
-اگر دسترسی سرور به github.com ناپایدار است: ریپو را از طریق mirror/relay داخلی (KavoshRepo) بکشید — اسکریپت فقط آدرس remote را عوض می‌کند.
+## pull-based
+
+پیش‌فرض این است که سرور release را می‌کشد؛ GitHub به سرور push/SSH نمی‌کند:
+
+```text
+GitHub                                  Kavosh server
+──────                                  ─────────────
+main → gated release → vX.Y.Z[-rc.N]    project-scoped systemd timer
+                           ▲                         │
+                           └──── fetch tags ─────────┘
+                                                     │
+                                                     ▼
+ clean export → recovery gates → migrate → build/pull → start
+                                                     │
+                      local /version exact tag+SHA ──┤
+                      local /health healthy ─────────┤
+                  canonical /version exact tag+SHA ──┤
+                  canonical /health healthy ─────────┤
+                                                     ▼
+                                            current = release
+```
+
+اگر target با `current` برابر باشد، timer باز هم identity و health را بررسی می‌کند. «چیزی برای deploy نیست» مجوز نادیده‌گرفتن drift نیست.
+
+## دو روش استاندارد (`deploy.method`)
+
+| روش | منبع artifact | رفتار استاندارد | شرط |
+|---|---|---|---|
+| **pull-build** | clean export از tag | build روی server، سپس start | پیش‌فرض ساده و قابل‌ردیابی |
+| **pull-image** | registry | pull → provenance verification → no-build start | `ARTIFACT_VERIFY_CMD` اجباری |
+| custom | ADR | روش جایگزین | باید REL/DEP معادل را ثابت کند |
+
+برای `pull-image`، صرف تزریق `KAVOSH_SHA` یا tag محیطی به container قدیمی evidence نیست. verification باید artifact/image immutable را واقعاً به release مورد انتظار bind کند.
 
 ## کانال‌ها (DEP-2)
-- **test:** همیشه آخرین tag (شامل `-rc`).
-- **production:** فقط نسخه‌ای که مالک در فایل `/etc/kavosh/<project>/pin` روی سرور نوشته. ارتقا = عوض کردن همین یک خط (یا اجرای `kavosh-deploy.sh --pin vX.Y.Z`).
-- هیچ شاخه‌ای مستقیم مستقر نمی‌شود.
 
-## فایل‌های قالب (`templates/runtime/server/`)
+- **Test:** جدیدترین SemVer، شامل `vX.Y.Z-rc.N`.
+- **Production:** فقط tag exact که مالک در pin همان server ثبت کرده.
+- branch، working tree، label موقت و `v0.0.0` جایگزین release نیستند.
+- نبود RC رسمی به معنی اجازهٔ deploy مستقیم `main` نیست.
+
+## identity و health دو قرارداد جدا هستند (DEP-3/4/8)
+
+`VERSION_URL` فقط هویت runtime را ثابت می‌کند و باید exact version + SHA مورد انتظار را برگرداند.
+
+`HEALTH_URL` سلامت application/dependencies لازم را ثابت می‌کند.
+
+هر دو مسیر روی loopback **و** canonical origin بررسی می‌شوند. این تفکیک جلوی false greenهایی را می‌گیرد که در آن static/version endpoint سالم است اما application خراب است، یا reverse proxy به runtime دیگری اشاره می‌کند.
+
+## Layer E — Server Admission (DEP-7)
+
+یک server استاندارد قبل از اینکه Test/Production رسمی نامیده شود باید حداقل این‌ها را machine-check کند:
+
+- mirror/release/shared/current layout زیر `/opt/kavosh/<project>`;
+- `shared/.env` بیرون release؛
+- deploy env و deploy binary نصب‌شده؛
+- service/timer با نام **project-scoped**؛
+- timer enabled + active؛
+- target معتبر SemVer؛
+- `current` دقیقاً همان target؛
+- exact local و canonical version/SHA؛
+- local و canonical health.
+
+فرمان استاندارد:
+
+```sh
+/usr/local/bin/kavosh-deploy-<project> --verify-environment
+```
+
+خروجی موفق `ENVIRONMENT_CONFORMANCE=PASS` است. failure یعنی environment پذیرفته نیست، حتی اگر CI سبز باشد.
+
+## preview موقت ≠ Test رسمی
+
+preview یا proof می‌تواند با Compose/project name، DB/uploads و port مستقل ساخته شود، اما:
+
+- canonical Test/Production origin به آن bind نمی‌شود مگر DEP-7 پاس شود؛
+- proof resource نباید volume persistent environment را reuse کند؛
+- «فعلاً preview است» نباید بدون admission به deployment دائمی تبدیل شود.
+
+این مرز از تبدیل‌شدن workaround به معماری دائمی جلوگیری می‌کند.
+
+## فایل‌های قالب
+
 | فایل | کار |
 |---|---|
-| `deploy/kavosh-deploy.sh` | منطق کامل: یافتن نسخه‌ی هدف، ساخت، migrate، up، health-check، rollback، نوشتن وضعیت |
-| `deploy/kavosh-deploy.service` + `.timer` | اجرای دوره‌ای با systemd |
-| `deploy/deploy.env.example` | متغیرهای هر سرور (کانال، مسیر، URL سلامت) — بدون راز |
-| `compose.yaml` | اسکلت Docker Compose با برچسب نسخه |
-| `docs/runbooks/deploy.md` | راه‌اندازی سرور جدید و بازگشت دستی |
+| `deploy/kavosh-deploy.sh` | selector، build/pull، migration، rollback، admission و drift |
+| `deploy/kavosh-deploy.service/.timer` | template؛ هنگام نصب با نام project-scoped کپی می‌شوند |
+| `deploy/deploy.env.example` | method، local identity/health، canonical origin و recovery settings |
+| `compose.yaml` | skeleton runtime؛ پروژه باید TODOها را حذف کند |
+| `docs/runbooks/deploy.md` | bootstrap، admission، rollback و drift diagnosis |
 
-هر روش غیر pull-based نیازمند ADR است که محل credential، least privilege، تأیید release از main، tag تغییرناپذیر، rollback برنامه و عدم restore خودکار DB را پوشش دهد. مجوز هر deploy همچنان جدا و محدود به همان مقصد/نسخه است.
+فایل‌های template unit generic هستند، ولی مقصد نصب باید `kavosh-deploy-<slug>.service/.timer` باشد تا چند پروژه روی یک host با هم برخورد نکنند.
 
-## دیتابیس: آنچه خودکار است و آنچه نیست (DEP-4…6)
-| مرحله | خودکار؟ | توضیح |
-|---|---|---|
-| recovery قبل از migration | طبق ریسک | سلامت continuous backup/PITR و مدرک تازه‌ی restore test با check شکست‌بسته بررسی می‌شود؛ برای migration مخرب، rewrite یا high-risk snapshot تازه لازم است |
-| migration | ✅ | `MIGRATE_CMD`؛ فقط expand (اضافه کردن) در همان نسخه |
-| بازگشت برنامه به نسخه‌ی قبل | ✅ | چون migrationها expand-only هستند، نسخه‌ی قبل روی schema جدید کار می‌کند |
-| بازگرداندن دیتابیس | ❌ | عمداً دستی (runbook)؛ بازگرداندن خودکار می‌تواند داده‌ی ثبت‌شده بعد از backup را پاک کند |
+## ساختار استاندارد host
 
-قاعده‌ی production T2 همان expand/contract است: حذف ستون در نسخه‌ی N+1 فقط وقتی نسخه‌ی N دیگر از آن استفاده نمی‌کند. برای T1، ADR می‌تواند maintenance window محدود با downtime را تعریف کند؛ اجرای هر migration در این حالت نیازمند تأیید مستقیم مالک و backup/restore آزموده است.
+```text
+/opt/kavosh/<project>/
+  repo.git/
+  releases/vX.Y.Z[-rc.N]/
+  shared/.env
+  current -> releases/<accepted-tag>
 
-`BACKUP_CMD` برای هر migration الزام دائمی نیست؛ snapshot پیش از migration لازم است اگر destructive/high-risk یا schema rewrite باشد. `BACKUP_HEALTHCHECK_CMD` و `RESTORE_TEST_CHECK_CMD` هر دو پیش از هر migration باید موفق شوند؛ دومی باید تازگی و موفقیت rehearsal را از سامانه‌ی پشتیبان‌گیری بررسی کند. نوشتن `PITR enabled` به‌تنهایی recovery را اثبات نمی‌کند: تازگی، retention و restore test باید ثبت باشند. بازگرداندن دیتابیس همچنان فقط دستی و با مجوز جداست.
+/etc/kavosh/<project>/
+  deploy.env
+  pin                    # Production only
+```
 
-## ساختار روی سرور
-هر نسخه در `releases/vX.Y.Z/` با `git archive` استخراج می‌شود (بدون فایل‌های مانده از قبل)، `.env` در `shared/` و بیرون از نسخه‌هاست، و `current` به نسخه‌ی در حال اجرا اشاره می‌کند. سه نسخه‌ی آخر نگه داشته می‌شود.
+در کنار آن:
 
-## ثبت استقرار
-اسکریپت پس از هر استقرار موفق یا ناموفق یک خط در `/var/log/kavosh/<project>-deploy.log` می‌نویسد. (اختیاری، بعداً: ارسال وضعیت به GitHub Deployments API با توکن محدود.)
+```text
+/usr/local/bin/kavosh-deploy-<project>
+/etc/systemd/system/kavosh-deploy-<project>.service
+/etc/systemd/system/kavosh-deploy-<project>.timer
+```
+
+## دیتابیس (DEP-5/6)
+
+- migrationهای T2 production expand/contract هستند.
+- قبل از migration، continuous recovery/PITR و restore rehearsal تازه fail-closed بررسی می‌شوند.
+- high-risk/destructive rewrite snapshot تازه لازم دارد.
+- application rollback خودکار می‌تواند مجاز باشد؛ database restore هرگز خودکار نیست.
+- maintenance-window فقط در دامنهٔ مجاز rule و با ADR/authorization همان run.
+
+## drift (DEP-8)
+
+Drift یعنی expected release و محیط canonical همسان نیستند؛ مثال‌ها:
+
+- `current` به vN اشاره می‌کند ولی `/version` SHA دیگری می‌دهد؛
+- local runtime درست است ولی reverse proxy canonical runtime قدیمی را می‌دهد؛
+- target همان `current` است اما health خراب است؛
+- project-scoped timer حذف/غیرفعال شده است.
+
+Timer در no-op deployment نیز identity + health را دوباره می‌سنجد و mismatch را failure می‌کند.
+
+## artifact provenance (DEP-9)
+
+برای pull-build، source یک clean export از exact tag است و build در همان release directory انجام می‌شود.
+
+برای pull-image، registry artifact باید independently verify شود. Command پروژه باید failure را با exit non-zero اعلام کند. Environment label به‌تنهایی provenance نیست.
+
+## ثبت و عیب‌یابی
+
+- deploy log: `/var/log/kavosh/<project>-deploy.log`
+- unit logs: `journalctl -u kavosh-deploy-<project>.service`
+- timer: `journalctl -u kavosh-deploy-<project>.timer`
+- verification: `--verify-environment`
+
+اگر verification fail شد، اول expected tag/SHA، `current`، local endpoints، canonical route و unitها را مقایسه کنید. rebuild تصادفی image یا repoint دستی proxy راه‌حل استاندارد نیست.
 
 ## static
-سایت ایستا از ریپوی private روی Free نمی‌تواند روی GitHub Pages باشد. همان `pull-build` با یک nginx روی سرور؛ یا اگر محتوا عمومی است، ریپو را public کنید تا Pages رایگان شود.
+
+runtime static نیز اگر server-hosted persistent باشد همین admission/identity contract را دارد. اگر deployment واقعاً خارج از این مدل است، `custom` + ADR باید gateهای معادل را تعریف کند.

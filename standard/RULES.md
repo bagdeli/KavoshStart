@@ -3,12 +3,12 @@
 این تنها فهرست رسمی قواعد است. هر سند دیگر فقط **توضیح** می‌دهد و با شناسه به این‌جا ارجاع می‌دهد.
 قاعده‌ی جدید فقط با PR به همین فایل + مکانیزم اجرا + (در صورت لزوم) ADR اضافه می‌شود.
 
-**سطح:** `MUST` = الزامی؛ اجرای آن یا با ماشین است (لایه‌های A، P، M، G، H، S، O) یا — اگر فقط لایه‌ی `R` دارد — صراحتاً با بازبینی انسانی (فهرست پایین همین فایل) · `SHOULD` = هشدار · `MAY` = اختیاری
+**سطح:** `MUST` = الزامی؛ اجرای آن یا با ماشین است (لایه‌های A، P، M، G، H، S، O، E) یا — اگر فقط لایه‌ی `R` دارد — صراحتاً با بازبینی انسانی (فهرست پایین همین فایل) · `SHOULD` = هشدار · `MAY` = اختیاری
 **Tier:** `All` یا فهرست رده‌ها
 **لایه‌ی اجرا** (توضیح در [01-free-plan-operating-model.md](01-free-plan-operating-model.md)):
-`A` محافظ عامل (قبل از push) · `P` بررسی PR · `M` نگهبان main · `G` دروازه‌ی انتشار · `H` گزارش سلامت هفتگی · `S` تنظیم ریپو · `O` ناظر پرتفوی (بیرون از ریپو) · `R` بازبینی انسانی · `via X` = از طریق قاعده‌های X اجرا می‌شود
+`A` محافظ عامل (قبل از push) · `P` بررسی PR · `M` نگهبان main · `G` دروازه‌ی انتشار · `H` گزارش سلامت هفتگی · `S` تنظیم ریپو · `O` ناظر پرتفوی (بیرون از ریپو) · `E` تطابق ماشین‌خوان محیط persistent روی host · `R` بازبینی انسانی · `via X` = از طریق قاعده‌های X اجرا می‌شود
 
-هر MUST با لایه‌ی ماشینی (P، M، G، H، O) حداقل یک آزمون مثبت و یک آزمون منفی آفلاین دارد؛ `tooling/tests/test_rules.py` این را بررسی می‌کند (#7).
+هر MUST با لایه‌ی ماشینی (P، M، G، H، O، E) حداقل یک آزمون مثبت و یک آزمون منفی آفلاین دارد؛ `tooling/tests/test_rules.py` این را بررسی می‌کند (#7).
 
 ## SRC — منبع حقیقت
 | ID | قاعده | سطح | Tier | لایه |
@@ -111,11 +111,14 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | DEP-1 | pull-based پیش‌فرض است. معماری دیگر فقط با ADR، حداقل‌دسترسی credential و اثبات دروازه‌های معادل REL-5، tag تغییرناپذیر، rollback برنامه و عدم restore خودکار DB مجاز است. | MUST | All | R |
-| DEP-2 | فقط tagهای SemVer مستقر می‌شوند: test ← بالاترین نسخه طبق SemVer (`v1.2.0` > `v1.2.0-rc.3`)، production ← نسخه‌ای که مالک روی سرور پین کرده. | MUST | All | R (منطق انتخاب: آزمون آفلاین) |
-| DEP-3 | endpoint یا فایل `/version` نسخه و SHA در حال اجرا را برمی‌گرداند. | MUST | T1, T2 | R |
-| DEP-4 | اسکریپت استقرار health-check و بازگشت خودکار **برنامه** به نسخه‌ی قبل دارد؛ هر نسخه در پوشه‌ی تمیز خودش و `.env` بیرون از آن. **دیتابیس خودکار برنمی‌گردد.** | MUST | T1, T2 | R |
-| DEP-5 | production T2 از expand/contract استفاده می‌کند. T1 می‌تواند maintenance window محدود با downtime داشته باشد، فقط با ADR و مجوز همان اجرا، backup/restore آزموده و runbook بازگشت برنامه. | MUST | T1, T2 | R |
-| DEP-6 | پیش از migration سلامت continuous backup/PITR بررسی می‌شود؛ snapshot تازه برای migration مخرب/high-risk یا rewrite لازم است. failure استقرار را متوقف می‌کند؛ restore فقط با runbook و مجوز جدا انجام می‌شود. | MUST | T1, T2 | R (اسکریپت قالب اجرا می‌کند) |
+| DEP-2 | فقط tagهای SemVer مستقر می‌شوند: test ← بالاترین نسخه طبق SemVer (`v1.2.0` > `v1.2.0-rc.3`)، production ← نسخه‌ای که مالک روی همان host پین کرده. branch/working-tree/label موقت target رسمی نیست. | MUST | All | E, R |
+| DEP-3 | `/version` نسخه و SHA دقیق runtime را برمی‌گرداند و deployer آن را با tag/SHA مورد انتظار مقایسه می‌کند؛ identity با health یکی نیست. | MUST | T1, T2 | E |
+| DEP-4 | استقرار health-check مستقل و بازگشت خودکار **برنامه** به نسخه‌ی قبل دارد؛ هر نسخه در پوشه‌ی تمیز خودش و `.env` بیرون آن است. **دیتابیس خودکار برنمی‌گردد.** | MUST | T1, T2 | E, R |
+| DEP-5 | production T2 از expand/contract استفاده می‌کند. T1 می‌تواند maintenance window محدود با downtime داشته باشد، فقط با ADR و مجوز همان اجرا، backup/restore آزموده و runbook بازگشت برنامه. | MUST | T1, T2 | E, R |
+| DEP-6 | پیش از migration سلامت continuous backup/PITR و restore rehearsal بررسی می‌شود؛ snapshot تازه برای migration مخرب/high-risk یا rewrite لازم است. failure استقرار را متوقف می‌کند؛ restore فقط با runbook و مجوز جدا انجام می‌شود. | MUST | T1, T2 | E, R |
+| DEP-7 | هر environment persistent استاندارد پیش از ادعای Test/Production، Server Admission را پاس می‌کند: layout release/shared/current، deploy env/binary، unit/timer project-scoped، SemVer target، exact local+canonical identity و health. preview موقت بدون این PASS canonical environment نیست. | MUST | T1, T2 | E |
+| DEP-8 | timer حتی وقتی target = current است drift را fail-closed می‌سنجد: local و canonical `/version` باید exact tag+SHA و `/health` باید سالم باشد؛ mismatch یا proxy به runtime دیگر failure است. | MUST | T1, T2 | E |
+| DEP-9 | رفتار deploy با `deploy.method` یکی است: pull-build از clean tag می‌سازد؛ pull-image فقط پس از pull و verification واقعی provenance artifact اجرا می‌شود. تزریق label/version/SHA به artifact قدیمی evidence نیست. | MUST | T1, T2 | E, R |
 
 ## UI — KavoshUI
 | ID | قاعده | سطح | Tier | لایه |
@@ -127,5 +130,5 @@
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)
 این‌ها ماشینی بررسی نمی‌شوند؛ مالک هنگام بازبینی PR مسئول آن‌هاست و نقضشان «کشف خودکار» ندارد:
 WK-3 · WK-5 · PR-6 (بخش مالک؛ لایه‌ی A فقط عامل را محدود می‌کند) · PR-7 (تصمیم ادغام؛ لایه‌ی M پس از وقوع کشف می‌کند) ·
-REL-2 · CI-2 (ظرفیت/ایزولیشن عملیاتی runner خصوصی) · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1…4 · UI-2 · UI-3.
+REL-2 · CI-2 (ظرفیت/ایزولیشن عملیاتی runner خصوصی) · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · UI-2 · UI-3.
 هر وقت برای یکی از این‌ها check ارزان پیدا شد، لایه‌ی ماشینی اضافه و از این فهرست حذف می‌شود (ADR-0002).
