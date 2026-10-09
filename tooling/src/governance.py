@@ -145,6 +145,9 @@ def capability_profile_problems(m):
     if not isinstance(caps, list) or not caps:
         return [("fail", "CAP-1", "Declared project capabilities",
                  "add a non-empty capabilities array from the KavoshStart capability catalog")]
+    if not all(isinstance(c, str) for c in caps):
+        return [("fail", "CAP-1", "Declared project capabilities",
+                 "every capability must be a catalog string")]
     if len(caps) != len(set(caps)):
         out.append(("fail", "CAP-1", "Declared project capabilities", "capabilities must be unique"))
     unknown = sorted({c for c in caps if c not in PROJECT_CAPABILITIES})
