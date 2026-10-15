@@ -102,9 +102,10 @@ jobs:
           import sys
           import urllib.error
           import urllib.request
+          import time
           from pathlib import Path
 
-          _SCHEMA_SRC = r"""{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json","title":"Kavosh project manifest","description":"Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.","type":"object","additionalProperties":false,"required":["kavoshStart","name","repo","summary","visibility","tier","runtime","capabilities","users","data","size","ui","stack","deploy","ci","agents"],"properties":{"$schema":{"type":"string"},"kavoshStart":{"type":"string","pattern":"^(self|v[0-9]+[.][0-9]+[.][0-9]+)$","description":"Exact KavoshStart release tag (vX.Y.Z) for consumer repositories. Reserved value 'self' is valid only for the canonical bagdeli/KavoshStart repository, which executes its checked-out source directly."},"name":{"type":"string","minLength":2},"repo":{"type":"string","pattern":"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},"summary":{"type":"string","minLength":10,"maxLength":300},"visibility":{"enum":["private","public"],"description":"Actual repository visibility. Public defaults to standard GitHub-hosted. Private runner choice follows trust, billing, network and workload; private hosted runs require a one-run workflow_dispatch authorization and a manifest never grants it."},"owner":{"type":"string"},"tier":{"enum":["T0","T1","T2"]},"tierOverride":{"type":"string","description":"ADR path if tier differs from CLASSIFICATION.md result"},"runtime":{"enum":["none","static","server","desktop"]},"projectKind":{"enum":["application","library","tool"],"description":"library = consumed by other Kavosh repositories (classifies at least T1)"},"adoptionPhase":{"type":"boolean","description":"Deprecated legacy migration marker. Consumers of the current standard must not set this to true; it never authorizes enforce:false."},"firstRelease":{"type":"array","items":{"type":"string"}},"outOfScope":{"type":"array","items":{"type":"string"}},"users":{"type":"object","additionalProperties":false,"required":["audience","scale"],"properties":{"audience":{"enum":["internal","customers","public"]},"scale":{"enum":["1-10","10-100","100-1000","1000+"]}}},"data":{"type":"object","additionalProperties":false,"required":["sensitivity","regulatedIntegrations","multiTenant"],"properties":{"sensitivity":{"enum":["none","internal","personal","financial"]},"regulatedIntegrations":{"type":"array","items":{"type":"string"}},"multiTenant":{"type":"boolean"}}},"size":{"type":"object","additionalProperties":false,"required":["domains","lifetime","parallelStreams"],"properties":{"domains":{"type":"integer","minimum":1},"lifetime":{"enum":["weeks","months","years"]},"parallelStreams":{"type":"integer","minimum":1}}},"ui":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"enum":["none","web","admin","desktop"]},"kavoshui":{"type":["string","null"],"pattern":"^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$"},"locales":{"type":"array","items":{"type":"string"}},"exceptionADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"ADR required when a project opts out of KavoshUI."}}},"stack":{"type":"object","additionalProperties":false,"required":["languages"],"properties":{"languages":{"type":"array","items":{"type":"string"},"minItems":1},"frameworks":{"type":"array","items":{"type":"string"}},"database":{"enum":["postgresql","sqlite","mysql","none"]}}},"deploy":{"type":"object","additionalProperties":false,"required":["method","environments"],"properties":{"method":{"enum":["none","release-artifact","pull-build","pull-image","custom"]},"location":{"enum":["iran","abroad","both"]},"environments":{"type":"array","items":{"enum":["test","production"]}},"urls":{"type":"object","additionalProperties":{"type":"string"}},"authorizationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for method=custom; proves equivalent release/security gates."},"migrationMode":{"enum":["expand-contract","maintenance-window"],"description":"Defaults to expand-contract. maintenance-window is limited to T1 with a migration ADR and per-run owner authorization."},"migrationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"ci":{"type":"object","additionalProperties":false,"required":["runner","monthlyMinutesBudget"],"properties":{"runner":{"enum":["self-hosted","github-hosted","none"],"description":"Public defaults to standard GitHub-hosted; self-hosted on any visibility requires trustModelADR and same-repository PR gates. Private may choose hosted or isolated self-hosted. Private hosted workflow jobs run only through an owner-initiated workflow_dispatch scoped to an open PR and exact current head; manifest choice alone never authorizes shared quota."},"runnerLabels":{"type":"array","items":{"type":"string"},"minItems":1,"description":"Exact self-hosted labels for this repo: [self-hosted, linux, x64, <repo-slug>] (CI-2)"},"runners":{"type":"integer","minimum":1,"maximum":20,"description":"Capacity metric for self-hosted runners registered to this repository; size by queue and SLO, not tier."},"monthlyMinutesBudget":{"type":"integer","minimum":0,"maximum":2000,"description":"Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution."},"trustModelADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for self-hosted runners. Must document runner trust model, isolation/containment strategy, untrusted-code boundary and credential boundary. Mechanism may be ephemeral/disposable, sandbox/container/rootless/VM, or an equivalently bounded repository-dedicated runner; no single implementation is universal."},"requiredWorkflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."}}},"limits":{"type":"object","additionalProperties":false,"properties":{"prMaxLines":{"type":"integer","minimum":100,"maximum":2000,"description":"Deprecated compatibility field. KavoshStart v2 does not use line/file counts as a merge gate; remove on normal upgrade."},"maxOpenReadyPRs":{"type":"integer","minimum":1,"maximum":10},"branchMaxAgeDays":{"type":"integer","minimum":1,"maximum":14}}},"agents":{"type":"array","items":{"enum":["claude","codex","copilot","gemini","human-only"]},"minItems":1},"dependsOn":{"type":"array","items":{"type":"string"}},"acceptance":{"type":"object","additionalProperties":false,"required":["mode"],"properties":{"mode":{"enum":["none","continuous"],"description":"Continuous release-scope acceptance/evidence flow. Required for T2 when adopting/upgrading to the current KavoshStart standard."}},"description":"Acceptance-flow profile. T2 consumers of the current standard must use mode=continuous; T0/T1 may opt in."},"release":{"type":"object","additionalProperties":false,"required":["strategy"],"properties":{"strategy":{"enum":["release-please","changesets","custom"],"description":"Release implementation strategy. This is an adapter choice, not the release safety contract; all strategies must preserve REL-1/2/5/6."},"strategyADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for changesets/custom strategies; proves equivalent SemVer, vX.Y.Z immutable tag, exact-source provenance and release gating."},"workflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."},"artifact":{"type":"object","additionalProperties":false,"required":["command","paths"],"properties":{"command":{"type":"string","minLength":1,"maxLength":1000,"description":"Repository-owned shell command that prepares and builds release assets. Required for release-please artifact packaging when automation.interface is not make; Make consumers may use the default make setup + make package adapter."},"paths":{"type":"array","minItems":1,"items":{"type":"string","minLength":1,"pattern":"^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+","description":"Relative glob under the repository checkout. Absolute paths and parent traversal are forbidden."},"description":"One or more relative globs whose regular files are attached to the GitHub Release."}},"description":"Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."}}},"automation":{"type":"object","additionalProperties":false,"required":["interface"],"properties":{"interface":{"enum":["make","package-scripts","task-runner","custom"],"description":"Adapter exposing semantic setup/lint/test/build/check operations. The underlying language/tool is not a KavoshStart invariant."},"customADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"capabilities":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["control-plane","package","server","browser-ui","desktop","persistent-data","migration","infrastructure","release-artifact","regulated","cms-wordpress"]},"description":"Composable project capabilities. Tier controls assurance/process; runtime controls execution shape; capabilities control domain-specific applicability/evidence. Technology names are not capabilities."}}}"""
+          _SCHEMA_SRC = r"""{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json","title":"Kavosh project manifest","description":"Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.","type":"object","additionalProperties":false,"required":["kavoshStart","name","repo","summary","visibility","tier","runtime","capabilities","users","data","size","ui","stack","deploy","ci","agents"],"properties":{"$schema":{"type":"string"},"kavoshStart":{"type":"string","pattern":"^(self|v[0-9]+[.][0-9]+[.][0-9]+)$","description":"Exact KavoshStart release tag (vX.Y.Z) for consumer repositories. Reserved value 'self' is valid only for the canonical bagdeli/KavoshStart repository, which executes its checked-out source directly."},"name":{"type":"string","minLength":2},"repo":{"type":"string","pattern":"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},"summary":{"type":"string","minLength":10,"maxLength":300},"visibility":{"enum":["private","public"],"description":"Actual repository visibility. Public defaults to standard GitHub-hosted. Private runner choice follows trust, billing, network and workload; private hosted runs require a one-run workflow_dispatch authorization and a manifest never grants it."},"owner":{"type":"string"},"tier":{"enum":["T0","T1","T2"]},"tierOverride":{"type":"string","description":"ADR path if tier differs from CLASSIFICATION.md result"},"runtime":{"enum":["none","static","server","desktop"]},"projectKind":{"enum":["application","library","tool"],"description":"library = consumed by other Kavosh repositories (classifies at least T1)"},"adoptionPhase":{"type":"boolean","description":"Deprecated legacy migration marker. Consumers of the current standard must not set this to true; it never authorizes enforce:false."},"firstRelease":{"type":"array","items":{"type":"string"}},"outOfScope":{"type":"array","items":{"type":"string"}},"users":{"type":"object","additionalProperties":false,"required":["audience","scale"],"properties":{"audience":{"enum":["internal","customers","public"]},"scale":{"enum":["1-10","10-100","100-1000","1000+"]}}},"data":{"type":"object","additionalProperties":false,"required":["sensitivity","regulatedIntegrations","multiTenant"],"properties":{"sensitivity":{"enum":["none","internal","personal","financial"]},"regulatedIntegrations":{"type":"array","items":{"type":"string"}},"multiTenant":{"type":"boolean"}}},"size":{"type":"object","additionalProperties":false,"required":["domains","lifetime","parallelStreams"],"properties":{"domains":{"type":"integer","minimum":1},"lifetime":{"enum":["weeks","months","years"]},"parallelStreams":{"type":"integer","minimum":1}}},"ui":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"enum":["none","web","admin","desktop"]},"kavoshui":{"type":["string","null"],"pattern":"^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$"},"locales":{"type":"array","items":{"type":"string"}},"exceptionADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"ADR required when a project opts out of KavoshUI."}}},"stack":{"type":"object","additionalProperties":false,"required":["languages"],"properties":{"languages":{"type":"array","items":{"type":"string"},"minItems":1},"frameworks":{"type":"array","items":{"type":"string"}},"database":{"enum":["postgresql","sqlite","mysql","none"]}}},"deploy":{"type":"object","additionalProperties":false,"required":["method","environments"],"properties":{"method":{"enum":["none","release-artifact","pull-build","pull-image","custom"]},"location":{"enum":["iran","abroad","both"]},"environments":{"type":"array","items":{"enum":["test","production"]}},"urls":{"type":"object","additionalProperties":{"type":"string"}},"authorizationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for method=custom; proves equivalent release/security gates."},"migrationMode":{"enum":["expand-contract","maintenance-window"],"description":"Defaults to expand-contract. maintenance-window is limited to T1 with a migration ADR and per-run owner authorization."},"migrationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"ci":{"type":"object","additionalProperties":false,"required":["runner","monthlyMinutesBudget"],"properties":{"runner":{"enum":["self-hosted","github-hosted","none"],"description":"Public defaults to standard GitHub-hosted; self-hosted on any visibility requires trustModelADR and same-repository PR gates. Private may choose hosted or isolated self-hosted. Private hosted workflow jobs run only through an owner-initiated workflow_dispatch scoped to an open PR and exact current head; manifest choice alone never authorizes shared quota."},"runnerLabels":{"type":"array","items":{"type":"string"},"minItems":1,"description":"Exact self-hosted labels for this repo: [self-hosted, linux, x64, <repo-slug>] (CI-2)"},"runners":{"type":"integer","minimum":1,"maximum":20,"description":"Capacity metric for self-hosted runners registered to this repository; size by queue and SLO, not tier."},"monthlyMinutesBudget":{"type":"integer","minimum":0,"maximum":2000,"description":"Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution."},"trustModelADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for self-hosted runners. Must document runner trust model, isolation/containment strategy, untrusted-code boundary and credential boundary. Mechanism may be ephemeral/disposable, sandbox/container/rootless/VM, or an equivalently bounded repository-dedicated runner; no single implementation is universal."},"requiredWorkflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."}}},"limits":{"type":"object","additionalProperties":false,"properties":{"prMaxLines":{"type":"integer","minimum":100,"maximum":2000,"description":"Deprecated compatibility field. KavoshStart v2 does not use line/file counts as a merge gate; remove on normal upgrade."},"maxOpenReadyPRs":{"type":"integer","minimum":1,"maximum":10},"branchMaxAgeDays":{"type":"integer","minimum":1,"maximum":14}}},"agents":{"type":"array","items":{"enum":["claude","codex","copilot","gemini","human-only"]},"minItems":1},"dependsOn":{"type":"array","items":{"type":"string"}},"acceptance":{"type":"object","additionalProperties":false,"required":["mode"],"properties":{"mode":{"enum":["none","continuous"],"description":"Continuous release-scope acceptance/evidence flow. Required for T2 when adopting/upgrading to the current KavoshStart standard."},"assurance":{"enum":["attested","risk-based"],"description":"Optional future-release assurance. Missing means strict attested. Risk-based verifies CI-only low/medium scope items with native source-bound checks; high/critical, deferrals, and specialist evidence require independent attestation."}},"description":"T2 continuous acceptance; attested is the legacy default if assurance is absent. Opt-in risk-based does not waive source, test or high-risk controls."},"release":{"type":"object","additionalProperties":false,"required":["strategy"],"properties":{"strategy":{"enum":["release-please","changesets","custom"],"description":"Release implementation strategy. This is an adapter choice, not the release safety contract; all strategies must preserve REL-1/2/5/6."},"strategyADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for changesets/custom strategies; proves equivalent SemVer, vX.Y.Z immutable tag, exact-source provenance and release gating."},"workflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."},"artifact":{"type":"object","additionalProperties":false,"required":["command","paths"],"properties":{"command":{"type":"string","minLength":1,"maxLength":1000,"description":"Repository-owned shell command that prepares and builds release assets. Required for release-please artifact packaging when automation.interface is not make; Make consumers may use the default make setup + make package adapter."},"paths":{"type":"array","minItems":1,"items":{"type":"string","minLength":1,"pattern":"^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+","description":"Relative glob under the repository checkout. Absolute paths and parent traversal are forbidden."},"description":"One or more relative globs whose regular files are attached to the GitHub Release."}},"description":"Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."}}},"automation":{"type":"object","additionalProperties":false,"required":["interface"],"properties":{"interface":{"enum":["make","package-scripts","task-runner","custom"],"description":"Adapter exposing semantic setup/lint/test/build/check operations. The underlying language/tool is not a KavoshStart invariant."},"customADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"capabilities":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["control-plane","package","server","browser-ui","desktop","persistent-data","migration","infrastructure","release-artifact","regulated","cms-wordpress"]},"description":"Composable project capabilities. Tier controls assurance/process; runtime controls execution shape; capabilities control domain-specific applicability/evidence. Technology names are not capabilities."}}}"""
           # Embedded by build_workflows.py; when imported from the repo (tests) read the schema file instead.
           SCHEMA = (json.loads(_SCHEMA_SRC) if not _SCHEMA_SRC.startswith("__") else
                     json.loads((Path(__file__).resolve().parents[2] / "intake" / "kavosh.project.schema.json").read_text(encoding="utf-8")))
@@ -794,6 +795,9 @@ jobs:
               problems = []
               if scope.get("schemaVersion") != 1:
                   problems.append("schemaVersion must be 1")
+              assurance = (m.get("acceptance") or {}).get("assurance", "attested")
+              if assurance not in ("attested", "risk-based"):
+                  problems.append("acceptance.assurance must be attested or risk-based")
               target = scope.get("targetRelease")
               tm = ACCEPTANCE_RELEASE_RE.fullmatch(target or "")
               if not tm:
@@ -896,15 +900,27 @@ jobs:
                            "X-GitHub-Api-Version": "2022-11-28",
                            "Content-Type": "application/json"},
               )
-              try:
-                  with urllib.request.urlopen(request, timeout=30) as response:
-                      raw = response.read().decode("utf-8")
-              except urllib.error.HTTPError as exc:
-                  if allow_missing and exc.code == 404:
-                      return None
-                  detail = exc.read().decode("utf-8", errors="replace")
-                  raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
-              return json.loads(raw) if raw.strip() else None
+              # Retry idempotent reads only; never replay a possibly successful mutation.
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          raw = response.read().decode("utf-8")
+                      return json.loads(raw) if raw.strip() else None
+                  except urllib.error.HTTPError as exc:
+                      if allow_missing and exc.code == 404:
+                          return None
+                      transient = method == "GET" and exc.code in (429, 500, 502, 503, 504)
+                      if transient and attempt < 2:
+                          backoff = exc.headers.get("Retry-After", "") if exc.headers else ""
+                          delay = min(2.0, float(backoff)) if backoff.isdigit() else 0.5 * (attempt + 1)
+                          time.sleep(delay)
+                          continue
+                      raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code}") from exc
+                  except (urllib.error.URLError, TimeoutError) as exc:
+                      if method == "GET" and attempt < 2:
+                          time.sleep(0.5 * (attempt + 1))
+                          continue
+                      raise RuntimeError(f"GitHub API {method} {path}: unavailable ({type(exc).__name__})") from exc
 
 
           def gh(*args):
@@ -926,6 +942,54 @@ jobs:
                   if lower.endswith(visual_suffixes) or any(part in ("ui", "components", "styles", "views") for part in parts):
                       out.append(name)
               return out
+
+
+          def verified_visual_review(repo, pr, body, api):
+              """Accept only an observed same-head visual run or authenticated current-head review."""
+              sha = (pr.get("head") or {}).get("sha") or ""
+              if not re.fullmatch(r"[0-9a-f]{40}", sha):
+                  return "fail", "UI change: exact PR head SHA unavailable"
+              num = pr.get("number")
+              if not isinstance(num, int) or num <= 0:
+                  return "fail", "UI change: PR number unavailable"
+              author = (pr.get("user") or {}).get("login")
+              reviews = api("api", f"repos/{repo}/pulls/{num}/reviews?per_page=100") or []
+              latest = {}
+              for review in reviews:
+                  user = review.get("user") or {}
+                  login = user.get("login")
+                  if not login or user.get("type") != "User" or login == author or not review.get("submitted_at"):
+                      continue
+                  old = latest.get(login)
+                  if old is None or (review["submitted_at"], review.get("id") or 0) >= (old.get("submitted_at") or "", old.get("id") or 0):
+                      latest[login] = review
+              for review in latest.values():
+                  if review.get("state") == "APPROVED" and review.get("commit_id") == sha:
+                      return "ok", f"GitHub human review {review.get('id')} on exact head {sha[:12]}"
+              match = re.search(r"(?im)^UI evidence:\s*https://github\.com/([^/\s]+/[^/\s]+)/actions/runs/([1-9][0-9]*)\s*$", body or "")
+              if not match:
+                  return "fail", "visual change requires real same-head CI comparison or genuine exact-head GitHub review"
+              if match.group(1).lower() != repo.lower():
+                  return "fail", "visual run from different repository"
+              rid = int(match.group(2))
+              run = api("api", f"repos/{repo}/actions/runs/{rid}") or {}
+              if (run.get("id") != rid or run.get("head_sha") != sha or
+                      run.get("status") != "completed" or run.get("conclusion") != "success" or
+                      (run.get("head_repository") or {}).get("full_name") != repo or
+                      run.get("event") not in ("pull_request", "workflow_dispatch", "push")):
+                  return "fail", "visual CI must succeed for exact PR SHA and same repository"
+              attempt = run.get("run_attempt")
+              if not isinstance(attempt, int) or attempt <= 0:
+                  return "fail", "visual run attempt identity missing"
+              jobs = api("api", f"repos/{repo}/actions/runs/{rid}/attempts/{attempt}/jobs?per_page=100") or {}
+              pattern = re.compile(r"^(?:run |execute |test )?(?:visual regression|visual comparison|compare screenshots|playwright visual|pixel diff|visual tests?)", re.I)
+              observed = [step for job in jobs.get("jobs", []) if job.get("conclusion") == "success"
+                          for step in job.get("steps", [])
+                          if pattern.search(step.get("name") or "") and step.get("status") == "completed"
+                          and step.get("conclusion") == "success" and step.get("started_at") and step.get("completed_at")]
+              if not observed:
+                  return "fail", "no actually executed passing visual comparison on this run"
+              return "ok", f"observed visual run {rid} attempt {attempt} on {sha[:12]}"
 
 
           RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -984,6 +1048,18 @@ jobs:
               return out, risk
 
 
+          def immediately_mergeable_parent(repo, parents, branch, default, api):
+              """GitHub pull LIST entries omit mergeable: inspect the exact parent PR detail."""
+              if len(parents) != 1 or not isinstance(parents[0].get("number"), int):
+                  return False
+              parent = api("api", f"repos/{repo}/pulls/{parents[0]['number']}") or {}
+              return (parent.get("number") == parents[0]["number"]
+                      and parent.get("state") == "open"
+                      and (parent.get("head") or {}).get("ref") == branch
+                      and (parent.get("base") or {}).get("ref") == default
+                      and parent.get("mergeable") is True)
+
+
           def check_pr(m, event, repo):
               pr = event["pull_request"]
               default = event["repository"]["default_branch"]
@@ -1017,9 +1093,11 @@ jobs:
                   add(level, rule, t, d)
               visual_files = ui_render_files(files)
               if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
-                  evidence = re.search(r"(?im)^ui evidence:\s*(https?://\S+|\S.+)$", body)
-                  add("ok" if evidence else "fail", "UI-2", "Render evidence for visual UI changes",
-                      evidence.group(1) if evidence else f"required for {len(visual_files)} visual file(s)")
+                  try:
+                      level, info = verified_visual_review(repo, pr, body, gh)
+                  except (RuntimeError, ValueError, TypeError, KeyError) as exc:
+                      level, info = "fail", f"visual evidence unavailable ({type(exc).__name__}); no approval"
+                  add(level, "UI-2", "Observed visual verification", info)
               else:
                   add("ok", "UI-2", "No render evidence needed", "PR has no visual UI changes")
 
@@ -1033,7 +1111,7 @@ jobs:
                   parents = gh("api", f"repos/{repo}/pulls?state=open&head={owner}:{base}") or []
                   if parents and pr.get("draft"):
                       add("warn", "BR-4", "Draft stack depth", f"Draft stacked on {base}; normalize before Ready")
-                  elif parents and parents[0]["base"]["ref"] == default and parents[0].get("mergeable") is True:
+                  elif immediately_mergeable_parent(repo, parents, base, default, gh):
                       add("warn", "BR-4", "Ready PR has an immediately mergeable parent", f"stacked on {base}")
                   else:
                       add("fail", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent")

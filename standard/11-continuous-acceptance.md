@@ -26,6 +26,22 @@ Promotion Complete    = release/deploy/environment gates
 
 الزامی است. پروژه‌ای که روی KavoshStart قدیمی پین مانده retroactively تغییر نمی‌کند؛ اما upgrade به استاندارد جدید باید این profile را در همان PR فعال و scope واقعی نسخه را bootstrap کند.
 
+## دو روش اثبات با ریسک واقعی (برای نسخهٔ جدید استاندارد)
+
+T2 همچنان `acceptance.mode=continuous` دارد و تصمیم پذیرش باید همراه قابلیت بسته شود، نه در انتهای پروژه. انتخاب جدید و **اختیاری** در مانیفست:
+
+```json
+"acceptance": {"mode": "continuous", "assurance": "risk-based"}
+```
+
+- **`attested`** (پیش‌فرض سازگار با قرارداد قبلی): تمام آیتم‌ها به رسید و تصمیم مستقل قبلی نیاز دارند. نبود فیلد `assurance` همین روش است؛ مصرف‌کنندهٔ v3 در سکوت سبک‌تر نمی‌شود.
+- **`risk-based`**: فقط آیتم با `risk=low|medium`، بدون defer، با `evidence=["ci"]` و `assertions.ci=["repository::required"]` از **GitHub Actions واقعی، موفق و هم‌منبع** استفاده می‌کند؛ Issue بسته، SHA ادغام، و کنترل تغییر منبع/وابستگی‌های مؤثر ضروری‌اند. بدون App جدید یا رسید مستقل برای این آیتم.
+- آیتم با `risk=high|critical`، `deferredTo` یا شواهد تخصصی `test/ui/security/migration` همچنان **رسید و تصمیم مستقل attested** نیاز دارد. CI عمومی نمی‌تواند اثبات تخصصی را جایگزین کند.
+- اگر سورس پس از اجرای CI تغییر کرده باشد، تنها با `evidencePaths` بازبینی‌شده و ثابت‌ماندن همهٔ مسیرهای کنترلی می‌توان مدرک را بازاستفاده کرد. نقص هویت منبع یا دادهٔ API مانع Release است.
+- `Accepted-By` در مسیر native فقط مرجع مسئول ثبت‌شدهٔ Issue است، **نه اثبات مستقل تأیید انسان**. مجوز انتشار و عملیات حساس همچنان جداست.
+
+انتخاب روش به معنای پذیرفتن هر هزاران ردیف با یک CI سبز نیست؛ واحد scope همان **قابلیت قابل پذیرش** است و هر ادعای آزمون تخصصی باید proof تخصصی داشته باشد.
+
 ## scope contract
 
 `acceptance/scope.json` **tracker وضعیت نیست**. فقط قرارداد reviewable نسخه است:
@@ -120,9 +136,9 @@ Acceptance-Evidence-PR: <positive PR number>
 
 Gate باید ادغام همان PR به `main` همین repository، تطابق دقیق سرشاخهٔ آزمایش‌شده و commit ادغام، و برابری **کامل Git tree** آن دو را اثبات کند. ancestry یا توضیح «فقط مستندات تغییر کرده» کافی نیست؛ وقتی tree متفاوت است، مدرک CI روی source ادغام‌شده لازم است. marker خالی یا تکراری معتبر نیست.
 
-## رسید قابل بررسی، نه صرفاً لینک
+## رسید قابل بررسی، نه صرفاً لینک (برای آیتم‌های attested)
 
-برای هر نوع evidence، رسید شامل assertionهای دقیقِ مصوب در scope لازم است؛ یک job سبز عمومی مدرک UI یا migration نیست. `Acceptance-CI-Receipt` نیز در کنار `Acceptance-Evidence-Run` لازم است. مقدار markerهای تخصصی و تصمیم باید این قالب را داشته باشد:
+برای آیتم‌های attested و هر نوع evidence، رسید شامل assertionهای دقیقِ مصوب در scope لازم است؛ یک job سبز عمومی مدرک UI یا migration نیست. `Acceptance-CI-Receipt` نیز در کنار `Acceptance-Evidence-Run` لازم است. مقدار markerهای تخصصی و تصمیم باید این قالب را داشته باشد:
 
 ```text
 https://api.github.com/repos/<owner>/<repo>/check-runs/<id>#sha256:<64-hex>
@@ -154,7 +170,7 @@ Layer H تعداد scope items، open acceptance items، deferred items و مو�
 
 ## release
 
-برای profile continuous، REL-5 علاوه بر checkهای repository، ACC-3 را اجرا می‌کند. اگر acceptance API/evidence قابل خواندن نباشد، release بسته می‌ماند. unavailable evidence مجوز release نیست.
+برای profile continuous، REL-5 علاوه بر checkهای repository، ACC-3 را اجرا می‌کند؛ در risk-based، آیتم‌های CI-only واجد شرایط اثبات native می‌گیرند و بقیه مانند گذشته attested هستند. اگر acceptance API/evidence قابل خواندن نباشد، release بسته می‌ماند. unavailable evidence مجوز release نیست.
 
 ## حریم منبع حقیقت
 
@@ -166,6 +182,6 @@ Layer H تعداد scope items، open acceptance items، deferred items و مو�
 
 کد merge‌شدهٔ تاریخی بدون evidence معتبر خودکار accepted نمی‌شود. آن را به‌عنوان debt واقعی وارد scope کنید، evidence قابل‌استفاده را reuse کنید و فقط gapهای مادی را دوباره اجرا کنید. Health closure ratio و سن debt را برای feedback زودهنگام نشان می‌دهد؛ G/Release همچنان برای scope همان نسخه fail-closed است.
 
-در ارتقای مصرف‌کننده، policy ناشر، assertionهای scope، `checks: read` برای Health و مدارک واقعی را در PR مربوط آماده کنید. receipt خالی/جعلی یا تغییر `continuous` به `none` راه مهاجرت نیست. هیچ tag منتشرنشده‌ای را در مصرف‌کننده pin نکنید.
+در ارتقای مصرف‌کننده، برای آیتم‌های attested باید policy ناشر واقعی فراهم باشد؛ برای CI-only native اپ مستقل ساخته نمی‌شود. assertionهای scope، `checks: read` برای Health و مدارک واقعی را در PR مربوط آماده کنید. receipt خالی/جعلی یا تغییر `continuous` به `none` راه مهاجرت نیست. هیچ tag منتشرنشده‌ای را در مصرف‌کننده pin نکنید.
 
 این سخت‌گیری، قرارداد پذیرش مصرف‌کنندگان continuous را تغییر می‌دهد؛ rollout باید به‌عنوان تغییر ناسازگارِ نسخه‌دار برنامه‌ریزی شود، نه patch بی‌نیاز از مهاجرت. تغییر ناشر یا فعال‌سازی سرویس واقعی نیازمند تصمیم صریح مالک و کنترل دسترسی مستقل است.

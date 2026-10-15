@@ -401,9 +401,16 @@
             "continuous"
           ],
           "description": "Continuous release-scope acceptance/evidence flow. Required for T2 when adopting/upgrading to the current KavoshStart standard."
+        },
+        "assurance": {
+          "enum": [
+            "attested",
+            "risk-based"
+          ],
+          "description": "Optional future-release assurance. Missing means strict attested. Risk-based verifies CI-only low/medium scope items with native source-bound checks; high/critical, deferrals, and specialist evidence require independent attestation."
         }
       },
-      "description": "Acceptance-flow profile. T2 consumers of the current standard must use mode=continuous; T0/T1 may opt in."
+      "description": "T2 continuous acceptance; attested is the legacy default if assurance is absent. Opt-in risk-based does not waive source, test or high-risk controls."
     },
     "release": {
       "type": "object",

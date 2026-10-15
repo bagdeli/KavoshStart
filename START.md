@@ -4,11 +4,23 @@ You are an AI agent asked to create, adopt or maintain a Kavosh project "using K
 Follow this protocol exactly. Rules are referenced by ID (e.g. `BR-1`); their canonical list is
 [`standard/RULES.md`](standard/RULES.md). When this file and a rule disagree, the rule wins — report the conflict.
 
+## Network transfer failure — per-project operator escalation
+
+For a download or upload that fails repeatedly (normally no more than three bounded attempts for transient errors), **stop retrying that endpoint** and report the exact blocker to the owner. Do not silently introduce a relay, proxy, alternate registry, paid service, DNS override, TLS bypass, credential, or global infrastructure task. If the URL was never attempted, do not invent an outage.
+
+Give a compact, operator-actionable report from the **environment where the transfer failed**:
+- operation (download/upload), requested artifact and source environment, sanitized URL (`scheme://host[:port]/safe-path`, **without userinfo, query, fragment, signed tokens or secrets**), hostname/DNS name, port;
+- the IP addresses resolved **from that environment** (IPv4/IPv6, with observation time/source), or exactly `IP unknown — DNS resolution failed/not checked`; never guess an IP or reuse one from another environment;
+- observed failure category (DNS, timeout, TCP/TLS, HTTP status, authorization, rate limit, missing artifact), failed attempt count, and whether the failure is transient or reproducible;
+- the smallest unblock request (host/domain/IP/port/protocol), distinguishing a routing/firewall failure from HTTP 401/403/404, expired token or certificate errors. CDN IPs can change; prefer domain-level diagnosis when appropriate.
+
+Use existing logs or `python3 <KavoshStart>/scripts/network_failure_report.py --url 'https://host.example/' --operation download|upload --attempts N --reason <code>` **locally** for safe DNS/IP observations. **Sanitize URL before putting it in a command or log** (raw signed links may leak through process arguments or shell history); this optional read-only helper performs name resolution only, without download, upload or persistent state. Never paste signed URLs, headers, access tokens or private environment endpoints into public KavoshStart Issues/PRs. For private projects, report only in their private conversation/repository. A response from the owner that changes connectivity authorizes only the named unblock action, not a new platform dependency.
+
 ## §0 Session bootstrap — every conversation/session
 
 Before choosing NEW / ADOPT / UPGRADE / WORK:
 1. Verify the exact repository, default branch, workspace/remote when available, approved environments and task scope. Never infer authority from access.
-2. Read the project's root `AGENTS.md`, `kavosh.project.json`, and the selected Issue/Spec/plan. Treat old reports as provenance, not live status.
+2. Read the project's root `AGENTS.md`, `kavosh.project.json`, `PROJECT.md` architecture decisions, and the selected Issue/Spec/plan. Reuse settled answers and their recorded scope; ask again only for a missing or materially changed decision. Treat old reports as provenance, not live status.
 3. For a consumer project, read its exact `kavoshStart: vX.Y.Z`, query the latest stable KavoshStart Release, and compare them. If behind, read the CHANGELOG between the pin and latest. The reserved value `self` is valid only when the repository is exactly `bagdeli/KavoshStart`; there it means the checked-out canonical source and is never used as a workflow ref.
 4. If the newer release changes governance, acceptance, security, release, deploy, CI or agent-control semantics, perform UPGRADE before starting a new feature/gate packet unless the owner has recorded a bounded, traceable defer. Never silently auto-upgrade a dependency in the middle of unrelated work.
 5. For T2 on this standard, `acceptance.mode=continuous` is mandatory and `adoptionPhase: true` is invalid. Do not continue ordinary feature work by treating report-only governance as success.
@@ -32,10 +44,14 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 
 ### Step 1 — Intake
 1. Read [`intake/QUESTIONNAIRE.md`](intake/QUESTIONNAIRE.md).
-2. Fill every question you can from the owner's request. For every **required** question you cannot
-   answer with certainty, ask the owner. Ask all open questions **in one message**, grouped, in Persian,
-   each with your suggested default so the owner can reply "OK".
-3. Do not proceed while any required answer is missing.
+2. Reuse explicit project answers and approved applicable defaults from their recorded source. Review A–F facts
+   and G1–G9 architecture decisions, including product licensing, for every new project. Ask only missing
+   decisions in one grouped Persian message. Suggestions are not accepted defaults; internal use does not
+   imply no licensing, no login or unrestricted data access.
+3. Decide applicability first: selected, explicitly not-needed, or inherited from an approved reference.
+   Keep unresolved questions in the selected Issue/Spec with the owner and dependent work. Block only
+   dependent implementation; unrelated authorized work may continue. Do not claim architecture completion
+   while shaping decisions are unresolved. Required identity/scaffold inputs must be known before scaffolding.
 
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
@@ -49,8 +65,8 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 1. Write `kavosh.project.json` conforming to [`intake/kavosh.project.schema.json`](intake/kavosh.project.schema.json).
    Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`). Never copy the illustrative `vX.Y.Z` from the example and never use the reserved `self` value in a consumer project.
    and, if the project has a UI, `ui.kavoshui` to the latest KavoshUI release.
-2. For a new T2 project set `acceptance.mode: continuous` unless the owner explicitly chooses a documented phased adoption; T0/T1 may opt in. This is an evidence-flow profile, not permission to invent acceptance status.
-3. Write `PROJECT.md` from `templates/common/PROJECT.md` — one page, Persian, no status.
+2. For a new T2 project set `acceptance.mode: continuous` as required by ACC-1; T0/T1 may opt in. Plan source-bound assertions and the availability of real admitted evidence/decision producers from `templates/tier/T2/acceptance/README.md` before promising delivery. Missing producer setup is a visible prerequisite, not a marker-only workaround or permission to create a new service by default.
+3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G9 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
 4. Show both to the owner. Continue only after confirmation.
 
 ### Step 4 — Repository and scaffold
@@ -74,8 +90,9 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    isolated self-hosted based on trust, billing, network and workload. With this Free account, do not use private
    hosted Actions without the owner's direct approval for this run; run the `ci` and `kavosh` workflows by
    `workflow_dispatch`, naming the open PR and exact current head SHA. Stale heads fail closed. Self-hosted is optional;
-   rootful Docker is root-equivalent, so use rootless Docker or a disposable VM destroyed after each job. The owner
-   creates the registration token. Verify: `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`.
+   document real isolation/containment and credential boundaries according to CI-2. Rootful Docker is
+   root-equivalent and requires an explicitly reviewed containment/trust strategy; rootless containers or
+   disposable VMs are options, not universal requirements. The owner creates the registration token. Verify: `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`.
    For T1/static, the owner may select `ci.runner: none`: scaffold omits all workflows. Run `make check` locally and
    attach its successful output to every PR. Bootstrap selects a PR-protected ruleset without CI status checks for
    this profile. Never merge a red result or bypass an actual required check.
@@ -90,7 +107,7 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 2. Create issues with the repository's issue forms: epics (T2), features (T1/T2), tasks. Every issue gets a
    `type:*` label (`WK-1`), acceptance criteria, and — for tasks — "Where to look".
 3. If `acceptance.mode=continuous`, populate `acceptance/scope.json` for the first release from the approved scope: stable AC-* IDs, canonical GitHub issue, owner, risk and required evidence. The file declares scope only; never write live accepted/done status into it.
-4. Prefer tasks small enough for focused review. Split work when that improves review or risk control (`WK-6`, `PR-3`).
+4. Use coherent, independently reviewable capability deliveries (`WK-6`, `PR-3`), not one PR per source requirement or intake answer. Plan criteria, assertions and risk-sized evidence with the implementation; reconcile them at capability closure. Shared evidence may cover multiple criteria only with actual traceability. Explicit not-needed decisions create no feature/test/receipt work.
 5. Post the backlog summary to the owner (issue links only; do not write live backlog/status into a file — `SRC-1`).
 
 ### Step 6 — Hand over
@@ -101,7 +118,7 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §2 ADOPT an existing repository
 1. Run `bash scripts/audit-repo.sh bagdeli/<repo>` (read-only). Summarise findings against `standard/RULES.md`.
-2. Run the intake (§1 steps 1–3) using what the repository already shows; ask only what is missing.
+2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed architecture decisions. Do not restart the project or re-approve unchanged choices. Examples from another product do not authorize work on that product.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
    `*.kavosh-new` next to them for you to merge in a PR.
@@ -112,13 +129,13 @@ manually (e.g. the Actions access setting). Stop.
 1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target and classify every change that affects governance, acceptance, security, release, deploy, CI, agent controls or templates.
 2. Use one dedicated PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart` to the same exact tag (REL-6), apply template changes listed in the changelog, and update all reusable workflow pins together. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
 3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
-4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and bootstrap a non-fabricated release-scoped `acceptance/scope.json`. Existing detailed requirement ledgers may remain supporting traceability; do not mark historical work accepted merely because code exists.
+4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and migrate release-scoped assertions, source-bound receipts and real admitted producers using `templates/tier/T2/acceptance/README.md`. Identify missing prerequisites before claiming the upgrade complete. Existing requirement ledgers remain supporting traceability; do not turn every row into a new acceptance Issue or mark historical code accepted without evidence.
 5. Run the repository audit/governance and `make check`; resolve new violations or explicitly disposition genuine external blockers. Do not bundle unrelated product features into the upgrade PR.
 6. KavoshUI upgrades are separate PRs: `chore(ui): upgrade KavoshUI to vX.Y.Z`, with rendered screenshots (RTL + mobile) only when the package diff can affect rendering/interaction.
 
 ## §4 WORK on an issue (every day)
 0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.
-1. `gh issue view <n>`; read its parent; read the project's `AGENTS.md`. Nothing else unless the issue points to it.
+1. `gh issue view <n>`; read its parent, the project's `AGENTS.md` and the relevant settled architecture decisions from §0. Reopen only decisions affected by this scope. Read additional material only when the issue or those decisions require it.
 2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).
 3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template. Draft stacks may be deep;
    health warns until the Ready stack is normalized.

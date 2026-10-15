@@ -1,4 +1,6 @@
-# Acceptance receipts — producer contract v1
+# Acceptance receipts — producer contract v1 (attested items)
+
+New future-standard consumers may select `acceptance.assurance=risk-based` to verify low/medium CI-only scoped items through exact-source GitHub Actions without independent publisher services. The accepted owner marker is only a declared identity, **not independent human verification**. High/critical, deferred or specialist evidence still uses this full attested contract. Omitting assurance retains strict attested behavior.
 
 `scope.json` declares release intent only. It never stores acceptance status.
 `security/receipt-policy.json` is a reviewed trust policy, not a status ledger.
