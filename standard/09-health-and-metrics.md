@@ -34,3 +34,7 @@
 Health هیچ dependency را خودکار ارتقا نمی‌دهد. STD-1 فقط اختلاف pin با آخرین release پایدار را visible می‌کند؛ تصمیم upgrade در PR مستقل و با CHANGELOG گرفته می‌شود. برای T2، نبودن continuous acceptance یک مشکل پیکربندی است، نه انتخاب دائمی.
 
 هشدارهای ACC-2 برای closure کمتر از 80٪ یا acceptance debt قدیمی‌تر از 14 روز قرار نیست تست‌های سنگین را به هر PR تحمیل کنند؛ هدف این است که evidence debt دیده و در طول delivery مصرف شود، نه اینکه به release نهایی منتقل شود.
+
+## declared در برابر verified
+
+نسبت بسته‌شدن markerهای Issue فقط «اعلام‌شده» است، نه اثبات پذیرش. Health رسیدها را روی SHA فعلی main با همان `tooling/src/receipts.py` در Release بررسی می‌کند و تعداد verified، defer معتبر و علت‌های رد را جدا نشان می‌دهد. نبود ناشر مورداعتماد، artifact منقضی یا API ناموجود سبز نمی‌شود. هیچ نتیجهٔ Health مجوز خودکار انتشار یا تأیید انسانی نیست.

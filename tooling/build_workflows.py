@@ -8,6 +8,7 @@ Why: the Python lives in normal files (testable, lintable) while the workflows s
 because a reusable workflow running in a product repo cannot read files from private KavoshStart.
 """
 import json
+import re
 import sys
 import textwrap
 from pathlib import Path
@@ -28,6 +29,10 @@ def build(template: str, source) -> str:
     if source is None:
         return (ROOT / "tooling" / "templates" / template).read_text(encoding="utf-8")
     code = (ROOT / "tooling" / "src" / source).read_text(encoding="utf-8")
+    receipt_import = r"^from receipts import [^\n]+ # __EMBED_RECEIPTS__$"
+    if re.search(receipt_import, code, flags=re.M):
+        shared = (ROOT / "tooling" / "src" / "receipts.py").read_text(encoding="utf-8")
+        code = re.sub(receipt_import, lambda _: "# BEGIN shared receipt verifier\n" + shared.rstrip() + "\n# END shared receipt verifier", code, flags=re.M)
     if "__SCHEMA_JSON__" in code:
         schema = json.loads((ROOT / "intake" / "kavosh.project.schema.json").read_text(encoding="utf-8"))
         compact = json.dumps(schema, ensure_ascii=False, separators=(",", ":"))

@@ -21,6 +21,9 @@ import urllib.request
 import urllib.parse
 import time
 
+# Shared source is embedded by build_workflows.py; consumers need no local module.
+from receipts import receipt_scope_report, acceptance_source_reasons, acceptance_run_problems, _marker, _json_file  # __EMBED_RECEIPTS__
+
 DEFAULT_REQUIRED = ["required", "main-guard / main-guard"]
 PENDING = {"queued", "in_progress", "waiting", "requested", "pending"}
 
@@ -251,127 +254,16 @@ def evaluate(runs, required):
     return (not reasons), pending, reasons
 
 
-ACCEPTANCE_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-ACCEPTANCE_RELEASE_RE = re.compile(r"^v([0-9]+)[.]([0-9]+)[.]([0-9]+)$")
-ACCEPTANCE_RUN_URL = re.compile(r"^https://github[.]com/([^/]+/[^/]+)/actions/runs/([0-9]+)(?:[/?#].*)?$")
-
-
-def _json_file(repo, path, sha, api):
-    raw = api(f"repos/{repo}/contents/{path}?ref={sha}")
-    encoded = raw.get("content") if isinstance(raw, dict) else None
-    if not encoded:
-        raise RuntimeError(f"missing {path} at candidate SHA")
-    try:
-        return json.loads(base64.b64decode(encoded).decode("utf-8"))
-    except (ValueError, UnicodeDecodeError) as exc:
-        raise RuntimeError(f"invalid JSON in {path}: {exc}") from exc
-
-
-def _marker(body, name):
-    m = re.search(rf"(?im)^\s*{re.escape(name)}:\s*(\S.+?)\s*$", body or "")
-    return m.group(1).strip() if m else None
-
 
 def acceptance_reasons(repo, sha, api=None):
-    """ACC-3: release-readiness from versioned scope + live GitHub Issue/Actions evidence."""
+    """ACC-3: base provenance AND independently published typed/decision receipts."""
     api = api or gh_api
     manifest = _json_file(repo, "kavosh.project.json", sha, api)
-    if manifest.get("acceptance", {}).get("mode", "none") != "continuous":
+    if (manifest.get("acceptance") or {}).get("mode") != "continuous":
         return []
     scope = _json_file(repo, "acceptance/scope.json", sha, api)
-    reasons = []
-    if scope.get("schemaVersion") != 1:
-        reasons.append("acceptance scope schemaVersion must be 1")
-    target = scope.get("targetRelease")
-    tm = ACCEPTANCE_RELEASE_RE.fullmatch(target or "")
-    if not tm:
-        reasons.append("acceptance targetRelease must match vX.Y.Z")
-    items = scope.get("items")
-    if not isinstance(items, list) or not items:
-        return reasons + ["continuous acceptance scope must contain at least one item"]
-    target_tuple = tuple(map(int, tm.groups())) if tm else None
-    seen = set()
-    marker_for = {
-        "test": "Acceptance-Test-Evidence",
-        "ui": "Acceptance-UI-Evidence",
-        "security": "Acceptance-Security-Evidence",
-        "migration": "Acceptance-Migration-Evidence",
-    }
-    for item in items:
-        if not isinstance(item, dict):
-            reasons.append("acceptance scope contains a non-object item")
-            continue
-        aid = item.get("id") or "<missing-id>"
-        if aid in seen:
-            reasons.append(f"{aid}: duplicate acceptance ID")
-            continue
-        seen.add(aid)
-        owner = item.get("owner")
-        issue_no = item.get("issue")
-        risk = item.get("risk")
-        evidence = item.get("evidence") if isinstance(item.get("evidence"), list) else []
-        if not isinstance(owner, str) or not owner:
-            reasons.append(f"{aid}: invalid owner")
-            continue
-        if risk not in ("low", "medium", "high", "critical"):
-            reasons.append(f"{aid}: invalid risk")
-            continue
-        if not evidence or "ci" not in evidence:
-            reasons.append(f"{aid}: evidence must include ci")
-            continue
-        if risk in ("high", "critical") and "test" not in evidence:
-            reasons.append(f"{aid}: high/critical risk requires test evidence")
-            continue
-        deferred = item.get("deferredTo")
-        if deferred:
-            dm = ACCEPTANCE_RELEASE_RE.fullmatch(deferred) if isinstance(deferred, str) else None
-            defer_issue = item.get("deferIssue")
-            if not dm or not target_tuple or tuple(map(int, dm.groups())) <= target_tuple:
-                reasons.append(f"{aid}: invalid deferredTo")
-                continue
-            if not isinstance(defer_issue, int) or defer_issue <= 0:
-                reasons.append(f"{aid}: deferIssue required")
-                continue
-            issue = api(f"repos/{repo}/issues/{defer_issue}")
-            if issue.get("state") != "closed":
-                reasons.append(f"{aid}: defer approval issue #{defer_issue} is not closed")
-                continue
-            approved = _marker(issue.get("body") or "", "Defer-Approved-By")
-            if approved != f"@{owner}":
-                reasons.append(f"{aid}: defer is not approved by @{owner}")
-            continue
-
-        if not isinstance(issue_no, int) or issue_no <= 0:
-            reasons.append(f"{aid}: invalid canonical issue")
-            continue
-        issue = api(f"repos/{repo}/issues/{issue_no}")
-        body = issue.get("body") or ""
-        if issue.get("state") != "closed":
-            reasons.append(f"{aid}: acceptance issue #{issue_no} is not closed")
-            continue
-        accepted_by = _marker(body, "Accepted-By")
-        if accepted_by != f"@{owner}":
-            reasons.append(f"{aid}: missing Accepted-By: @{owner}")
-        merged_sha = _marker(body, "Acceptance-Merged-SHA")
-        if not merged_sha or not ACCEPTANCE_SHA_RE.fullmatch(merged_sha):
-            reasons.append(f"{aid}: missing valid Acceptance-Merged-SHA")
-        else:
-            cmp = api(f"repos/{repo}/compare/{merged_sha}...{sha}")
-            if cmp.get("status") not in ("ahead", "identical"):
-                reasons.append(f"{aid}: merged SHA is not an ancestor of candidate")
-        run_url = _marker(body, "Acceptance-Evidence-Run")
-        rm = ACCEPTANCE_RUN_URL.fullmatch(run_url or "")
-        if not rm or rm.group(1).lower() != repo.lower():
-            reasons.append(f"{aid}: missing same-repository Actions Acceptance-Evidence-Run")
-        else:
-            run = api(f"repos/{repo}/actions/runs/{rm.group(2)}")
-            if run.get("status") != "completed" or run.get("conclusion") != "success":
-                reasons.append(f"{aid}: referenced Actions evidence run is not successful")
-        for ev in evidence:
-            marker = marker_for.get(ev)
-            if marker and not re.match(r"^https://\S+$", _marker(body, marker) or ""):
-                reasons.append(f"{aid}: missing {marker}")
-    return reasons
+    report = receipt_scope_report(repo, sha, manifest, scope, api)
+    return report["problems"]
 
 
 def gate(repo, sha, required, branch="main", wait=300, interval=15, api=None, sleep=time.sleep):
@@ -461,6 +353,16 @@ def main(argv=None):
             for reason in acceptance:
                 print(f"  - {reason}")
             return 1
+        # Receipt verification can take time. Revalidate head AND current checks,
+        # so a newly pending/failed rerun cannot inherit the earlier green gate.
+        try:
+            current, current_reasons = gate(a.repo, a.sha, required, a.branch, wait=0)
+        except RuntimeError as e:
+            print(f"REL-5 gate CLOSED: final check refresh failed ({e})")
+            return 1
+        if current is not True:
+            print("REL-5: final head/check refresh closed the gate: " + "; ".join(current_reasons))
+            return 0 if current is None else 1
         write_open(True)
         print(f"REL-5/ACC-3 gate OPEN for {a.sha[:7]}: required checks and acceptance readiness succeeded")
         return 0

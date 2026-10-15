@@ -59,17 +59,19 @@ def acceptance_api(issue_body=None, issue_state="closed", run_conclusion="succes
         if "/compare/" in path:
             return {"status": compare_status}
         if "/actions/runs/99" in path:
-            return {"status": "completed", "conclusion": run_conclusion}
+            return {"id": 99, "status": "completed", "conclusion": run_conclusion,
+                    "head_sha": "b" * 40, "path": ".github/workflows/ci.yml",
+                    "repository": {"full_name": "o/r"}, "head_repository": {"full_name": "o/r"}}
         raise AssertionError(path)
     return api
 
 
 class AcceptanceReleaseGate(unittest.TestCase):
     def test_ACC3_positive_closed_item_with_exact_provenance(self):
-        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=acceptance_api()), [])
+        self.assertEqual(rg.acceptance_source_reasons("o/r", SHA, api=acceptance_api()), [])
 
     def test_ACC3_positive_owner_approved_future_defer(self):
-        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=acceptance_api(defer=True)), [])
+        self.assertEqual(rg.acceptance_source_reasons("o/r", SHA, api=acceptance_api(defer=True)), [])
 
     def test_ACC3_positive_legacy_profile_is_backward_compatible(self):
         def api(path):
@@ -77,7 +79,7 @@ class AcceptanceReleaseGate(unittest.TestCase):
                 payload = base64.b64encode(json.dumps({"tier": "T2"}).encode()).decode()
                 return {"content": payload}
             raise AssertionError(path)
-        self.assertEqual(rg.acceptance_reasons("o/r", SHA, api=api), [])
+        self.assertEqual(rg.acceptance_source_reasons("o/r", SHA, api=api), [])
 
     def test_ACC3_negative_issue_only_stale_failed_or_unapproved_evidence(self):
         issue_only = "Accepted-By: @bagdeli\nAcceptance-Merged-SHA: " + "b" * 40 + "\n"
@@ -90,7 +92,7 @@ class AcceptanceReleaseGate(unittest.TestCase):
         ]
         for api in cases:
             with self.subTest(api=api):
-                self.assertTrue(rg.acceptance_reasons("o/r", SHA, api=api))
+                self.assertTrue(rg.acceptance_source_reasons("o/r", SHA, api=api))
 
 
 class ReleasePrBridge(unittest.TestCase):

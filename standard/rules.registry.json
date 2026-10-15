@@ -1415,17 +1415,19 @@
     },
     {
       "id": "ACC-3",
-      "statement": "دروازهٔ release برای continuous acceptance fail-closed است: scope غیرخالی، هر مورد in-scope بسته و owner-accepted، merged SHA ancestor کاندیدا، Actions run موفق و evidenceهای لازم risk/type حاضر؛ defer فقط با تصمیم versioned در scope و Issue approval بسته مجاز است.",
+      "statement": "برای profile continuous، انتشار فقط با scope همان نسخه، provenance معتبر و رسید نوع‌دارِ digest-pinned برای assertionهای مصوب مجاز است. رسید به source/tree، ناشر مستقلِ مصوب، workflow/job/attempt و artifact معتبر یا attestation بیرونی متصل است؛ تصمیم پذیرش/تعویق به مالک، scope و digest همان مدارک وابسته است. marker قابل‌ویرایش مالک کافی نیست. تغییر ورودی‌های مؤثر یا انقضا، مدرک را باطل می‌کند؛ Health و Release از یک verifier استفاده می‌کنند.",
       "level": "MUST",
-      "tier": "T2",
+      "tier": "T1, T2",
       "enforcement": {
-        "raw": "G",
+        "raw": "G, H, R",
         "layers": [
-          "G"
+          "G",
+          "H",
+          "R"
         ],
         "delegatedVia": [],
         "machineEnforced": true,
-        "humanReview": false
+        "humanReview": true
       },
       "lifecycle": {
         "owner": "KavoshStart",

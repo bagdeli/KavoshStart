@@ -44,3 +44,17 @@ jobs:
           persist-credentials: false
       - run: pip install --quiet pyyaml && make check
       - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"
+      - name: Capture exact verified public source
+        if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
+        run: |
+          mkdir -p "$RUNNER_TEMP/kavosh-verification"
+          git archive --format=tar HEAD > "$RUNNER_TEMP/kavosh-verification/source.tar"
+          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/kavosh-verification/source-identity.txt"
+          sha256sum "$RUNNER_TEMP/kavosh-verification/source.tar" > "$RUNNER_TEMP/kavosh-verification/source-sha256.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
+        with:
+          name: kavosh-verified-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/kavosh-verification/
+          retention-days: 7
+          if-no-files-found: error
