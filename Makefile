@@ -1,4 +1,4 @@
-.PHONY: setup lint test build check
+.PHONY: setup lint test build check conformance
 
 setup:
 	@python3 --version
@@ -18,3 +18,6 @@ build:
 	@true
 
 check: lint test build
+
+conformance:
+	python3 tooling/test_cross_domain.py --junit $${KAVOSH_CONFORMANCE_REPORT:-cross-domain.xml}
