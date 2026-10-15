@@ -370,26 +370,15 @@ jobs:
               return problems
 
 
-          class ReceiptVerifier:
-              def __init__(self, repo, candidate, policy, api, now=None):
+          class SourceVerifier:
+              """Read-only source/tree proof without assuming any independent attestor."""
+              def __init__(self, repo, candidate, api):
                   if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
-                      raise ValueError("invalid receipt repository")
+                      raise ValueError("invalid source repository")
                   if not RECEIPT_SHA.fullmatch(candidate or ""):
-                      raise ValueError("invalid receipt candidate SHA")
-                  self.repo, self.candidate, self.policy, self.api = repo, candidate, policy, api
-                  self.now = now or datetime.now(timezone.utc)
+                      raise ValueError("invalid source candidate SHA")
+                  self.repo, self.candidate, self.api = repo, candidate, api
                   self.cache = {}
-                  self.valid_until = None
-                  self.evidence_completed = None
-                  if not isinstance(policy, dict) or type(policy.get("schemaVersion")) is not int or policy["schemaVersion"] != 1:
-                      raise ValueError("receipt policy schemaVersion must be 1")
-                  self.producers = policy.get("producers")
-                  if not isinstance(self.producers, dict) or not self.producers:
-                      raise ValueError("receipt policy needs reviewed dedicated App producers")
-                  age = policy.get("maxAgeDays")
-                  if not receipt_positive(age) or age > 365:
-                      raise ValueError("receipt policy maxAgeDays must be 1..365")
-                  self.max_age = timedelta(days=age)
 
               def get(self, suffix):
                   if suffix not in self.cache:
@@ -452,6 +441,28 @@ jobs:
                       before, after = self.entry(source_tree, path), self.entry(current_tree, path)
                       if before != after or (path in paths and before is None):
                           raise ValueError(f"evidence invalidated by source change: {path}")
+
+
+          class ReceiptVerifier(SourceVerifier):
+              def __init__(self, repo, candidate, policy, api, now=None):
+                  if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+                      raise ValueError("invalid receipt repository")
+                  if not RECEIPT_SHA.fullmatch(candidate or ""):
+                      raise ValueError("invalid receipt candidate SHA")
+                  super().__init__(repo, candidate, api)
+                  self.policy = policy
+                  self.now = now or datetime.now(timezone.utc)
+                  self.valid_until = None
+                  self.evidence_completed = None
+                  if not isinstance(policy, dict) or type(policy.get("schemaVersion")) is not int or policy["schemaVersion"] != 1:
+                      raise ValueError("receipt policy schemaVersion must be 1")
+                  self.producers = policy.get("producers")
+                  if not isinstance(self.producers, dict) or not self.producers:
+                      raise ValueError("receipt policy needs reviewed dedicated App producers")
+                  age = policy.get("maxAgeDays")
+                  if not receipt_positive(age) or age > 365:
+                      raise ValueError("receipt policy maxAgeDays must be 1..365")
+                  self.max_age = timedelta(days=age)
 
               def verify(self, item, target, kind, link, bindings):
                   producer = self.producers.get(kind)
@@ -576,10 +587,24 @@ jobs:
                       raise ValueError("acceptance contract changed during snapshot; refresh exact candidate")
                   source_problems = acceptance_source_reasons(repo, candidate, api)
                   result["problems"].extend(source_problems)
-                  raw = api(f"repos/{repo}/contents/{RECEIPT_POLICY}?ref={candidate}")
-                  policy = receipt_json(base64.b64decode(raw["content"], validate=False).decode("utf-8"))
-                  verifier = ReceiptVerifier(repo, candidate, policy, api, now)
                   items = scope.get("items")
+                  assurance = (manifest.get("acceptance") or {}).get("assurance", "attested")
+                  if assurance not in ("attested", "risk-based"):
+                      raise ValueError("invalid acceptance.assurance")
+                  if not isinstance(items, list):
+                      raise ValueError("acceptance scope items must be an array")
+                  native_source = SourceVerifier(repo, candidate, api)
+                  def native_eligible(item):
+                      return (assurance == "risk-based" and item.get("risk") in ("low", "medium")
+                              and not item.get("deferredTo") and item.get("evidence") == ["ci"]
+                              and item.get("assertions", {}).get("ci") == ["repository::required"])
+                  need_attested = any(not isinstance(item, dict) or not native_eligible(item) for item in items)
+                  verifier = None
+                  if need_attested:
+                      raw = api(f"repos/{repo}/contents/{RECEIPT_POLICY}?ref={candidate}")
+                      policy = receipt_json(base64.b64decode(raw["content"], validate=False).decode("utf-8"))
+                      verifier = ReceiptVerifier(repo, candidate, policy, api, now)
+                  # Native proof only verifies the existing required CI workflow, not UAT or human approval.
                   target = scope.get("targetRelease")
                   if type(scope.get("schemaVersion")) is not int or scope["schemaVersion"] != 1 or not re.fullmatch(r"v[0-9]+[.][0-9]+[.][0-9]+", target or ""):
                       raise ValueError("invalid release scope version/target")
@@ -601,11 +626,31 @@ jobs:
                       if not receipt_positive(number) or not isinstance(item.get("owner"), str) or not item["owner"]:
                           problem(f"{aid}: invalid canonical issue/owner")
                           continue
-                      issue = verifier.get(f"issues/{number}")
+                      issue = (verifier or native_source).get(f"issues/{number}")
                       if issue.get("state") != "closed" or "pull_request" in issue:
                           problem(f"{aid}: canonical acceptance/decision Issue is not closed")
                           continue
                       body = issue.get("body") or ""
+                      if native_eligible(item):
+                          merged = receipt_marker(body, "Acceptance-Merged-SHA")
+                          workflow = ((manifest.get("ci") or {}).get("requiredWorkflow")
+                                      or ".github/workflows/ci.yml")
+                          errors = []
+                          if not merged or not RECEIPT_SHA.fullmatch(merged):
+                              errors.append("missing valid Acceptance-Merged-SHA")
+                          elif receipt_marker(body, "Accepted-By") != f"@{item['owner']}":
+                              errors.append("missing declared Accepted-By owner (not independent human proof)")
+                          if not errors:
+                              errors.extend(acceptance_run_problems(repo, merged, body, workflow, api))
+                          if not errors:
+                              try:
+                                  native_source.unchanged(merged, native_source.tree(merged), item)
+                              except (ValueError, RuntimeError, OSError, KeyError, TypeError) as exc:
+                                  errors.append("native source invalid: " + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__))
+                          result["problems"].extend(f"{aid}/native: {err}" for err in errors)
+                          if not errors and not source_problems:
+                              result["verified"].append(aid)
+                          continue
                       bindings = {"mergedSha": receipt_marker(body, "Acceptance-Merged-SHA"),
                                   "ciRun": receipt_marker(body, "Acceptance-Evidence-Run"),
                                   "evidence": {k: receipt_marker(body, RECEIPT_MARKERS[k]) for k in item["evidence"]}}
@@ -630,7 +675,7 @@ jobs:
                               problem(f"{aid}/{kind}: {detail}")
                       if len(result["problems"]) == before and not source_problems:
                           result["deferred" if deferred else "verified"].append(aid)
-                  if verifier.valid_until and verifier.valid_until <= (now or datetime.now(timezone.utc)):
+                  if verifier and verifier.valid_until and verifier.valid_until <= (now or datetime.now(timezone.utc)):
                       result["verified"], result["deferred"] = [], []
                       problem("receipt expired during verification")
               except (ValueError, TypeError, KeyError, AttributeError, RuntimeError, OSError) as exc:

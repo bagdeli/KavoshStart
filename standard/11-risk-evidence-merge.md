@@ -85,7 +85,7 @@ Evidence باید از ماهیت تغییر بیاید، نه از یک checkli
 
 **No gate inflation:** a defect gets a focused regression on the affected behavior. Before adding a global MUST, the owner must approve its cross-project applicability, measurable safety value, lifecycle timing and operational cost. An agent cannot create a mandatory project-wide security test simply because it suggested one. Capability completion, test output and acceptance remain distinct; the same genuine observation may support multiple criteria without one receipt per row.
 
-The existing `ACC-3` independent-receipt contract remains active for projects pinned to the current v3 continuous profile; **these two-lane guidelines do not turn a missing source-bound receipt into PASS**. Changing that trust model needs its own reviewed implementation/migration and tests, not an unverified document-only bypass.
+The legacy **v3 attested ACC-3 contract remains the default**; an explicit future-release `acceptance.assurance=risk-based` permits native source-bound required-CI proof **only** for low/medium CI-only items. High/critical, deferrals and specialist evidence retain independent source-bound receipts and decisions. Neither mode turns a missing test into PASS. This is a breaking control-plane release choice, never a silent upgrade.
 
 ## 9. Tool adapters
 

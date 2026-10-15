@@ -28,7 +28,7 @@ class ProportionateQuality(unittest.TestCase):
     def test_existing_receipt_safety_remains_unwaived(self):
         s = read("standard/11-risk-evidence-merge.md")
         self.assertIn("ACC-3", s)
-        self.assertIn("do not turn a missing source-bound receipt into PASS", s)
+        self.assertIn("Neither mode turns a missing test into PASS", s)
 
     def test_network_failure_does_not_demand_mirror_or_fabricate_ip(self):
         for p in ("intake/QUESTIONNAIRE.md", "standard/04-ci-runners-minutes.md"):

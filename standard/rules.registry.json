@@ -1415,7 +1415,7 @@
     },
     {
       "id": "ACC-3",
-      "statement": "برای profile continuous، انتشار فقط با scope همان نسخه، provenance معتبر و رسید نوع‌دارِ digest-pinned برای assertionهای مصوب مجاز است. رسید به source/tree، ناشر مستقلِ مصوب، workflow/job/attempt و artifact معتبر یا attestation بیرونی متصل است؛ تصمیم پذیرش/تعویق به مالک، scope و digest همان مدارک وابسته است. marker قابل‌ویرایش مالک کافی نیست. تغییر ورودی‌های مؤثر یا انقضا، مدرک را باطل می‌کند؛ Health و Release از یک verifier استفاده می‌کنند.",
+      "statement": "پذیرش continuous باید به source واقعی و آزمون موفق متصل باشد: `attested` پیش‌فرض سازگار قبلی با رسید مستقل برای همهٔ itemهاست؛ `risk-based` فقط برای کم/متوسطِ CI-only اثبات native هم‌منبع بدون App اضافه را می‌پذیرد. item پرخطر، defer یا شواهد تخصصی همچنان به رسید و تصمیم مستقل نیاز دارد. هیچ marker یا اجرای stale نمی‌تواند آزمون ناموفق را PASS کند. Health و Release یک verifier مشترک دارند.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {

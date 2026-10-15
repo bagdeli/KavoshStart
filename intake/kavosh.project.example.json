@@ -79,7 +79,8 @@
     "bagdeli/KavoshUI"
   ],
   "acceptance": {
-    "mode": "continuous"
+    "mode": "continuous",
+    "assurance": "risk-based"
   },
   "release": {
     "strategy": "release-please",

@@ -701,6 +701,9 @@ def acceptance_scope_problems(m):
     problems = []
     if scope.get("schemaVersion") != 1:
         problems.append("schemaVersion must be 1")
+    assurance = (m.get("acceptance") or {}).get("assurance", "attested")
+    if assurance not in ("attested", "risk-based"):
+        problems.append("acceptance.assurance must be attested or risk-based")
     target = scope.get("targetRelease")
     tm = ACCEPTANCE_RELEASE_RE.fullmatch(target or "")
     if not tm:
