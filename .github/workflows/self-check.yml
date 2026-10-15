@@ -45,6 +45,11 @@ jobs:
           persist-credentials: false
       - run: pip install --quiet pyyaml && make check
       - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"
+      - name: Exercise the pinned Node setup action
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
       - name: Prepare isolated cross-domain fixture dependencies
         env:
           KAVOSH_CONFORMANCE_DEPS: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}
