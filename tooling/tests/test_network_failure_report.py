@@ -44,6 +44,14 @@ class NetworkFailureReport(unittest.TestCase):
         self.assertTrue(s["url"].endswith("/file.tgz"))
         self.assertNotIn("token-abcdef", s["url"])
 
+    def test_hex_and_opaque_path_tokens_are_redacted(self):
+        path = "0123456789abcdef0123456789abcdef"
+        encoded = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1"
+        r = network.sanitize("https://packages.example.org/download/" + path + "/" + encoded + "/artifact.tgz")
+        self.assertNotIn(path, r["url"])
+        self.assertNotIn(encoded, r["url"])
+        self.assertTrue(r["url"].endswith("/artifact.tgz"))
+
     def test_invalid_urls_and_single_attempt_rejected(self):
         for url in ("file:///etc/passwd", "ftp://packages.example.org", "no-url", "https://packages.example.org:bad/"):
             with self.subTest(url=url), self.assertRaises(ValueError):

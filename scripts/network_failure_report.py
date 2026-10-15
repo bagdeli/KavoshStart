@@ -46,6 +46,8 @@ def sanitize(url):
         if not segment:
             continue
         if (len(segment) > 40 or not all(ch.isascii() and (ch.isalnum() or ch in "._-~") for ch in segment)
+                or (len(segment) >= 16 and all(ch in "0123456789abcdefABCDEF" for ch in segment))
+                or (len(segment) >= 24 and all(ch.isalnum() or ch in "_-" for ch in segment))
                 or any(marker in segment.lower() for marker in ("token", "secret", "password", "signature", "auth"))):
             safe.append("[redacted]")
         else:
