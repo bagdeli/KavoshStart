@@ -174,3 +174,43 @@ all transitive inputs automatically, or authorize release/deployment. A missing
 trusted service remains an explicit rollout blocker. The change tightens the
 proof contract for upgraded consumers; do not silently upgrade unrelated projects
 or pin a version that has not actually been released.
+
+## Reference evidence-publisher integration
+
+`tooling/artifact_receipt.py` closes the automated artifact-to-receipt path. Use
+it only in the independently administered evidence service, not product CI. The
+service supplies an authenticated GitHub JSON API, a bounded artifact downloader,
+and a **reviewed policy digest pinned outside the product repository**. Taking
+that digest from an untrusted request would let the product admit its own policy.
+An `actions` producer also configures `reportPath`, the exact relative JUnit file
+inside the artifact ZIP. This is a reviewed producer input, not a caller-selected
+file that can hide the failing report.
+
+`prepare_evidence` reads the exact source's manifest/scope/policy, verifies that
+source is integrated into main, checks run/job/artifact provenance with the shared
+verifier, verifies the downloaded ZIP's SHA-256, and derives actual outcomes from
+its policy-selected JUnit member. ZIP paths, duplicates, links, encryption,
+expanded size and member count are bounded; no archive entry is extracted or
+executed. A failed/skipped assertion, missing expected ID or unrelated successful
+report cannot produce a success request. Preparation is read-only and its output
+is **unpublished**, not accepted evidence.
+
+`publish_evidence` additionally performs exactly one `POST /check-runs`, then
+reads back and verifies the actual publisher, source, digest and evidence through
+the shared verifier. It returns the digest-bound marker only after that readback.
+It does not update Issues, branches, tags, releases or acceptance decisions. An
+ambiguous network write is not blindly retried: reconcile the already-created
+check first. A wrong publisher or failed readback never returns a trusted marker.
+
+The service's downloader receives only `(repo, artifact_id, max_bytes)`, never an
+Issue URL. It must use GitHub's artifact download endpoint, bound streaming bytes,
+validate HTTPS storage redirects, and **not forward GitHub credentials to a
+storage redirect**. Authentication, transport, installation and secret custody
+remain responsibilities of the admitted service. This adapter does not silently
+install a service or provide a human-decision authentication implementation.
+
+Before operational admission, run a genuine service test for each admitted kind:
+real artifact and exact workflow/job; tampered/failed artifact rejection; actual
+App publisher readback; independent owner decision bound to the new evidence;
+then matching Health and Release verdicts. Keep these real checks separate from
+the offline fixtures, whose transport/App identities are deliberately synthetic.
