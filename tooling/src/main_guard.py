@@ -95,6 +95,22 @@ def check_state_at_merge(runs, required, merged_at):
     if cutoff is None:
         return ["merge timestamp unavailable; cannot verify PR-7 history"]
     latest, pending, unknown = {}, {}, {}
+
+    def source_identity(run):
+        # Only independently identified Actions checks may supersede malformed
+        # historical evidence. Missing identity never becomes a wildcard.
+        app = run.get("app") or {}
+        app_id, head = app.get("id"), run.get("head_sha")
+        workflow_id = run.get("_history_workflow_id")
+        match = re.fullmatch(
+            r"https://github[.]com/([^/]+/[^/]+)/actions/runs/[0-9]+/job/[0-9]+",
+            run.get("html_url") or "", re.I,
+        )
+        if (type(app_id) is not int or app_id < 1 or app.get("slug") != "github-actions"
+                or not isinstance(head, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", head)
+                or match is None or type(workflow_id) is not int or workflow_id < 1):
+            return None
+        return app_id, app["slug"], head.lower(), match.group(1).lower(), workflow_id
     for run in runs:
         name = run.get("name", "")
         if name not in required:
@@ -104,16 +120,18 @@ def check_state_at_merge(runs, required, merged_at):
         end = _utc_timestamp(run.get("completed_at"))
         if origin is not None and origin > cutoff:
             continue  # proven later execution, not a retroactive merge violation
-        if origin is None and (start is None or start > cutoff):
+        if origin is None:
             state = run.get("status") or "unknown"
-            unknown[name] = f"'{name}' {state} (merge-time origin unavailable)"
+            unknown.setdefault(name, []).append((None, run,
+                f"'{name}' {state} (merge-time origin unavailable)"))
             continue
-        origin = origin or start
         if (start is not None and start < origin) or (end is not None and end < (start or origin)):
-            unknown[name] = f"'{name}' has inconsistent evidence timestamps"
+            unknown.setdefault(name, []).append((origin, run,
+                f"'{name}' has inconsistent evidence timestamps"))
             continue
         if run.get("status") == "completed" and end is None:
-            unknown[name] = f"'{name}' completion time unavailable at merge"
+            unknown.setdefault(name, []).append((origin, run,
+                f"'{name}' completion time unavailable at merge"))
             continue
         if run.get("status") != "completed" or end > cutoff:
             pending[name] = f"'{name}' pending at merge"
@@ -124,8 +142,17 @@ def check_state_at_merge(runs, required, merged_at):
             latest[name] = (key, run)
     problems = []
     for name in required:
-        if name in unknown:
-            problems.append(unknown[name])
+        effective = latest.get(name)
+        unresolved = []
+        for origin, run, problem in unknown.get(name, []):
+            identity = source_identity(run)
+            if (origin is not None and effective is not None
+                    and effective[0][0] > origin and identity is not None
+                    and source_identity(effective[1]) == identity):
+                continue  # strictly newer, valid, same-source evidence supersedes this attempt
+            unresolved.append(problem)
+        if unresolved:
+            problems.append(sorted(unresolved)[0])
         elif name in pending:
             problems.append(pending[name])
         elif name not in latest:
@@ -178,6 +205,10 @@ def historical_check_runs(repo, head, required, api):
                 if origin_time is None or job_time is None:
                     raise RuntimeError("Actions queue timestamp unavailable; cannot establish merge history")
                 run["created_at"] = min(origin_time, job_time).isoformat()
+                # Same-name checks from another workflow cannot supersede evidence.
+                workflow_id = execution.get("workflow_id")
+                if type(workflow_id) is int and workflow_id > 0:
+                    run["_history_workflow_id"] = workflow_id
             runs.append(run)
         if len(batch) < 100:
             return runs
