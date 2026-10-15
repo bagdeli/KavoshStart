@@ -106,5 +106,88 @@ class MergeHistory(unittest.TestCase):
             mg.historical_check_runs("o/r", "h1", ["required"], api)
 
 
+class SupersededMalformedHistory(unittest.TestCase):
+    """Do not waive skipped results; require provable supersession and source."""
+
+    def row(self, created="2026-01-10T09:30:00Z", **overrides):
+        row = check(created=created, started=created, ended=created)
+        row.update(app={"id": 15368, "slug": "github-actions"}, head_sha="a" * 40,
+                   html_url="https://github.com/o/r/actions/runs/10/job/20",
+                   _history_workflow_id=1234)
+        row.update(overrides)
+        return row
+
+    def old_bad(self, **overrides):
+        return self.row(created=BEFORE, completed_at="2026-01-10T08:59:59Z",
+                        conclusion="skipped", **overrides)
+
+    def problems(self, *rows):
+        return mg.check_state_at_merge(rows, ["required"], CUT)
+
+    def test_older_malformed_is_superseded_independent_of_input_order_or_conclusion(self):
+        # It is chronological/source supersession, never a blanket skipped waiver.
+        for conclusion in ("skipped", "success", "failure", "cancelled"):
+            bad = self.old_bad()
+            bad["conclusion"] = conclusion
+            for rows in ((bad, self.row()), (self.row(), bad)):
+                with self.subTest(conclusion=conclusion, order=rows[0]["created_at"]):
+                    self.assertEqual(self.problems(*rows), [])
+
+    def test_newer_valid_failure_remains_red(self):
+        self.assertIn("failure at merge", self.problems(
+            self.old_bad(), self.row(conclusion="failure"))[0])
+
+    def test_effective_malformed_tied_origin_and_older_success_remain_red(self):
+        for bad_origin in ("2026-01-10T09:30:00Z", "2026-01-10T09:45:00Z"):
+            bad = self.row(created=bad_origin, completed_at=BEFORE, conclusion="skipped")
+            self.assertIn("inconsistent", self.problems(self.row(), bad)[0])
+        self.assertIn("inconsistent", self.problems(self.old_bad())[0])
+
+    def test_unknown_origin_never_inherits_later_green_even_with_premerge_start(self):
+        for created in (None, "bad", "2026-01-10T09:00:00"):
+            bad = self.old_bad(created_at=created)
+            self.assertIn("origin unavailable", self.problems(bad, self.row())[0])
+
+    def test_unproven_or_different_source_cannot_supersede(self):
+        for fields in (
+            {"app": {}}, {"app": {"id": 999, "slug": "github-actions"}},
+            {"app": {"id": True, "slug": "github-actions"}},
+            {"app": {"id": 15368, "slug": "other"}},
+            {"head_sha": "b" * 40}, {"head_sha": None},
+            {"html_url": "https://github.com/foreign/r/actions/runs/10/job/20"},
+            {"html_url": None}, {"_history_workflow_id": None},
+            {"_history_workflow_id": 999}, {"_history_workflow_id": True},
+        ):
+            with self.subTest(fields=fields):
+                self.assertIn("inconsistent", self.problems(
+                    self.old_bad(**fields), self.row())[0])
+
+    def test_newer_pending_or_postmerge_success_cannot_authorize_merge(self):
+        for fields in (
+            {"status": "queued", "conclusion": None, "completed_at": None},
+            {"status": "in_progress", "conclusion": None, "completed_at": None},
+            {"completed_at": AFTER},
+        ):
+            with self.subTest(fields=fields):
+                self.assertTrue(self.problems(self.old_bad(), self.row(**fields)))
+                self.assertIn("pending at merge", self.problems(
+                    self.row(created=BEFORE), self.row(**fields))[0])
+
+    def test_missing_completion_requires_same_strict_supersession(self):
+        old = self.row(created=BEFORE, completed_at=None)
+        self.assertEqual(self.problems(old, self.row()), [])
+        self.assertIn("completion time unavailable", self.problems(
+            self.row(), self.row(created="2026-01-10T09:45:00Z", completed_at=None))[0])
+
+    def test_postmerge_attempt_cannot_supersede_older_malformed_evidence(self):
+        after = self.row(created=AFTER)
+        self.assertIn("inconsistent", self.problems(self.old_bad(), after)[0])
+
+    def test_other_check_name_never_supersedes(self):
+        self.assertIn("inconsistent", self.problems(
+            self.old_bad(), self.row(name="unrelated"))[0])
+
+
+
 if __name__ == "__main__":
     unittest.main()
