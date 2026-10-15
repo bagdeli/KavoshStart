@@ -24,12 +24,14 @@ def git(*args):
 
 packet = json.loads(Path(".receipt-transport/packet.json").read_text())
 assert packet["schemaVersion"] == 1
-assert git("rev-parse", "HEAD^") == packet["baseHead"]
-assert git("rev-parse", "HEAD^^{tree}") == packet["baseTree"]
+# This retry changes only the transport's verification order. Source is unchanged.
+assert git("rev-parse", "HEAD^") == "2bc0de4c86e1174be24cce181ea8496eedafca51"
+assert git("rev-parse", "HEAD^^") == packet["baseHead"]
+assert git("rev-parse", packet["baseHead"] + "^{tree}") == packet["baseTree"]
 bootstrap = [f".receipt-transport/part{i}.b64" for i in range(4)] + [
     ".receipt-transport/packet.json", ".receipt-transport/materialize.py",
     ".github/workflows/receipt-materialize.yml"]
-assert set(git("diff", "--name-only", "HEAD^", "HEAD").splitlines()) == set(bootstrap)
+assert set(git("diff", "--name-only", packet["baseHead"], "HEAD").splitlines()) == set(bootstrap)
 parts = [Path(f".receipt-transport/part{i}.b64").read_text().strip() for i in range(4)]
 # Repair two known transfer transcription insertions, never source semantics.
 # The complete decoded patch and every resulting blob are verified below.
@@ -49,6 +51,10 @@ changed = set(git("diff", "--name-only", "HEAD").splitlines())
 changed.update(git("ls-files", "--others", "--exclude-standard").splitlines())
 assert changed == set(expected), (changed, set(expected))
 subprocess.run(["git", "add", "--", *expected], check=True)
+# Test the intended final source, not the one-time transport workflow. Remove
+# exactly our seven bootstrap files from this disposable checkout and index.
+subprocess.run(["git", "rm", "--", *bootstrap], check=True)
+assert git("write-tree") == packet["expectedFinalTree"]
 subprocess.run(["make", "check"], check=True)
 
 def blob_id(raw):
@@ -56,7 +62,6 @@ def blob_id(raw):
 
 for path, sha in expected.items():
     assert blob_id(Path(path).read_bytes()) == sha, path
-subprocess.run(["git", "rm", "--cached", "--", *bootstrap], check=True)
 assert git("write-tree") == packet["expectedFinalTree"]
 # POST /git/blobs only. No branch or commit mutation from this workflow.
 for path, sha in expected.items():
