@@ -403,9 +403,9 @@ class PullRequest(unittest.TestCase):
     def test_UI2_negative_visual_change_needs_render_evidence(self):
         self.assertEqual(run_pr(filename="src/components/button.tsx").get("UI-2"), "fail")
 
-    def test_UI2_positive_visual_change_with_evidence(self):
+    def test_UI2_unaudited_screenshot_is_not_evidence(self):
         body = "Closes #12\n\n## Change risk\nRisk: medium\nCapabilities: ui\nRationale: rendered component change\n\nUI evidence: https://example.test/rendered.png"
-        self.assertEqual(run_pr(filename="src/components/button.tsx", body=body).get("UI-2"), "ok")
+        self.assertEqual(run_pr(filename="src/components/button.tsx", body=body).get("UI-2"), "fail")
 
     def test_BR2_negative_branch_name(self):
         self.assertEqual(run_pr(head="agent/lccg-reconcile-20260925")["BR-2"], "fail")

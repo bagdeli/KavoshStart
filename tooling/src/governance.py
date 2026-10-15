@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import time
 from pathlib import Path
 
 _SCHEMA_SRC = r"""__SCHEMA_JSON__"""
@@ -802,15 +803,27 @@ def github_api(path, method="GET", payload=None, allow_missing=False):
                  "X-GitHub-Api-Version": "2022-11-28",
                  "Content-Type": "application/json"},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        if allow_missing and exc.code == 404:
-            return None
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code} {detail}") from exc
-    return json.loads(raw) if raw.strip() else None
+    # Retry idempotent reads only; never replay a possibly successful mutation.
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                raw = response.read().decode("utf-8")
+            return json.loads(raw) if raw.strip() else None
+        except urllib.error.HTTPError as exc:
+            if allow_missing and exc.code == 404:
+                return None
+            transient = method == "GET" and exc.code in (429, 500, 502, 503, 504)
+            if transient and attempt < 2:
+                backoff = exc.headers.get("Retry-After", "") if exc.headers else ""
+                delay = min(2.0, float(backoff)) if backoff.isdigit() else 0.5 * (attempt + 1)
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if method == "GET" and attempt < 2:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise RuntimeError(f"GitHub API {method} {path}: unavailable ({type(exc).__name__})") from exc
 
 
 def gh(*args):
@@ -832,6 +845,54 @@ def ui_render_files(files):
         if lower.endswith(visual_suffixes) or any(part in ("ui", "components", "styles", "views") for part in parts):
             out.append(name)
     return out
+
+
+def verified_visual_review(repo, pr, body, api):
+    """Accept only an observed same-head visual run or authenticated current-head review."""
+    sha = (pr.get("head") or {}).get("sha") or ""
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        return "fail", "UI change: exact PR head SHA unavailable"
+    num = pr.get("number")
+    if not isinstance(num, int) or num <= 0:
+        return "fail", "UI change: PR number unavailable"
+    author = (pr.get("user") or {}).get("login")
+    reviews = api("api", f"repos/{repo}/pulls/{num}/reviews?per_page=100") or []
+    latest = {}
+    for review in reviews:
+        user = review.get("user") or {}
+        login = user.get("login")
+        if not login or user.get("type") != "User" or login == author or not review.get("submitted_at"):
+            continue
+        old = latest.get(login)
+        if old is None or (review["submitted_at"], review.get("id") or 0) >= (old.get("submitted_at") or "", old.get("id") or 0):
+            latest[login] = review
+    for review in latest.values():
+        if review.get("state") == "APPROVED" and review.get("commit_id") == sha:
+            return "ok", f"GitHub human review {review.get('id')} on exact head {sha[:12]}"
+    match = re.search(r"(?im)^UI evidence:\s*https://github\.com/([^/\s]+/[^/\s]+)/actions/runs/([1-9][0-9]*)\s*$", body or "")
+    if not match:
+        return "fail", "visual change requires real same-head CI comparison or genuine exact-head GitHub review"
+    if match.group(1).lower() != repo.lower():
+        return "fail", "visual run from different repository"
+    rid = int(match.group(2))
+    run = api("api", f"repos/{repo}/actions/runs/{rid}") or {}
+    if (run.get("id") != rid or run.get("head_sha") != sha or
+            run.get("status") != "completed" or run.get("conclusion") != "success" or
+            (run.get("head_repository") or {}).get("full_name") != repo or
+            run.get("event") not in ("pull_request", "workflow_dispatch", "push")):
+        return "fail", "visual CI must succeed for exact PR SHA and same repository"
+    attempt = run.get("run_attempt")
+    if not isinstance(attempt, int) or attempt <= 0:
+        return "fail", "visual run attempt identity missing"
+    jobs = api("api", f"repos/{repo}/actions/runs/{rid}/attempts/{attempt}/jobs?per_page=100") or {}
+    pattern = re.compile(r"^(?:run |execute |test )?(?:visual regression|visual comparison|compare screenshots|playwright visual|pixel diff|visual tests?)", re.I)
+    observed = [step for job in jobs.get("jobs", []) if job.get("conclusion") == "success"
+                for step in job.get("steps", [])
+                if pattern.search(step.get("name") or "") and step.get("status") == "completed"
+                and step.get("conclusion") == "success" and step.get("started_at") and step.get("completed_at")]
+    if not observed:
+        return "fail", "no actually executed passing visual comparison on this run"
+    return "ok", f"observed visual run {rid} attempt {attempt} on {sha[:12]}"
 
 
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -923,9 +984,11 @@ def check_pr(m, event, repo):
         add(level, rule, t, d)
     visual_files = ui_render_files(files)
     if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
-        evidence = re.search(r"(?im)^ui evidence:\s*(https?://\S+|\S.+)$", body)
-        add("ok" if evidence else "fail", "UI-2", "Render evidence for visual UI changes",
-            evidence.group(1) if evidence else f"required for {len(visual_files)} visual file(s)")
+        try:
+            level, info = verified_visual_review(repo, pr, body, gh)
+        except (RuntimeError, ValueError, TypeError, KeyError) as exc:
+            level, info = "fail", f"visual evidence unavailable ({type(exc).__name__}); no approval"
+        add(level, "UI-2", "Observed visual verification", info)
     else:
         add("ok", "UI-2", "No render evidence needed", "PR has no visual UI changes")
 
