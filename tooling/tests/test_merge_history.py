@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import main_guard as mg
+import release_gate as rg
 
 CUT = "2026-01-10T10:00:00Z"
 BEFORE = "2026-01-10T09:00:00Z"
@@ -146,7 +147,67 @@ class SupersededMalformedHistory(unittest.TestCase):
     def test_unknown_origin_never_inherits_later_green_even_with_premerge_start(self):
         for created in (None, "bad", "2026-01-10T09:00:00"):
             bad = self.old_bad(created_at=created)
-            self.assertIn("origin unavailable", self.problems(bad, self.row())[0])
+            self.assertIn("inconsistent", self.problems(bad, self.row())[0])
+
+    def test_valid_start_fallback_preserves_release_mirror_history(self):
+        # Generic release-publisher check shape: valid start/end, no creation
+        # time or Actions-job URL. This original fallback is not supersession.
+        mirror = self.row(created_at=None,
+                          html_url="https://github.com/o/r/runs/100",
+                          _history_workflow_id=None)
+        self.assertEqual(self.problems(mirror), [])
+        ordinary = self.row(created=BEFORE)
+        for rows in ((ordinary, mirror), (mirror, ordinary)):
+            self.assertEqual(self.problems(*rows), [])
+
+    def test_start_fallback_cannot_supersede_malformed_history(self):
+        later = self.row(created_at=None)
+        for rows in ((self.old_bad(), later), (later, self.old_bad())):
+            self.assertIn("inconsistent", self.problems(*rows)[0])
+
+    def test_start_fallback_does_not_waive_bad_or_postmerge_results(self):
+        for fields, problem in (
+            ({"conclusion": "failure"}, "failure at merge"),
+            ({"status": "queued", "completed_at": None}, "pending at merge"),
+            ({"completed_at": AFTER}, "pending at merge"),
+            ({"started_at": AFTER, "completed_at": AFTER}, "origin unavailable"),
+            ({"started_at": None, "completed_at": None}, "origin unavailable"),
+        ):
+            with self.subTest(fields=fields):
+                self.assertIn(problem, self.problems(self.row(created_at=None, **fields))[0])
+
+    def test_release_publisher_result_is_readable_by_historical_consumer(self):
+        # Exercise the maintained publisher, then the reader against the minimal
+        # REST shape: server start/end and /runs URL, with no created_at field.
+        for conclusion in ("success", "failure"):
+            with self.subTest(conclusion=conclusion):
+                checks = []
+
+                def api(path, method="GET", payload=None):
+                    if path == "repos/o/r/check-runs" and method == "POST":
+                        response = dict(payload)
+                        response.update(id=100, started_at=BEFORE, completed_at=BEFORE,
+                                        html_url="https://github.com/o/r/runs/100",
+                                        app={"id": 15368, "slug": "github-actions"})
+                        checks.append(response)
+                        return response
+                    if path == "repos/o/r/statuses/" + "a" * 40 and method == "POST":
+                        return payload
+                    if "/check-runs?" in path and method == "GET":
+                        return {"check_runs": checks}
+                    raise AssertionError("unexpected API call: " + path)
+
+                workflow_run = {"id": 10, "status": "completed", "conclusion": conclusion,
+                                "html_url": "https://github.com/o/r/actions/runs/10"}
+                self.assertEqual(rg._publish_check("o/r", "a" * 40, "required", workflow_run, api),
+                                 conclusion == "success")
+                rows = mg.historical_check_runs("o/r", "a" * 40, ["required"], api)
+                self.assertNotIn("created_at", rows[0])
+                problems = self.problems(*rows)
+                if conclusion == "success":
+                    self.assertEqual(problems, [])
+                else:
+                    self.assertIn("failure at merge", problems[0])
 
     def test_unproven_or_different_source_cannot_supersede(self):
         for fields in (

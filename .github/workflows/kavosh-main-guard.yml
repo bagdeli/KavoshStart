@@ -158,21 +158,23 @@ jobs:
                   if name not in required:
                       continue
                   origin = _utc_timestamp(run.get("created_at"))
+                  known_origin = origin
                   start = _utc_timestamp(run.get("started_at"))
                   end = _utc_timestamp(run.get("completed_at"))
                   if origin is not None and origin > cutoff:
                       continue  # proven later execution, not a retroactive merge violation
-                  if origin is None:
+                  if origin is None and (start is None or start > cutoff):
                       state = run.get("status") or "unknown"
                       unknown.setdefault(name, []).append((None, run,
                           f"'{name}' {state} (merge-time origin unavailable)"))
                       continue
+                  origin = origin or start
                   if (start is not None and start < origin) or (end is not None and end < (start or origin)):
-                      unknown.setdefault(name, []).append((origin, run,
+                      unknown.setdefault(name, []).append((known_origin, run,
                           f"'{name}' has inconsistent evidence timestamps"))
                       continue
                   if run.get("status") == "completed" and end is None:
-                      unknown.setdefault(name, []).append((origin, run,
+                      unknown.setdefault(name, []).append((known_origin, run,
                           f"'{name}' completion time unavailable at merge"))
                       continue
                   if run.get("status") != "completed" or end > cutoff:
@@ -189,6 +191,7 @@ jobs:
                   for origin, run, problem in unknown.get(name, []):
                       identity = source_identity(run)
                       if (origin is not None and effective is not None
+                              and _utc_timestamp(effective[1].get("created_at")) is not None
                               and effective[0][0] > origin and identity is not None
                               and source_identity(effective[1]) == identity):
                           continue  # strictly newer, valid, same-source evidence supersedes this attempt
