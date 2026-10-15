@@ -1045,6 +1045,18 @@ jobs:
               return out, risk
 
 
+          def immediately_mergeable_parent(repo, parents, branch, default, api):
+              """GitHub pull LIST entries omit mergeable: inspect the exact parent PR detail."""
+              if len(parents) != 1 or not isinstance(parents[0].get("number"), int):
+                  return False
+              parent = api("api", f"repos/{repo}/pulls/{parents[0]['number']}") or {}
+              return (parent.get("number") == parents[0]["number"]
+                      and parent.get("state") == "open"
+                      and (parent.get("head") or {}).get("ref") == branch
+                      and (parent.get("base") or {}).get("ref") == default
+                      and parent.get("mergeable") is True)
+
+
           def check_pr(m, event, repo):
               pr = event["pull_request"]
               default = event["repository"]["default_branch"]
@@ -1096,7 +1108,7 @@ jobs:
                   parents = gh("api", f"repos/{repo}/pulls?state=open&head={owner}:{base}") or []
                   if parents and pr.get("draft"):
                       add("warn", "BR-4", "Draft stack depth", f"Draft stacked on {base}; normalize before Ready")
-                  elif parents and parents[0]["base"]["ref"] == default and parents[0].get("mergeable") is True:
+                  elif immediately_mergeable_parent(repo, parents, base, default, gh):
                       add("warn", "BR-4", "Ready PR has an immediately mergeable parent", f"stacked on {base}")
                   else:
                       add("fail", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent")
