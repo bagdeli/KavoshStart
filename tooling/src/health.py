@@ -10,6 +10,9 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+# Shared source is embedded by build_workflows.py; not a weaker health-only parser.
+from receipts import receipt_scope_report, _json_file  # __EMBED_RECEIPTS__
+
 NOW = datetime.now(timezone.utc)
 
 
@@ -315,10 +318,20 @@ def main():
         add(not debt["defer_problems"], "ACC-2", "Invalid/expired defer approvals",
             ", ".join(debt["defer_problems"][:12]) or 0, "0")
         ratio = round(100 * debt["accepted"] / debt["active"]) if debt["active"] else 0
-        add("warn" if debt["active"] and ratio < 80 else True, "ACC-2", "Acceptance evidence closure",
+        add("warn" if debt["active"] and ratio < 80 else True, "ACC-2", "Declared acceptance marker closure (not verified)",
             f"{debt['accepted']}/{debt['active']} ({ratio}%), deferred={debt['deferred']}", "≥ 80% during delivery; 100% at Release")
         add("warn" if debt["oldest"] > 14 else True, "ACC-2", "Oldest open acceptance item",
             f"{debt['oldest']} d", "≤ 14 d")
+        try:
+            candidate = (gh(f"repos/{repo}/branches/{default}").get("commit") or {}).get("sha")
+            proof_manifest = _json_file(repo, "kavosh.project.json", candidate, gh)
+            proof_scope = _json_file(repo, "acceptance/scope.json", candidate, gh)
+            proof = receipt_scope_report(repo, candidate, proof_manifest, proof_scope, gh)
+        except (RuntimeError, OSError, ValueError, TypeError):
+            proof = {"verified": [], "deferred": [], "problems": ["receipt verification unavailable"]}
+        add(not proof["problems"], "ACC-2", "Verified acceptance receipts (same verifier as Release)",
+            f"{len(proof['verified'])} verified, {len(proof['deferred'])} verified defers; "
+            + "; ".join(proof["problems"][:8]), "all scoped receipts verified before Release")
         recent_closed = paged(f"repos/{repo}/pulls?state=closed&sort=updated&direction=desc", max_pages=2)
         unmapped = [f"#{p['number']}" for p in recent_closed
                     if p.get("merged_at") and days(p["merged_at"]) <= 30 and p.get("user", {}).get("type") != "Bot"

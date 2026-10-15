@@ -40,7 +40,12 @@ Promotion Complete    = release/deploy/environment gates
       "issue": 123,
       "owner": "github-login",
       "risk": "high",
-      "evidence": ["ci", "test", "ui"]
+      "evidence": ["ci", "test", "ui"],
+      "assertions": {
+        "ci": ["repository::required"],
+        "test": ["document::denied-read"],
+        "ui": ["document::rtl-denied-state"]
+      }
     }
   ]
 }
@@ -59,12 +64,13 @@ Promotion Complete    = release/deploy/environment gates
   "owner": "github-login",
   "risk": "medium",
   "evidence": ["ci"],
+  "assertions": {"ci": ["repository::required"]},
   "deferredTo": "v0.2.0",
   "deferIssue": 141
 }
 ```
 
-defer فقط وقتی معتبر است که target آینده SemVer بالاتر باشد و `deferIssue` بسته و دارای `Defer-Approved-By: @<owner>` باشد.
+defer فقط با target آینده SemVer بالاتر، `deferIssue` بسته، marker مالک و رسید مستقل `Defer-Decision-Evidence` معتبر است؛ marker به‌تنهایی تصمیم انسانی را اثبات نمی‌کند.
 
 ## mapping در PR
 
@@ -114,7 +120,27 @@ Acceptance-Evidence-PR: <positive PR number>
 
 Gate باید ادغام همان PR به `main` همین repository، تطابق دقیق سرشاخهٔ آزمایش‌شده و commit ادغام، و برابری **کامل Git tree** آن دو را اثبات کند. ancestry یا توضیح «فقط مستندات تغییر کرده» کافی نیست؛ وقتی tree متفاوت است، مدرک CI روی source ادغام‌شده لازم است. marker خالی یا تکراری معتبر نیست.
 
-**مرز اثبات:** این بررسی، provenance اجرای CI را کنترل می‌کند؛ پوشش معنایی requirement، محتوای لینک‌های تخصصی UI/security/migration و هویت انسانی پشت `Accepted-By` یا `Defer-Approved-By` را احراز نمی‌کند. لینک‌های تخصصی هنوز فقط از نظر قالب بررسی می‌شوند. تأیید انسانی و بازبینی ارتباط requirement→evidence همچنان لازم است؛ سبز بودن Gate یا Health جای آنها نیست. تغییرات بعدیِ مؤثر بر رفتار می‌توانند مدرک تاریخی را نامعتبر کنند و باید جدا بازبینی شوند.
+## رسید قابل بررسی، نه صرفاً لینک
+
+برای هر نوع evidence، رسید شامل assertionهای دقیقِ مصوب در scope لازم است؛ یک job سبز عمومی مدرک UI یا migration نیست. `Acceptance-CI-Receipt` نیز در کنار `Acceptance-Evidence-Run` لازم است. مقدار markerهای تخصصی و تصمیم باید این قالب را داشته باشد:
+
+```text
+https://api.github.com/repos/<owner>/<repo>/check-runs/<id>#sha256:<64-hex>
+```
+
+marker تصمیم پذیرش `Acceptance-Decision-Evidence` و marker تعویق `Defer-Decision-Evidence` است. لینک از مخزن دیگر، URL دلخواه، JSON مبهم/تکراری، خروجی تغییرکرده، رسید منقضی یا check غیرموفق رد می‌شود. هیچ URL دلخواهی دنبال یا دانلود نمی‌شود.
+
+قرارداد دقیق ناشر و payload در `templates/tier/T2/acceptance/README.md` است. ناشر شواهد باید artifact واقعی را بخواند؛ ناشر تصمیم باید هویت و تصمیم انسانی را بیرون از اختیار عامل احراز کند. قرارداد مرجع، GitHub App اختصاصی و بازبینی‌شده را از `acceptance/security/receipt-policy.json` می‌خواند. App مشترک Actions یا connector و marker قابل‌ویرایش مالک، مرجع مستقل نیستند. کلید/توکن ناشر تصمیم نباید در اختیار عامل یا job محصول باشد.
+
+قالب policy عمداً `producers: {}` دارد: نه App خیالی می‌سازد، نه پذیرش را سبز می‌کند. پیکربندی یک ناشر واقعی، بررسی کنترل دسترسی آن و صدور رسید زنده شرط rollout است؛ وجود کد validator به معنی نصب این سرویس نیست. policy و تغییر مسیرهای پوشش، تغییر control-plane با حداقل ریسک high هستند. تغییر trust policy در مخزنِ بدون محافظ مستقل قابل دورزدن است؛ این adapter جای حفاظت از مسیر ادغام و credential را نمی‌گیرد.
+
+**مرز اثبات:** gate هویت ناشر App و پیوند source/scope/job/artifact را بررسی می‌کند، اما خودش صحت معنایی تمام محصول یا هویت زیستی انسان را استنتاج نمی‌کند. به ناشر مستقلِ مصوب برای تفسیر artifact و احراز تصمیم اعتماد می‌شود. این App نباید سرویس «تبدیل JSON ارسالی عامل به مهر تأیید» باشد. UAT بیرونی فقط از مسیر attestation همین مرجع پذیرفته می‌شود؛ metadata خصوصی در خروجی عمومی قرار نمی‌گیرد.
+
+## استفادهٔ مجدد و ابطال مدرک
+
+پیش‌فرض محافظه‌کارانه، برابری کامل tree پذیرفته‌شده و کاندیداست. برای جلوگیری از اجرای بی‌دلیل آزمون پس از تغییر نامرتبط، item می‌تواند `evidencePaths` شامل مسیرهای literal، واقعی و مصوب داشته باشد. تغییر هرکدام از این مسیرها، یا قراردادهای `acceptance`، manifest و `.github`، رسید را باطل می‌کند. glob، parent traversal، مسیر غایب و اطلاعات tree ناقص پذیرفته نیست.
+
+مالک باید پوشش وابستگی‌های مؤثر، lockfileها، پیکربندی و داده‌های آزمون را بازبینی کند؛ این فهرست ابزار حدس خودکار وابستگی نیست. مدارک قدیمی با وجود ancestor بودن، خودکار قابل reuse نیستند. تغییر scope یا policy و تعویض مدرک نیز تأیید قبلی را باطل می‌کند، چون تصمیم به digest همان محدوده و همان رسیدها متصل است.
 
 ## زمان مدرک ادغام — PR-7
 
@@ -124,7 +150,7 @@ Layer M کنترل‌های سرشاخهٔ PR را در مرز `merged_at` ار�
 
 ## health
 
-Layer H تعداد scope items، open acceptance items، deferred items و موارد بسته‌ای که evidence markerهای پایه ندارند گزارش می‌کند. هدف آن کشف زودهنگام debt است، نه auto-accept.
+Layer H تعداد scope items، open acceptance items، deferred items و موارد بسته‌ای که evidence markerهای پایه ندارند گزارش می‌کند. marker closure فقط declared است؛ `receipts.py` مشترک تعداد verified و مشکلات رسید را جدا گزارش می‌کند. هدف کشف debt است، نه auto-accept.
 
 ## release
 
@@ -139,3 +165,7 @@ Layer H تعداد scope items، open acceptance items، deferred items و مو�
 در upgrade، هدف ساختن tracker دوم یا تبدیل کورکورانهٔ هر requirement داخلی به AC مستقل نیست. acceptance item باید واحدی باشد که مالک بتواند برای release همان نسخه درباره‌اش تصمیم بگیرد. یک item می‌تواند چند requirement ریزتر را پوشش دهد فقط وقتی owner، risk tier و evidence آنها مشترک است و mapping requirement→evidence از بین نمی‌رود.
 
 کد merge‌شدهٔ تاریخی بدون evidence معتبر خودکار accepted نمی‌شود. آن را به‌عنوان debt واقعی وارد scope کنید، evidence قابل‌استفاده را reuse کنید و فقط gapهای مادی را دوباره اجرا کنید. Health closure ratio و سن debt را برای feedback زودهنگام نشان می‌دهد؛ G/Release همچنان برای scope همان نسخه fail-closed است.
+
+در ارتقای مصرف‌کننده، policy ناشر، assertionهای scope، `checks: read` برای Health و مدارک واقعی را در PR مربوط آماده کنید. receipt خالی/جعلی یا تغییر `continuous` به `none` راه مهاجرت نیست. هیچ tag منتشرنشده‌ای را در مصرف‌کننده pin نکنید.
+
+این سخت‌گیری، قرارداد پذیرش مصرف‌کنندگان continuous را تغییر می‌دهد؛ rollout باید به‌عنوان تغییر ناسازگارِ نسخه‌دار برنامه‌ریزی شود، نه patch بی‌نیاز از مهاجرت. تغییر ناشر یا فعال‌سازی سرویس واقعی نیازمند تصمیم صریح مالک و کنترل دسترسی مستقل است.

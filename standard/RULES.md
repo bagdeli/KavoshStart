@@ -101,7 +101,7 @@
 |---|---|---|---|---|
 | ACC-1 | هر پروژهٔ T2 باید `acceptance.mode=continuous` داشته باشد. `acceptance/scope.json` فقط قرارداد scope نسخه است (نه status tracker): ID یکتا، Issue canonical، owner، risk و نوع evidence را تعریف می‌کند؛ هر PR غیررباتی باید IDهای متاثر را map کند یا `not-applicable` با دلیل واقعی بدهد. | MUST | T2 | P |
 | ACC-2 | سلامت دوره‌ای برای continuous acceptance بدهی پذیرش را از scope + وضعیت واقعی GitHub محاسبه و open/unaccepted/deferred/missing-evidence را گزارش می‌کند؛ merged code هرگز خودکار Acceptance Complete محسوب نمی‌شود. | MUST | T2 | H |
-| ACC-3 | دروازهٔ release برای continuous acceptance fail-closed است: scope غیرخالی، هر مورد in-scope بسته و owner-accepted، merged SHA ancestor کاندیدا، Actions run موفق و evidenceهای لازم risk/type حاضر؛ defer فقط با تصمیم versioned در scope و Issue approval بسته مجاز است. | MUST | T2 | G |
+| ACC-3 | برای profile continuous، انتشار فقط با scope همان نسخه، provenance معتبر و رسید نوع‌دارِ digest-pinned برای assertionهای مصوب مجاز است. رسید به source/tree، ناشر مستقلِ مصوب، workflow/job/attempt و artifact معتبر یا attestation بیرونی متصل است؛ تصمیم پذیرش/تعویق به مالک، scope و digest همان مدارک وابسته است. marker قابل‌ویرایش مالک کافی نیست. تغییر ورودی‌های مؤثر یا انقضا، مدرک را باطل می‌کند؛ Health و Release از یک verifier استفاده می‌کنند. | MUST | T1, T2 | G, H, R |
 | ACC-4 | status زندهٔ acceptance داخل فایل نگهداری نمی‌شود؛ source of truth وضعیت/evidence/approval همان GitHub Issue/PR/Run است و scope file فقط declaration نسخه‌دار است. | MUST | T2 | via SRC-1, ACC-1, ACC-2, ACC-3 |
 
 ## CI — CI، runner و دقیقه‌ها

@@ -104,7 +104,7 @@ class AcceptanceProvenance(unittest.TestCase):
     def test_ACC3_negative_duplicate_blank_marker(self):
         self.assertIsNone(rg._marker("Accepted-By: @owner\nAccepted-By:\n", "Accepted-By"))
 
-    def test_ACC3_negative_integrated_gate_rejects_wrong_source(self):
+    def test_ACC3_negative_source_stage_rejects_wrong_source(self):
         def api(path):
             if "/contents/" in path:
                 value = ({"acceptance": {"mode": "continuous"}, "ci": {"requiredWorkflow": WORKFLOW}}
@@ -118,9 +118,9 @@ class AcceptanceProvenance(unittest.TestCase):
             if "/compare/" in path:
                 return {"status": "ahead"}
             return self.api(path)
-        self.assertEqual(rg.acceptance_reasons("o/r", "a" * 40, api), [])
+        self.assertEqual(rg.acceptance_source_reasons("o/r", "a" * 40, api), [])
         self.run["head_sha"] = SOURCE
-        self.assertTrue(rg.acceptance_reasons("o/r", "a" * 40, api))
+        self.assertTrue(rg.acceptance_source_reasons("o/r", "a" * 40, api))
 
 
 if __name__ == "__main__":
