@@ -11,7 +11,8 @@ REQ = ["kavosh / governance", "required"]
 
 
 def check(name, conclusion="success", status="completed", started="2026-09-26T10:00:00Z"):
-    return {"name": name, "status": status, "conclusion": conclusion, "started_at": started}
+    return {"name": name, "status": status, "conclusion": conclusion, "started_at": started,
+            "created_at": started, "completed_at": started if status == "completed" else None}
 
 
 def api_for(pulls_by_sha=None, runs_by_head=None, parents_by_sha=None):

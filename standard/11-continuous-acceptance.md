@@ -104,7 +104,23 @@ Acceptance-Security-Evidence: https://...
 Acceptance-Migration-Evidence: https://...
 ```
 
-Release gate بررسی می‌کند merged SHA ancestor کاندیداست و Actions run معرفی‌شده موفق بوده است. لینک Issue به‌تنهایی evidence نیست.
+Release gate بررسی می‌کند merged SHA ancestor کاندیداست و Actions run معرفی‌شده موفق، متعلق به همین repository و از `ci.requiredWorkflow` مانیفست کاندیدا باشد (پیش‌فرض: `.github/workflows/ci.yml`). `head_sha` اجرای مدرک باید همان `Acceptance-Merged-SHA` باشد؛ یک اجرای موفق ولی نامرتبط مدرک پذیرش نیست.
+
+برای reuse مدرک سرشاخهٔ PR که با squash ادغام شده، marker اختیاری زیر را اضافه کنید:
+
+```text
+Acceptance-Evidence-PR: <positive PR number>
+```
+
+Gate باید ادغام همان PR به `main` همین repository، تطابق دقیق سرشاخهٔ آزمایش‌شده و commit ادغام، و برابری **کامل Git tree** آن دو را اثبات کند. ancestry یا توضیح «فقط مستندات تغییر کرده» کافی نیست؛ وقتی tree متفاوت است، مدرک CI روی source ادغام‌شده لازم است. marker خالی یا تکراری معتبر نیست.
+
+**مرز اثبات:** این بررسی، provenance اجرای CI را کنترل می‌کند؛ پوشش معنایی requirement، محتوای لینک‌های تخصصی UI/security/migration و هویت انسانی پشت `Accepted-By` یا `Defer-Approved-By` را احراز نمی‌کند. لینک‌های تخصصی هنوز فقط از نظر قالب بررسی می‌شوند. تأیید انسانی و بازبینی ارتباط requirement→evidence همچنان لازم است؛ سبز بودن Gate یا Health جای آنها نیست. تغییرات بعدیِ مؤثر بر رفتار می‌توانند مدرک تاریخی را نامعتبر کنند و باید جدا بازبینی شوند.
+
+## زمان مدرک ادغام — PR-7
+
+Layer M کنترل‌های سرشاخهٔ PR را در مرز `merged_at` ارزیابی می‌کند، نه فقط رنگ فعلی آنها. نتیجه‌ای که پس از ادغام کامل شده، مجوز آن ادغام نیست؛ اجرای واقعاً جدیدِ پس از ادغام نیز سابقهٔ معتبر را به تخلف تبدیل نمی‌کند. تاریخچه یا زمان نامعلوم، «تأییدنشده» است و سبز فرض نمی‌شود.
+
+برای Actions، زمان ایجاد workflow/attempt و هویت job/head خوانده می‌شود تا صف قبل از ساخته‌شدن job پنهان نماند. caller باید `actions: read` را همراه مجوزهای قبلی به main-guard بدهد؛ قالب مشترک این مجوز را دارد. API یا metadata ناقص، gate را باز نمی‌کند. این ممیزی پس از push است و جای کنترل دقیق سرشاخه و checkهای الزامی **پیش از merge** را نمی‌گیرد.
 
 ## health
 

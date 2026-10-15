@@ -74,6 +74,116 @@ def check_state(runs, required):
     return problems
 
 
+def _utc_timestamp(value):
+    """Parse API timestamps; absent/naive/malformed timestamps are not evidence."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return stamp.astimezone(timezone.utc) if stamp.tzinfo else None
+    except ValueError:
+        return None
+
+
+def check_state_at_merge(runs, required, merged_at):
+    """Audit the historical boundary, never the current colour of the PR head.
+
+    A later rerun cannot erase history. A result completed after the merge cannot
+    authorize it. Unknown origin/completion times stay unverified, not green.
+    """
+    cutoff = _utc_timestamp(merged_at)
+    if cutoff is None:
+        return ["merge timestamp unavailable; cannot verify PR-7 history"]
+    latest, pending, unknown = {}, {}, {}
+    for run in runs:
+        name = run.get("name", "")
+        if name not in required:
+            continue
+        origin = _utc_timestamp(run.get("created_at"))
+        start = _utc_timestamp(run.get("started_at"))
+        end = _utc_timestamp(run.get("completed_at"))
+        if origin is not None and origin > cutoff:
+            continue  # proven later execution, not a retroactive merge violation
+        if origin is None and (start is None or start > cutoff):
+            state = run.get("status") or "unknown"
+            unknown[name] = f"'{name}' {state} (merge-time origin unavailable)"
+            continue
+        origin = origin or start
+        if (start is not None and start < origin) or (end is not None and end < (start or origin)):
+            unknown[name] = f"'{name}' has inconsistent evidence timestamps"
+            continue
+        if run.get("status") == "completed" and end is None:
+            unknown[name] = f"'{name}' completion time unavailable at merge"
+            continue
+        if run.get("status") != "completed" or end > cutoff:
+            pending[name] = f"'{name}' pending at merge"
+            continue
+        # Creation orders attempts, not completion (an older slow job may finish last).
+        key = (origin, start or origin, run.get("id") or 0)
+        if name not in latest or key > latest[name][0]:
+            latest[name] = (key, run)
+    problems = []
+    for name in required:
+        if name in unknown:
+            problems.append(unknown[name])
+        elif name in pending:
+            problems.append(pending[name])
+        elif name not in latest:
+            problems.append(f"'{name}' missing at merge")
+        elif latest[name][1].get("conclusion") != "success":
+            problems.append(f"'{name}' {latest[name][1].get('conclusion')} at merge")
+    return problems
+
+
+def historical_check_runs(repo, head, required, api):
+    """Read all attempts; Actions metadata supplies queue creation times.
+
+    Check-run started_at alone cannot distinguish a pre-merge queued execution
+    from one requested after the merge. Match the job/run/head before enriching.
+    All access is read-only; unavailable metadata fails closed.
+    """
+    runs, page, attempts = [], 1, {}
+    while True:
+        data = api(f"repos/{repo}/commits/{head}/check-runs?filter=all&per_page=100&page={page}") or {}
+        batch = data.get("check_runs", [])
+        for original in batch:
+            if original.get("name") not in required:
+                continue
+            run = dict(original)
+            match = re.fullmatch(
+                rf"https://github[.]com/{re.escape(repo)}/actions/runs/([0-9]+)/job/([0-9]+)",
+                run.get("html_url") or "",
+                re.I,
+            )
+            if match and (run.get("app") or {}).get("slug") == "github-actions":
+                run_id, job_id = match.groups()
+                job = api(f"repos/{repo}/actions/jobs/{job_id}") or {}
+                if (str(job.get("id")) != job_id or str(job.get("run_id")) != run_id
+                        or job.get("head_sha") != head or job.get("name") != run.get("name")):
+                    raise RuntimeError("check/job identity mismatch while reading merge history")
+                attempt = job.get("run_attempt")
+                if not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1:
+                    raise RuntimeError("Actions job attempt unavailable; cannot establish merge history")
+                key = (run_id, attempt)
+                if key not in attempts:
+                    attempts[key] = api(f"repos/{repo}/actions/runs/{run_id}/attempts/{attempt}") or {}
+                execution = attempts[key]
+                if (str(execution.get("id")) != run_id or execution.get("head_sha") != head
+                        or execution.get("run_attempt") != attempt):
+                    raise RuntimeError("workflow attempt identity mismatch while reading merge history")
+                # A first execution can queue before any dependent job is created.
+                # Later attempts must not inherit the original run's creation time.
+                origin = execution.get("created_at") if attempt == 1 else execution.get("run_started_at")
+                origin_time, job_time = _utc_timestamp(origin), _utc_timestamp(job.get("created_at"))
+                if origin_time is None or job_time is None:
+                    raise RuntimeError("Actions queue timestamp unavailable; cannot establish merge history")
+                run["created_at"] = min(origin_time, job_time).isoformat()
+            runs.append(run)
+        if len(batch) < 100:
+            return runs
+        page += 1
+
+
 def manual_dispatch_event(repo, expected_sha, actor, api):
     """Build a bounded main-push audit only if the owner dispatched against the current main SHA."""
     if not expected_sha:
@@ -134,14 +244,8 @@ def inspect(event, repo, required, api):
                 continue  # the initial scaffold of an empty repository is the single allowed direct commit
             violations.append(f"**BR-6 direct push** `{sha[:7]}` “{msg}” — no merged pull request")
             continue
-        runs, page = [], 1
-        while True:
-            batch = (api(f"repos/{repo}/commits/{pr['head']['sha']}/check-runs?per_page=100&page={page}") or {}).get("check_runs", [])
-            runs.extend(batch)
-            if len(batch) < 100:
-                break
-            page += 1
-        problems = check_state(runs, required)
+        runs = historical_check_runs(repo, pr['head']['sha'], required, api)
+        problems = check_state_at_merge(runs, required, pr.get("merged_at"))
         if problems:
             violations.append(f"**PR-7 merged without green required checks** #{pr['number']} “{pr['title']}” — {', '.join(problems)}")
     return violations

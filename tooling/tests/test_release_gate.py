@@ -59,7 +59,9 @@ def acceptance_api(issue_body=None, issue_state="closed", run_conclusion="succes
         if "/compare/" in path:
             return {"status": compare_status}
         if "/actions/runs/99" in path:
-            return {"status": "completed", "conclusion": run_conclusion}
+            return {"id": 99, "status": "completed", "conclusion": run_conclusion,
+                    "head_sha": "b" * 40, "path": ".github/workflows/ci.yml",
+                    "repository": {"full_name": "o/r"}, "head_repository": {"full_name": "o/r"}}
         raise AssertionError(path)
     return api
 

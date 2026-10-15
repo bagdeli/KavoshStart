@@ -24,6 +24,7 @@ permissions:
   issues: write
   pull-requests: read
   checks: read
+  actions: read
 
 jobs:
   main-guard:

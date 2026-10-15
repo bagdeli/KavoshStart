@@ -338,8 +338,66 @@ jobs:
 
 
           def _marker(body, name):
-              m = re.search(rf"(?im)^\s*{re.escape(name)}:\s*(\S.+?)\s*$", body or "")
-              return m.group(1).strip() if m else None
+              # Horizontal whitespace only: an empty field must not consume the next line.
+              # Duplicate values are ambiguous, even when both happen to agree.
+              values = re.findall(rf"(?im)^[ \t]*{re.escape(name)}:[ \t]*([^\r\n]*)\r?$", body or "")
+              return (values[0].strip() or None) if len(values) == 1 else None
+
+
+          def acceptance_run_problems(repo, merged_sha, body, workflow, api):
+              """Bind base CI evidence to an approved workflow and the accepted source tree.
+
+              This validates source provenance, not the semantic coverage of typed evidence
+              URLs or the human identity behind an editable Accepted-By marker.
+              """
+              url = _marker(body, "Acceptance-Evidence-Run")
+              match = ACCEPTANCE_RUN_URL.fullmatch(url or "")
+              if not match or match.group(1).lower() != repo.lower():
+                  return ["missing same-repository Actions Acceptance-Evidence-Run"]
+              _workflow_id(workflow)  # the adapter path is versioned in the candidate manifest
+              run = api(f"repos/{repo}/actions/runs/{match.group(2)}") or {}
+              problems = []
+              if run.get("status") != "completed" or run.get("conclusion") != "success":
+                  problems.append("referenced Actions evidence run is not successful")
+              if str(run.get("id")) != match.group(2):
+                  problems.append("referenced Actions evidence run identity does not match")
+              if (run.get("repository") or {}).get("full_name", "").lower() != repo.lower():
+                  problems.append("evidence run repository does not match")
+              if (run.get("head_repository") or {}).get("full_name", "").lower() != repo.lower():
+                  problems.append("evidence source repository does not match")
+              path = run.get("path")
+              if not isinstance(path, str) or path.split("@", 1)[0] != workflow:
+                  problems.append("evidence run is not the declared required CI workflow")
+              source = run.get("head_sha")
+              if not isinstance(source, str) or not ACCEPTANCE_SHA_RE.fullmatch(source):
+                  return problems + ["evidence run has no valid source SHA"]
+              if not isinstance(merged_sha, str) or not ACCEPTANCE_SHA_RE.fullmatch(merged_sha):
+                  return problems + ["cannot bind evidence without a valid accepted merged SHA"]
+              if source == merged_sha:
+                  return problems
+
+              # Squash changes commit identity. Permit a PR-head receipt only with explicit
+              # merged-PR provenance AND identical full Git trees; ancestry alone is not proof.
+              pr_number = _marker(body, "Acceptance-Evidence-PR")
+              if not pr_number or not re.fullmatch(r"[1-9][0-9]*", pr_number):
+                  return problems + ["evidence source SHA differs from accepted merged SHA; verified Acceptance-Evidence-PR required"]
+              pr = api(f"repos/{repo}/pulls/{pr_number}") or {}
+              base, head = pr.get("base") or {}, pr.get("head") or {}
+              if (not pr.get("merged_at") or pr.get("merge_commit_sha") != merged_sha
+                      or base.get("ref") != "main" or head.get("sha") != source
+                      or (base.get("repo") or {}).get("full_name", "").lower() != repo.lower()
+                      or (head.get("repo") or {}).get("full_name", "").lower() != repo.lower()):
+                  return problems + ["evidence PR does not prove the exact accepted squash/source relationship"]
+              trees = []
+              for commit_sha in (source, merged_sha):
+                  commit = api(f"repos/{repo}/git/commits/{commit_sha}") or {}
+                  tree = (commit.get("tree") or {}).get("sha")
+                  if commit.get("sha") != commit_sha or not isinstance(tree, str) or not ACCEPTANCE_SHA_RE.fullmatch(tree):
+                      return problems + ["source tree identity unavailable for evidence PR"]
+                  trees.append(tree)
+              if trees[0] != trees[1]:
+                  problems.append("PR evidence tree differs from accepted merge; collect merged-source CI evidence")
+              return problems
 
 
           def acceptance_reasons(repo, sha, api=None):
@@ -429,14 +487,9 @@ jobs:
                       cmp = api(f"repos/{repo}/compare/{merged_sha}...{sha}")
                       if cmp.get("status") not in ("ahead", "identical"):
                           reasons.append(f"{aid}: merged SHA is not an ancestor of candidate")
-                  run_url = _marker(body, "Acceptance-Evidence-Run")
-                  rm = ACCEPTANCE_RUN_URL.fullmatch(run_url or "")
-                  if not rm or rm.group(1).lower() != repo.lower():
-                      reasons.append(f"{aid}: missing same-repository Actions Acceptance-Evidence-Run")
-                  else:
-                      run = api(f"repos/{repo}/actions/runs/{rm.group(2)}")
-                      if run.get("status") != "completed" or run.get("conclusion") != "success":
-                          reasons.append(f"{aid}: referenced Actions evidence run is not successful")
+                  workflow = (manifest.get("ci") or {}).get("requiredWorkflow") or ".github/workflows/ci.yml"
+                  for problem in acceptance_run_problems(repo, merged_sha, body, workflow, api):
+                      reasons.append(f"{aid}: {problem}")
                   for ev in evidence:
                       marker = marker_for.get(ev)
                       if marker and not re.match(r"^https://\S+$", _marker(body, marker) or ""):
@@ -831,8 +884,66 @@ jobs:
 
 
           def _marker(body, name):
-              m = re.search(rf"(?im)^\s*{re.escape(name)}:\s*(\S.+?)\s*$", body or "")
-              return m.group(1).strip() if m else None
+              # Horizontal whitespace only: an empty field must not consume the next line.
+              # Duplicate values are ambiguous, even when both happen to agree.
+              values = re.findall(rf"(?im)^[ \t]*{re.escape(name)}:[ \t]*([^\r\n]*)\r?$", body or "")
+              return (values[0].strip() or None) if len(values) == 1 else None
+
+
+          def acceptance_run_problems(repo, merged_sha, body, workflow, api):
+              """Bind base CI evidence to an approved workflow and the accepted source tree.
+
+              This validates source provenance, not the semantic coverage of typed evidence
+              URLs or the human identity behind an editable Accepted-By marker.
+              """
+              url = _marker(body, "Acceptance-Evidence-Run")
+              match = ACCEPTANCE_RUN_URL.fullmatch(url or "")
+              if not match or match.group(1).lower() != repo.lower():
+                  return ["missing same-repository Actions Acceptance-Evidence-Run"]
+              _workflow_id(workflow)  # the adapter path is versioned in the candidate manifest
+              run = api(f"repos/{repo}/actions/runs/{match.group(2)}") or {}
+              problems = []
+              if run.get("status") != "completed" or run.get("conclusion") != "success":
+                  problems.append("referenced Actions evidence run is not successful")
+              if str(run.get("id")) != match.group(2):
+                  problems.append("referenced Actions evidence run identity does not match")
+              if (run.get("repository") or {}).get("full_name", "").lower() != repo.lower():
+                  problems.append("evidence run repository does not match")
+              if (run.get("head_repository") or {}).get("full_name", "").lower() != repo.lower():
+                  problems.append("evidence source repository does not match")
+              path = run.get("path")
+              if not isinstance(path, str) or path.split("@", 1)[0] != workflow:
+                  problems.append("evidence run is not the declared required CI workflow")
+              source = run.get("head_sha")
+              if not isinstance(source, str) or not ACCEPTANCE_SHA_RE.fullmatch(source):
+                  return problems + ["evidence run has no valid source SHA"]
+              if not isinstance(merged_sha, str) or not ACCEPTANCE_SHA_RE.fullmatch(merged_sha):
+                  return problems + ["cannot bind evidence without a valid accepted merged SHA"]
+              if source == merged_sha:
+                  return problems
+
+              # Squash changes commit identity. Permit a PR-head receipt only with explicit
+              # merged-PR provenance AND identical full Git trees; ancestry alone is not proof.
+              pr_number = _marker(body, "Acceptance-Evidence-PR")
+              if not pr_number or not re.fullmatch(r"[1-9][0-9]*", pr_number):
+                  return problems + ["evidence source SHA differs from accepted merged SHA; verified Acceptance-Evidence-PR required"]
+              pr = api(f"repos/{repo}/pulls/{pr_number}") or {}
+              base, head = pr.get("base") or {}, pr.get("head") or {}
+              if (not pr.get("merged_at") or pr.get("merge_commit_sha") != merged_sha
+                      or base.get("ref") != "main" or head.get("sha") != source
+                      or (base.get("repo") or {}).get("full_name", "").lower() != repo.lower()
+                      or (head.get("repo") or {}).get("full_name", "").lower() != repo.lower()):
+                  return problems + ["evidence PR does not prove the exact accepted squash/source relationship"]
+              trees = []
+              for commit_sha in (source, merged_sha):
+                  commit = api(f"repos/{repo}/git/commits/{commit_sha}") or {}
+                  tree = (commit.get("tree") or {}).get("sha")
+                  if commit.get("sha") != commit_sha or not isinstance(tree, str) or not ACCEPTANCE_SHA_RE.fullmatch(tree):
+                      return problems + ["source tree identity unavailable for evidence PR"]
+                  trees.append(tree)
+              if trees[0] != trees[1]:
+                  problems.append("PR evidence tree differs from accepted merge; collect merged-source CI evidence")
+              return problems
 
 
           def acceptance_reasons(repo, sha, api=None):
@@ -922,14 +1033,9 @@ jobs:
                       cmp = api(f"repos/{repo}/compare/{merged_sha}...{sha}")
                       if cmp.get("status") not in ("ahead", "identical"):
                           reasons.append(f"{aid}: merged SHA is not an ancestor of candidate")
-                  run_url = _marker(body, "Acceptance-Evidence-Run")
-                  rm = ACCEPTANCE_RUN_URL.fullmatch(run_url or "")
-                  if not rm or rm.group(1).lower() != repo.lower():
-                      reasons.append(f"{aid}: missing same-repository Actions Acceptance-Evidence-Run")
-                  else:
-                      run = api(f"repos/{repo}/actions/runs/{rm.group(2)}")
-                      if run.get("status") != "completed" or run.get("conclusion") != "success":
-                          reasons.append(f"{aid}: referenced Actions evidence run is not successful")
+                  workflow = (manifest.get("ci") or {}).get("requiredWorkflow") or ".github/workflows/ci.yml"
+                  for problem in acceptance_run_problems(repo, merged_sha, body, workflow, api):
+                      reasons.append(f"{aid}: {problem}")
                   for ev in evidence:
                       marker = marker_for.get(ev)
                       if marker and not re.match(r"^https://\S+$", _marker(body, marker) or ""):
