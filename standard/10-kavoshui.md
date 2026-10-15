@@ -13,7 +13,7 @@
 1. `ui.kavoshui` در مانیفست نسخه‌ی **دقیق** را پین می‌کند (نه `latest`، نه `^`).
 2. کامپوننت‌ها از بسته‌های نسخه‌دار KavoshUI مصرف می‌شوند، به همان روشی که KavoshUI در README و `CONSUMER_CONFORMANCE_STANDARD_FA.md` خودش تعریف می‌کند. کپی کد کامپوننت در پروژه ممنوع؛ کمبود = Issue در KavoshUI.
 3. استثنای استفاده از KavoshUI برای یک پروژه در ADR همان پروژه ثبت می‌شود: چرایی، محدوده، طراحی RTL، دسترس‌پذیری، مالکیت به‌روزرسانی و معادل‌های آزمون. کپی کد KavoshUI مجاز نمی‌شود.
-4. ارتقای KavoshUI = PR جدا `chore(ui): upgrade KavoshUI to vX.Y.Z`. شواهد رندر RTL/موبایل/تم تیره برای تغییرات بصری یا تعاملی لازم است؛ تغییر غیرنمایشیِ API یا متادیتا screenshot نمی‌خواهد.
+4. ارتقای KavoshUI = PR جدا `chore(ui): upgrade KavoshUI to vX.Y.Z`. برای تغییرات بصری/تعاملی، **یکی** از روش‌های معتبرِ مقایسهٔ رندرِ خودکار یا بازبینی انسانیِ واقعی با مرجع source لازم است؛ هر دو فقط با ریسک موجه. تغییر غیرنمایشی API یا متادیتا screenshot نمی‌خواهد و نوشتن `UI evidence:` به‌تنهایی اثبات اجرا/بازبینی نیست.
 5. عامل پیش از هر کار UI این اسناد KavoshUI را می‌خواند: `AGENTS.md`، `docs/foundations/DESIGN_STANDARD_FA.md`، `docs/foundations/COMPONENT_SELECTION_STANDARD_FA.md`، `docs/architecture/CONSUMER_CONFORMANCE_STANDARD_FA.md` — و **نه** همه‌ی 91 سند.
 
 ## یک گفت‌وگوی آغاز، نه دو پرسشنامهٔ مستقل

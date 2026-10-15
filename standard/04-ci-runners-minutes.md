@@ -29,7 +29,7 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 - ظرفیت runner (`ci.runners`) براساس صف و SLO توسط مالک تعیین و در همان control surface بررسی می‌شود.
 - نصب: `sudo bash scripts/install-runner.sh <owner/repo> <token> [n]`؛ token را مالک می‌گیرد:
   `gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token`
-- شبکه: runner داخل ایران باید به github.com، ghcr.io و مخازن بسته‌ها (یا mirror داخلی مثل KavoshRepo) دسترسی پایدار داشته باشد.
+- شبکه: runner باید به **مقصدهایی که workflow واقعاً مصرف می‌کند** دسترسی قابل اندازه‌گیری داشته باشد. عدم دسترسی به github.com، ghcr.io یا یک مخزن بسته تنها زمانی blocker است که همان مسیر برای این کار لازم باشد. مسیر جایگزین، proxy یا mirror جزء الزامات عمومی این استاندارد نیست؛ پس از تکرار خطا، جزئیات قابل‌رفعِ URL/DNS/IP را طبق `FLOW-3` گزارش کنید.
 - تغییر visibility یک ریپو = تغییر runner در همان PR؛ governance ناهمخوانی را قرمز می‌کند.
 
 حساب Free استفاده می‌شود و shared quota فقط پس از اجازهٔ مستقیم برای یک اجرای مشخص مصرف می‌شود. budget یا گزارش دقیقه توقف قطعی هزینه نیست. artifact، cache، Packages و انتقال داده جدا بررسی می‌شوند؛ runner بزرگ و AI API پولی وابستگی استاندارد نیستند.

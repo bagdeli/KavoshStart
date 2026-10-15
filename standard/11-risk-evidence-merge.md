@@ -75,7 +75,19 @@ Evidence باید از ماهیت تغییر بیاید، نه از یک checkli
 
 هر defect جدید باید یا invariant جدید را به contract+regression تبدیل کند یا detector قدیمی را با negative test تعمیر کند.
 
-## 8. Tool adapters
+## 8. Proportionate two-lane verification and product lifecycle
+
+**A — deterministic, machine-observed:** build/typecheck, relevant behavior and negative authorization tests, bounded regression, baseline secret/dependency/unsafe-rendering checks, artifact/source identity and required environment gates. A red/missing required machine test cannot be replaced by a model's verbal assurance or visual approval.
+
+**B — evaluative:** visual design, language, layout quality, UX and owner-selected outcomes may use a reviewed repeatable machine comparison **or** a genuine human review. One method is enough unless a material risk justifies both. A textual PR label/link alone is a pointer, not proof that a person reviewed or a browser ran; never use the agent's own action as independently human-reviewed evidence.
+
+**Timing:** PR → fast impacted A and applicable B; integrated candidate → cross-component/e2e on representative routes and security baseline; initial release → required gates for that version; post-functional-release → scheduled deep/manual penetration or operational pilot when applicable. High-risk public-facing auth/payment/sensitive-data attack surfaces need focused verification before public exposure. Full manual penetration testing must not be a universal development or initial-release gate.
+
+**No gate inflation:** a defect gets a focused regression on the affected behavior. Before adding a global MUST, the owner must approve its cross-project applicability, measurable safety value, lifecycle timing and operational cost. An agent cannot create a mandatory project-wide security test simply because it suggested one. Capability completion, test output and acceptance remain distinct; the same genuine observation may support multiple criteria without one receipt per row.
+
+The existing `ACC-3` independent-receipt contract remains active for projects pinned to the current v3 continuous profile; **these two-lane guidelines do not turn a missing source-bound receipt into PASS**. Changing that trust model needs its own reviewed implementation/migration and tests, not an unverified document-only bypass.
+
+## 9. Tool adapters
 
 Core outcome را govern می‌کند، نه tool را:
 

@@ -4,6 +4,18 @@ You are an AI agent asked to create, adopt or maintain a Kavosh project "using K
 Follow this protocol exactly. Rules are referenced by ID (e.g. `BR-1`); their canonical list is
 [`standard/RULES.md`](standard/RULES.md). When this file and a rule disagree, the rule wins — report the conflict.
 
+## Network transfer failure — per-project operator escalation
+
+For a download or upload that fails repeatedly (normally no more than three bounded attempts for transient errors), **stop retrying that endpoint** and report the exact blocker to the owner. Do not silently introduce a relay, proxy, alternate registry, paid service, DNS override, TLS bypass, credential, or global infrastructure task. If the URL was never attempted, do not invent an outage.
+
+Give a compact, operator-actionable report from the **environment where the transfer failed**:
+- operation (download/upload), requested artifact and source environment, sanitized URL (`scheme://host[:port]/safe-path`, **without userinfo, query, fragment, signed tokens or secrets**), hostname/DNS name, port;
+- the IP addresses resolved **from that environment** (IPv4/IPv6, with observation time/source), or exactly `IP unknown — DNS resolution failed/not checked`; never guess an IP or reuse one from another environment;
+- observed failure category (DNS, timeout, TCP/TLS, HTTP status, authorization, rate limit, missing artifact), failed attempt count, and whether the failure is transient or reproducible;
+- the smallest unblock request (host/domain/IP/port/protocol), distinguishing a routing/firewall failure from HTTP 401/403/404, expired token or certificate errors. CDN IPs can change; prefer domain-level diagnosis when appropriate.
+
+Use existing logs or `python3 <KavoshStart>/scripts/network_failure_report.py --url <URL> --operation download|upload --attempts N --reason <code>` **locally** for safe DNS/IP observations; this optional read-only helper performs name resolution only, without download, upload or persistent state. Never paste signed URLs, headers, access tokens or private environment endpoints into public KavoshStart Issues/PRs. For private projects, report only in their private conversation/repository. A response from the owner that changes connectivity authorizes only the named unblock action, not a new platform dependency.
+
 ## §0 Session bootstrap — every conversation/session
 
 Before choosing NEW / ADOPT / UPGRADE / WORK:

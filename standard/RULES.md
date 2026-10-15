@@ -39,15 +39,15 @@
 |---|---|---|---|---|
 | CR-1 | هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند. | MUST | All | P |
 | CR-2 | تغییرات control-plane/governance، auth/permission/security boundary، migration یا عملیات مخرب داده، deploy/release policy و credential/trust boundary حداقل `high` هستند مگر دلیل versioned و قابل بازبینی برای کاهش ریسک وجود داشته باشد. | MUST | All | P, R |
-| CR-3 | evidence از ترکیب risk × capability مشتق می‌شود. low/medium پس از شواهد و checkهای لازم می‌تواند delegated merge شود؛ high/critical پیش از merge/release به تصمیم صریح انسانی برای scope فعلی نیاز دارد. اگر عامل با identity مالک عمل می‌کند، label/comment ساخته‌شده توسط همان عامل «اثبات انسانی» نیست. | MUST | All | A, R |
-| CR-4 | شکست یا defect تازه باید به این سؤال پاسخ دهد: «چرا gate موجود آن را نگرفت؟». اگر invariant جدید است contract+regression اضافه می‌شود؛ اگر invariant قدیمی است detector+negative test اصلاح می‌شود. fix بدون یادگیری سیستماتیک فقط وقتی مجاز است که واقعاً هیچ detector قابل‌اتکایی وجود نداشته باشد و دلیل ثبت شود. | MUST | T1, T2 | R |
+| CR-3 | evidence و زمان اجرای آن از risk × capability × lifecycle گرفته می‌شود: A=آزمون قطعی ماشینی، B=قضاوت UI/UX با مقایسهٔ ماشینی معتبر یا بازبینی انسانی واقعی. یک روش B کافی است مگر ریسک واقعی هر دو را توجیه کند. نتیجهٔ ناموفق A با B رفع نمی‌شود. low/medium با شواهد لازم می‌تواند delegated merge شود؛ high/critical تصمیم صریح انسانی لازم دارد. عمل عامل با هویت مالک اثبات تصمیم انسانی مستقل نیست. | MUST | All | A, R |
+| CR-4 | شکست یا defect تازه باید بپرسد «چرا کنترل موجود آن را نگرفت؟»؛ ابتدا detector قبلی یا regression متمرکز همان قابلیت اصلاح شود. invariant جدید فقط با تأیید applicability مشترک، هزینهٔ اجرا و ریسک، به کنترل عمومی تبدیل می‌شود. پیشنهاد عامل به‌تنهایی MUST یا backlog جدید نیست؛ نبود detector قابل‌اتکا با دلیل در همان کار ثبت شود. | MUST | T1, T2 | R |
 
 ## FLOW — ادامه، پذیرش و تکمیل
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | FLOW-1 | واژه‌هایی مثل «ادامه بده / proceed / continue» فقط اجازهٔ اجرای گام بعدی‌اند و هرگز به‌تنهایی Acceptance، Merge، Release، Production یا چشم‌پوشی از blocker قبلی محسوب نمی‌شوند. | MUST | All | A, R |
 | FLOW-2 | هر نتیجهٔ الزامی که هنگام handoff ناقص می‌ماند باید پیش از ادامه به Issue canonical یا acceptance item قابل ردیابی تبدیل شود. کار بعدی می‌تواند مستقل ادامه یابد، اما هیچ گزارش/Release نباید آن بخش را complete نشان دهد تا evidence و acceptance واقعی بسته شود. | MUST | T1, T2 | R, via ACC-2, ACC-3 |
-| FLOW-3 | گزارش عامل باید «کار انجام‌شده»، «blocker/بدهی باقی‌مانده» و «تصمیم انسانی واقعاً لازم» را جدا کند؛ درخواست تصمیم انسانی فقط جایی مجاز است که policy آن را لازم کرده باشد، نه برای merge مکانیکی یک PR کم‌ریسک سبز. | SHOULD | All | R |
+| FLOW-3 | گزارش عامل باید کار انجام‌شده، blocker و تصمیم انسانی واقعاً لازم را جدا کند. پس از شکست تکراری download/upload، باید URL بدون اطلاعات حساس، DNS/hostname، IPهای واقعاً resolve‌شده یا «نامشخص»، دستهٔ خطا و تعداد تلاش‌ها را به مالک در بستر همان پروژه گزارش کند؛ ابداع IP یا افزودن خودکار relay/mirror ممنوع است. | MUST | All | R |
 
 ## WK — مدیریت کار
 | ID | قاعده | سطح | Tier | لایه |
@@ -111,7 +111,7 @@
 | CI-2 | هر runner خودمیزبان باید trust model و isolation/containment واقعی و مستند داشته باشد؛ implementation خاص invariant نیست. ADR باید مرز کد نامطمئن و credential boundary را روشن کند و یک strategy واقعی مانند ephemeral/disposable، sandbox/container/rootless/VM یا runner اختصاصیِ همان repo با کنترل‌های معادل را نام ببرد. PR کد fork/نامطمئن بدون boundary مناسب اجرا نمی‌شود و credential تولید/production روی runner قرار نمی‌گیرد. تعداد runner با ظرفیت و SLO تعیین می‌شود، نه Tier ثابت. | MUST | All | P, R |
 | CI-3 | Core فقط reliability/trust/isolation/least-privilege و bounded execution را govern می‌کند. budget، plan و quota سیاست portfolio/account هستند و نباید invariant کیفیت نرم‌افزار شوند؛ هر مسیر billable همچنان باید طبق policy مالک مجاز باشد، اما مقدار budget داخل manifest به‌تنهایی مجوز یا failure مهندسی ایجاد نمی‌کند. | MUST | All | P, H, R |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
-| CI-5 | jobهای سنگین (rehearsal، e2e کامل، migration کامل) فقط روی `main`، tag، یا برچسب `ci:full`. | MUST | T1, T2 | R |
+| CI-5 | jobهای سنگین (e2e کامل، migration rehearsal، اسکن عمیق امنیتی) فقط وقتی بر اساس ریسک/مرحله لازم‌اند، روی `main`، tag، برچسب `ci:full` یا اجرای صریحِ مالک انجام شوند؛ تست نفوذ جامع شرط پیش‌فرض هر PR/نسخهٔ اولیه نیست. | MUST | T1, T2 | R |
 | CI-6 | CI سنگین روی PR Draft پیش‌فرض خاموش است؛ اجرای زودهنگام فقط با درخواست صریح و رعایت مجوز سهمیه مجاز است. عامل پیش از push `make check` را محلی اجرا می‌کند. | MUST | All | A, R |
 | CI-7 | یک job تجمیعی با نام ثابت `required` نتیجه‌ی CI را اعلام می‌کند. | MUST | All | P |
 | CI-8 | پروژه یک command contract معنایی و مستند برای setup/lint/test/build/check (با N/A صریح برای عملیات نامربوط) ارائه می‌کند و CI همان contract را صدا می‌زند. scaffold پیش‌فرض می‌تواند Makefile adapter بسازد، اما زبان/tool خاص invariant عمومی نیست. | MUST | All | R |
@@ -161,11 +161,11 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | UI-1 | KavoshUI با نسخهٔ دقیق پین‌شده پیش‌فرض است. استثنا با ADR پروژه، دلیل، دامنهٔ اجزا، دسترس‌پذیری و RTL مجاز است؛ کپی کامپوننت‌های KavoshUI ممنوع می‌ماند. | MUST | All | P, R |
-| UI-2 | ارتقای KavoshUI در PR جداست؛ شواهد رندر RTL/موبایل فقط وقتی لازم است که diff بتواند ظاهر یا تعامل را تغییر دهد. تغییر API/بستهٔ غیرنمایشی به‌تنهایی نیازمند screenshot نیست. | MUST | All | P, R |
+| UI-2 | ارتقای KavoshUI در PR جداست؛ برای تغییر مؤثر بر رندر/تعامل، آزمون مقایسه‌ای معتبر **یا** تأیید انسانی واقعی با نسخهٔ قابل انتساب کافی است، مگر ریسک هر دو را ایجاب کند. تغییر غیرنمایشی screenshot نمی‌خواهد. متن/link بدون مشاهدهٔ واقعی صرفاً اشاره به مدرک است، نه خود تأیید. | MUST | All | P, R |
 | UI-3 | قواعد مصرف‌کننده‌ی KavoshUI (`docs/architecture/CONSUMER_CONFORMANCE_STANDARD_FA.md` در KavoshUI) رعایت می‌شود. | MUST | All | R |
 
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)
 این‌ها ماشینی بررسی نمی‌شوند؛ مالک هنگام بازبینی PR مسئول آن‌هاست و نقضشان «کشف خودکار» ندارد:
 WK-3 · WK-5 · CR-3 (تصمیم انسانی high/critical) · FLOW-1 · FLOW-2 · PR-6 (بخش high/critical؛ لایه‌ی A فقط عامل را محدود می‌کند) · PR-7 (تصمیم ادغام؛ لایه‌ی M پس از وقوع کشف می‌کند) ·
-REL-2 · CI-2 (ظرفیت/ایزولیشن عملیاتی runner خصوصی) · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · UI-2 · UI-3.
+REL-2 · CI-2 (ظرفیت/ایزولیشن عملیاتی runner خصوصی) · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · FLOW-3 · UI-2 · UI-3.
 هر وقت برای یکی از این‌ها check ارزان پیدا شد، لایه‌ی ماشینی اضافه و از این فهرست حذف می‌شود (ADR-0002).

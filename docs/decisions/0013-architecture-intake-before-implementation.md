@@ -24,3 +24,9 @@ Existing unittest discovery checks questionnaire/template/protocol consistency a
 ## Compatibility
 
 No workflow API, rule ID, manifest schema, receipt format or existing source approval changes. Existing consumers reuse decisions and fill only gaps when this protocol is explicitly adopted; it does not retroactively invalidate their releases. Canonical RULES.md still wins on conflict. This PR does not authorize merge, publication or rollout.
+
+## Network incidents and proportional QA (owner-approved follow-up)
+
+A failed upload/download is **not** authority to introduce a new relay or permanent service. The agent reports the private, sanitized URL, hostname/DNS, actually resolved IP or unknown, port, failure class and bounded attempts to the owner for unblock. This is an operational decision in the owning project, not a portfolio infrastructure requirement. The optional read-only diagnostic only resolves DNS; it does not perform a transfer or write durable state.
+
+Quality uses deterministic machine-observed checks for measurable invariants and human **or** trusted machine comparison for evaluative UI; high-risk security boundaries remain tested. Full manual penetration tests are not a universal initial-release prerequisite. Existing v3 ACC-3 signed/typed receipt gates remain unchanged by this follow-up; any relaxation requires a separately reviewed versioned trust contract and tests. No private product environment is named in public standards.

@@ -20,7 +20,7 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 | B0b | R* | اگر self-hosted انتخاب شد، trust model، isolation/containment، مرز کد نامطمئن و credential boundary چیست؟ | `ci.runnerLabels`, `ci.runners`, `ci.trustModelADR` | implementation خاص invariant نیست؛ dedicated/ephemeral/rootless/container/VM فقط وقتی معتبرند که boundary واقعی و مستند داشته باشند. labels `[self-hosted, linux, x64, <repo-slug>]`. Capacity follows queue/SLO. |
 | B1 | R | آیا برنامه باید روی سرور همیشه روشن اجرا شود؟ | `runtime` | No → `none` (library/CLI/script) or `desktop`; only static files → `static`; yes → `server` |
 | B2 | R* | سرور کجاست؟ ایران / خارج / هر دو؟ | `deploy.location` | *if runtime=server |
-| B3 | R* | سرور به github.com و ghcr.io دسترسی پایدار دارد؟ | `deploy.method` | yes → `pull-image` or `pull-build`; no → `pull-build` via mirror/relay (KavoshRepo) |
+| B3 | R* | آیا محیط اجرا می‌تواند به مقصدهای لازم برای دریافت/ارسال فایل متصل شود؟ اگر نه، محدودیت شبکه چیست؟ | `deploy.method` و تصمیم مستندِ اتصال | از `pull-image` یا `pull-build` فقط وقتی مسیر آن قابل اجراست استفاده شود. ابزار انتقال، proxy یا mirror خاصی به‌صورت عمومی اجباری نیست. شکست تکراری دانلود/آپلود با پروتکل گزارش URL/DNS/IP در `START.md` ثبت شود؛ مسیر جایگزین تنها با انتخاب مالک |
 | B4 | R* | چه محیط‌هایی لازم است؟ | `deploy.environments` | default T1: `["test","production"]`; T0: `[]` |
 | B5 |   | دامنه/آدرس هر محیط؟ | `deploy.urls` | never put credentials here |
 | B6 | R* | اگر static: کجا منتشر شود؟ | `deploy.method` | GitHub Pages is **not** available for private repos on Free → own server (`pull-build`) or make the repo public |
