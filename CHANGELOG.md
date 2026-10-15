@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/bagdeli/KavoshStart/compare/v3.0.0...v3.0.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **acceptance:** complete bounded artifact transport ([#128](https://github.com/bagdeli/KavoshStart/issues/128)) ([e521d4f](https://github.com/bagdeli/KavoshStart/commit/e521d4fabcd40a2c39c7e683b45dc6a8e05d9463))
+
 ## [3.0.0](https://github.com/bagdeli/KavoshStart/compare/v2.1.0...v3.0.0) (2026-10-15)
 
 
