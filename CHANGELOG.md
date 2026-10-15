@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0](https://github.com/bagdeli/KavoshStart/compare/v3.0.2...v4.0.0) (2026-10-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **governance:** Optional risk-based continuous-acceptance and stricter UI-2 source-bound verification require an explicit new major KavoshStart release and consumer migration. Existing pinned v3 consumers are unchanged.
+
+### Features
+
+* **governance:** proportional QA and source-bound project controls ([#131](https://github.com/bagdeli/KavoshStart/issues/131)) ([67a6925](https://github.com/bagdeli/KavoshStart/commit/67a69254c1299b1cb2aaf87c8b29335fdbcca350)), closes [#130](https://github.com/bagdeli/KavoshStart/issues/130)
+
 ## [3.0.2](https://github.com/bagdeli/KavoshStart/compare/v3.0.1...v3.0.2) (2026-10-15)
 
 
