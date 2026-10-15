@@ -66,6 +66,7 @@ jobs:
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           REQUIRED: ${{ inputs.required-checks }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           umask 077
           gate_script=$(mktemp "$RUNNER_TEMP/kavosh-release.XXXXXX.py")
@@ -989,7 +990,7 @@ jobs:
           if __name__ == "__main__":
               sys.exit(main())
           PY
-          python3 "$gate_script" --repo "$REPO" --sha "$SHA" --required "$REQUIRED" --branch "${{ github.event.repository.default_branch }}"
+          python3 "$gate_script" --repo "$REPO" --sha "$SHA" --required "$REQUIRED" --branch "$DEFAULT_BRANCH"
       - name: release-please
         id: rp
         if: steps.gate.outputs.open == 'true'
