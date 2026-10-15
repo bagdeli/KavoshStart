@@ -1,0 +1,26 @@
+# One-time source transport for a known Draft PR. Removed from the final tree.
+# Creates exact Git blobs only; never pushes, merges, deploys or publishes releases.
+name: receipt-materialize
+on:
+  push:
+    branches: [fix/121-evidence-integrity]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    if: >-
+      github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false &&
+      github.ref == 'refs/heads/fix/121-evidence-integrity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - run: pip install --quiet pyyaml
+      - name: Reproduce verified source and create unreferenced blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .receipt-transport/materialize.py
