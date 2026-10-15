@@ -1,0 +1,2 @@
+# Self-check fixture driver only; not a consumer/runtime dependency.
+playwright==1.57.0

@@ -21,3 +21,7 @@ coverage/
 
 # local agent state
 .claude/settings.local.json
+
+# Disposable local conformance output/dependencies
+cross-domain.xml
+.conformance-deps/

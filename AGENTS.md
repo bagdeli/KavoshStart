@@ -23,7 +23,8 @@ docs/decisions/ adoption/  ADRs and generic adoption guidance; private-project a
 
 ## Commands
 ```bash
-make check                          # everything self-check runs
+make check                          # core unit/template/static checks
+make conformance                    # real cross-domain fixtures; see tooling/fixtures/README.md
 python3 tooling/build_workflows.py  # after editing tooling/src or tooling/templates or the schema
 python3 tooling/test_templates.py   # scaffold every tier×runtime and run governance on it (+ negative test)
 ```
