@@ -1,7 +1,8 @@
 # Intake questionnaire
 
-Every answer maps to a field of `kavosh.project.json` (column **Field**). **R** = required before scaffolding.
-Ask the owner in Persian; the Persian wording is given for each question. Always offer a default.
+A–F use existing `kavosh.project.json` fields. **R** = required before scaffolding; **R*** = required only when its condition applies.
+G records architecture decisions in the existing `PROJECT.md` section, not new manifest fields or a new tracker.
+Ask in Persian. A suggested default is a proposal, never an accepted answer. Reuse an explicit answer already supplied for this project; do not ask it again unless its scope changed.
 
 ## A. Identity
 | # | R | Question (FA) | Field | Notes / default |
@@ -10,7 +11,7 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 | A2 | R | هدف پروژه در یک جمله؟ | `summary` | Must describe the product now, not the vision |
 | A3 | R | چه کسانی از آن استفاده می‌کنند و تقریباً چند نفر؟ | `users.audience`, `users.scale` | `internal` / `customers` / `public`; `1-10`, `10-100`, `100-1000`, `1000+` |
 | A4 | R | اولین خروجی قابل‌استفاده (v0.1.0) دقیقاً چه کاری انجام می‌دهد؟ | `firstRelease` | 1–5 bullet points; becomes milestone v0.1.0 |
-| A5 |   | چه چیزهایی عمداً در این پروژه نیست؟ | `outOfScope` | Prevents scope drift when README and AGENTS.md describe different product boundaries |
+| A5 | R | چه چیزهایی عمداً در این پروژه نیست؟ | `outOfScope` | Prevents scope drift when README and AGENTS.md describe different product boundaries |
 
 ## B. Runtime and deployment
 | # | R | Question (FA) | Field | Notes / default |
@@ -55,7 +56,34 @@ Ask the owner in Persian; the Persian wording is given for each question. Always
 | F4 | R | آیا این پروژه را ریپوهای دیگر Kavosh مصرف می‌کنند (کتابخانه/استاندارد)؟ | `projectKind` | `application` / `library` / `tool`; library ⇒ at least T1 |
 | F5 | R | این پروژه چه capabilityهای پایدار دارد؟ | `capabilities` | choose from `control-plane`, `package`, `server`, `browser-ui`, `desktop`, `persistent-data`, `migration`, `infrastructure`, `release-artifact`, `regulated`, `cms-wordpress`; derive obvious entries from earlier answers, then ask only for non-derivable scope |
 
+## G. Architecture decisions — ask applicability first
+
+Review these subjects at initial intake for every project. **R** here means an explicit applicability/choice decision before dependent implementation, not mandatory implementation of the capability. A recorded answer can satisfy the question without asking it again. The **Record** column points to the existing project sheet; reference A–F fields rather than duplicating their values.
+
+| # | R | Question (FA) | Record | Conditional detail / architectural effect |
+|---|---|---|---|---|
+| G1 | R | این محصول لایسنس می‌خواهد یا نه؟ اگر بله، از کدام سازوکار مصوب استفاده کند؟ | `PROJECT.md#architecture-decisions` | Ask regardless of internal/public audience. When needed, decide the licensing provider/contract, entitlement boundary (for example user, organization, installation or capability), enforcement location and disconnected/invalid behavior. Do not invent lease periods, cryptographic protocols or a licensing service. Product licensing is distinct from third-party/font usage rights. |
+| G2 | R | ورود کاربر و کنترل دسترسی چگونه باشد؟ حساب محلی، ورود یکپارچه یا بدون ورود؟ | `PROJECT.md#architecture-decisions` | Decide identity provider, relevant roles and trusted authorization boundary before dependent routes/UI. Licensed capability does not grant a user permission. Reuse an approved authentication/authorization implementation instead of rebuilding it. |
+| G3 | R | مرجع اصلی و مالک داده کیست و جداسازی سازمان‌ها چگونه انجام شود؟ | `PROJECT.md#architecture-decisions` | Reference `data.multiTenant` and `stack.database`; clarify authoritative systems, shared/private data and tenant boundaries only where applicable. Do not turn a UI value format into a product storage model. |
+| G4 | R | کدام اتصال‌ها ضروری‌اند و هنگام قطع شبکه یا سرویس چه رفتاری لازم است؟ | `PROJECT.md#architecture-decisions` | Reference `dependsOn` and regulated integrations; distinguish required/optional services, offline needs, retry/queue needs and operator-visible failure. Ask channel/notification needs only when relevant; do not add an integration because it exists in the portfolio. |
+| G5 | R | دادهٔ موجود یا مهاجرت داریم؟ نگهداری، حذف و بازیابی داده چه انتظاری دارد؟ | `PROJECT.md#architecture-decisions` | For persistent data, record the starting data source, migration/retention and recovery expectations; detailed rehearsal belongs before affected operations. No database means no invented database migration or backup work. Existing DEP/SEC safeguards remain applicable. |
+| G6 | R | کدام روش پیاده‌سازی مصوب مناسب است و چه بخش‌هایی نباید دوباره ساخته شوند؟ | `PROJECT.md#architecture-decisions` | Reference `stack` and approved engineering decisions; resolve module/API/error/ownership boundaries that materially affect the first release. Resolve current versions before choosing defaults; no universal framework is required. |
+| G7 | R | رابط روی چه دستگاه‌ها و با چه زبان، تقویم و هویت بصری استفاده می‌شود؟ چاپ یا خروجی خاص لازم است؟ | `PROJECT.md#architecture-decisions` | If `ui.kind=none`, record not-needed and do not create UI tasks. Otherwise reuse `ui` choices; select supported typography, density, accessibility and responsive needs from KavoshUI. Ask Help/search/print/export needs conditionally, not as universal product features. Known font licence administration remains with its recorded owner; do not ask it again. |
+| G8 | R | محدودیت اجرا، هزینه، کارایی و مسئول نگهداری چیست؟ | `PROJECT.md#architecture-decisions` | Reference `deploy` and `ci`; decide relevant availability, recovery, observability and capacity expectations. Reuse approved operational profiles. A recorded budget or environment is not execution/credential/Production authorization. |
+| G9 | R | اولین خروجی با چه معیار و شاهدی پذیرفته می‌شود و کدام تصمیم‌ها با مالک می‌ماند؟ | `PROJECT.md#architecture-decisions` | Reference `firstRelease`, approved scope and authority. Plan risk-sized evidence with the capability. For continuous acceptance, identify the existing admitted evidence/decision producer and its availability before promising delivery; a missing producer is an explicit prerequisite, not permission to invent receipts or build a new App by default. |
+
+## Recording choices without a second source of truth
+
+Use the compact G1–G9 table in `templates/common/PROJECT.md`. Store settled choices and a source/reference only: `selected`, `not-needed`, or `inherited` with an explicit approved profile/version/reference. These describe design intent, not acceptance or live work status. Reuse existing manifest fields through references; do not invent schema keys. Material rationale uses an existing project ADR/Spec, not one ADR per question.
+
+An `unresolved` answer stays in the selected Issue/Spec **Open questions**, with the decision owner, the dependent work and when the answer is needed. Block only dependent implementation; unrelated authorized work may continue. Do not call the architecture finalized, scaffold a dependent implementation, or silently substitute a default. Repository identity and required scaffold inputs must still be known before scaffolding.
+
+`not-needed` is not unanswered: it creates no implementation, test, evidence receipt or separate Issue. An inherited choice is reused, not re-approved on every session. A new scope or changed dependency can reopen only the affected decision; unchanged answers stay in force. Repository visibility and the fact that the standards are internal do not decide product licensing, identity or data sensitivity.
+
 ## Rules for asking
-- Ask everything missing in **one** message. Number the questions with the IDs above.
-- If the owner answers vaguely ("معمولی", "بعداً"), use the default and say so explicitly.
-- Record assumptions in `PROJECT.md` → "Assumptions" so they can be revisited.
+- Read existing project answers and explicit owner instructions first. Ask only missing decisions in one grouped message, with conditional follow-ups for selected capabilities.
+- Never convert vague answers ("معمولی", "بعداً") into approval for licensing, identity, authorization, tenancy, data retention/deletion, paid operations or release authority. Offer alternatives and record unresolved dependent work. Explicit acceptance of an applicable pre-approved default is valid.
+- Capture architecture-shaping choices early; leave reversible detail to the related capability before its acceptance. Do not conduct an exhaustive design of every possible feature at intake.
+- Examples illustrate a decision class, not mandatory features or permission to inspect another project. Do not reopen an example product to apply this standard.
+- Answers are not work items. Requirements, capability delivery and test observations are distinct; reuse one evidence source for all actually covered criteria with traceability. Never create one PR or receipt solely for every questionnaire/requirement row.
+- Existing approval and operational safety rules are not waived by this questionnaire. Human review of these instructions is distinct from machine checks of their presence and consistency.
