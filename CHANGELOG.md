@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.0.2](https://github.com/bagdeli/KavoshStart/compare/v3.0.1...v3.0.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* **main-guard:** preserve valid release check history ([#135](https://github.com/bagdeli/KavoshStart/issues/135)) ([1a0e2f8](https://github.com/bagdeli/KavoshStart/commit/1a0e2f8f36a147f243977f3d5d6fa65f8849ac8e))
+* **main-guard:** retain newer valid merge evidence ([#133](https://github.com/bagdeli/KavoshStart/issues/133)) ([a723fc3](https://github.com/bagdeli/KavoshStart/commit/a723fc36c4e91a375b41a3aaf51c00313aeec688))
+
 ## [3.0.1](https://github.com/bagdeli/KavoshStart/compare/v3.0.0...v3.0.1) (2026-10-15)
 
 
