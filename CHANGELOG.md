@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.0](https://github.com/bagdeli/KavoshStart/compare/v2.1.0...v3.0.0) (2026-10-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **acceptance:** continuous-acceptance consumers require reviewed assertion mappings, independently admitted producers and source-bound receipts; marker-only approval is insufficient. Consumer rollout and runtime acceptance are separate from this control-plane merge.
+
+### Features
+
+* **acceptance:** verify source-bound receipts and independent decisions ([#122](https://github.com/bagdeli/KavoshStart/issues/122)) ([6848c4e](https://github.com/bagdeli/KavoshStart/commit/6848c4e50bbfb74b6631a84457a7a25e4c152abe))
+
+
+### Bug Fixes
+
+* **release:** keep generated gate scripts literal ([#126](https://github.com/bagdeli/KavoshStart/issues/126)) ([19a4c2b](https://github.com/bagdeli/KavoshStart/commit/19a4c2bbe1b2b3f94fa447cc97ebe09da277e982)), closes [#125](https://github.com/bagdeli/KavoshStart/issues/125)
+
 ## [2.1.0](https://github.com/bagdeli/KavoshStart/compare/v2.0.6...v2.1.0) (2026-10-09)
 
 
