@@ -500,15 +500,32 @@ def runner_workflow_problems(workflows, m):
                           and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
                     bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
     if vis == "private" and runner == "self-hosted":
-        # Reusable workflow jobs have no local runs-on. The standard's
-        # reusable default is GitHub-hosted: require explicit self-hosted
-        # input at each callsite, not an unrelated runs-on elsewhere.
+        # A reusable workflow picks its own job runner. The standard defaults
+        # to GitHub-hosted, so require the exact approved self-hosted labels
+        # in the job's *with* inputs rather than trusting any other YAML key.
         for file_name, source in workflows.items():
-            for job in re.split(r"(?m)^  [A-Za-z0-9_-]+:[ \\t]*(?:#.*)?$", source)[1:]:
-                called = re.search(r"(?m)^    uses:[ \\t]*(\\S+)", job)
-                if called and called.group(1).startswith("bagdeli/KavoshStart/.github/workflows/"):
-                    if not re.search(r"(?m)^      runs-on:[ \\t]*\\S", job):
-                        bad.append(f"{file_name}: standard reusable workflow needs explicit self-hosted runs-on input")
+            jobs = re.split(r"(?m)^  [A-Za-z0-9_-]+:[ \t]*(?:#.*)?$", source)[1:]
+            for job in jobs:
+                called = re.search(r"(?m)^    uses:[ \t]*(\S+)", job)
+                if not called or not called.group(1).startswith(
+                        "bagdeli/KavoshStart/.github/workflows/"):
+                    continue
+                in_with = False
+                runner_inputs = []
+                for line in job.splitlines():
+                    if line.startswith("    with:"):
+                        in_with = True
+                    elif re.match(r"^    [A-Za-z0-9_-]+:", line):
+                        in_with = False
+                    elif in_with and line.startswith("      runs-on:"):
+                        runner_inputs.append(line.partition(":")[2].split("#", 1)[0].strip())
+                try:
+                    selected = (json.loads(runner_inputs[0].strip("\"'"))
+                                if len(runner_inputs) == 1 else None)
+                except (ValueError, TypeError):
+                    selected = None
+                if selected != runner_labels(m):
+                    bad.append(f"{file_name}: standard reusable workflow must receive exact self-hosted runner labels")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")
