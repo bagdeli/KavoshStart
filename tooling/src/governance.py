@@ -388,10 +388,14 @@ def runner_manifest_problems(m):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
-        return [("ok" if eligible else "fail", "CI-1",
+        extra = sorted(set(ci) & {"runnerLabels", "runners", "trustModelADR",
+                                   "privateSelfHostedApprovalADR", "externalCIADR",
+                                   "requiredWorkflow"})
+        return [("ok" if eligible and not extra else "fail", "CI-1",
                  "Local-only T1/static validation profile",
-                 "no Actions workflow; record local check evidence" if eligible
-                 else f"tier={m.get('tier')}, runtime={m.get('runtime')}")]
+                 ("invalid runner fields: " + ", ".join(extra) if extra
+                  else "no Actions workflow; record local check evidence" if eligible
+                  else f"tier={m.get('tier')}, runtime={m.get('runtime')}"))]
     if runner == "external":
         extra = sorted(set(ci) & {"runnerLabels", "runners", "trustModelADR",
                                    "privateSelfHostedApprovalADR", "requiredWorkflow"})
