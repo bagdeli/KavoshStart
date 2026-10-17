@@ -66,6 +66,36 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertTrue(any(level == "fail" and rule == "CI-1"
                             for level, rule, _, _ in g.runner_workflow_problems(remote, m)))
 
+
+    def test_CI1_positive_private_self_hosted_standard_reusable_input(self):
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        source = ("jobs:\n  governance:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"
+                  "    with:\n"
+                  "      runs-on: '[\"self-hosted\", \"linux\", \"x64\", \"example\"]'\n")
+        problems = g.runner_workflow_problems({".github/workflows/kavosh.yml": source}, m)
+        self.assertFalse(any(level == "fail" and rule == "CI-1"
+                             for level, rule, _, _ in problems), problems)
+
+    def test_CI1_negative_private_self_hosted_reusable_wrong_input(self):
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        base = ("jobs:\n  governance:\n"
+                "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n")
+        cases = {
+            "missing": base,
+            "hosted": base + "    with:\n      runs-on: '[\"ubuntu-latest\"]'\n",
+            "other-repo": base + "    with:\n      runs-on: '[\"self-hosted\", \"linux\", \"x64\", \"wrong\"]'\n",
+            "dynamic": base + "    with:\n      runs-on: '${{ matrix.labels }}'\n",
+            "spoofed-env": base + "    env:\n      runs-on: '[\"self-hosted\", \"linux\", \"x64\", \"example\"]'\n",
+        }
+        for name, source in cases.items():
+            with self.subTest(name=name):
+                problems = g.runner_workflow_problems({".github/workflows/kavosh.yml": source}, m)
+                self.assertTrue(any(level == "fail" and rule == "CI-1"
+                                    for level, rule, _, _ in problems), problems)
+
     def test_CI1_positive_new_standard_hosted_labels(self):
         """Current official GitHub standard runner labels are accepted."""
         m = manifest()
