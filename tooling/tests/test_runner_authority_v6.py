@@ -188,6 +188,18 @@ class RunnerAuthorityV6(unittest.TestCase):
             self.assertIn("[self-hosted, linux, x64, example]",
                           (target / ".github" / "workflows" / "ci.yml").read_text())
 
+    def test_none_local_profile_cannot_claim_an_actions_runner(self):
+        m = mode_manifest("none")
+        m["tier"], m["runtime"] = "T1", "static"
+        self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
+        self.assertFalse(has_fail(g.runner_manifest_problems(m), "CI-1"))
+        for field in ("runnerLabels", "externalCIADR", "trustModelADR"):
+            with self.subTest(field=field):
+                n = json.loads(json.dumps(m))
+                n["ci"][field] = ["self-hosted"] if field == "runnerLabels" else EXTERNAL
+                self.assertTrue(g.validate(n, {"allOf": SCHEMA["allOf"]}))
+                self.assertTrue(has_fail(g.runner_manifest_problems(n), "CI-1"))
+
     def test_actual_owner_grant_and_check_publisher_are_human_boundaries(self):
         policy = (ROOT / "docs" / "decisions" /
                   "0018-runner-execution-authority.md").read_text(encoding="utf-8")
