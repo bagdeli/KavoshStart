@@ -172,7 +172,8 @@ class RunnerAuthorityV6(unittest.TestCase):
         self.assertIn("not proof", policy)
         self.assertIn("exact SHA", policy)
         self.assertIn("administrator", policy)
-        self.assertIn("No", "No")  # no machine-issued owner approval is asserted
+        self.assertIn("human", policy.lower())
+        self.assertIn("not automatic", policy.lower())
 
 
 if __name__ == "__main__":
