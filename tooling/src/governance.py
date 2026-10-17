@@ -476,17 +476,14 @@ def is_hosted(value):
 
 
 def runner_workflow_problems(workflows, m):
-    """CI-1: private Actions jobs must use static standard hosted labels; deny unknown/dynamic runners."""
+    """GH Actions runner matching; external SelfServer must have no Actions workflows."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return []
-    if runner == "none":
+    if runner in ("none", "external"):
         extra = sorted(workflows)
-        return [("fail" if extra else "ok", "CI-1", "Local-only profile has no GitHub Actions workflows",
+        return [("fail" if extra else "ok", "CI-1", "External/local-only execution has no GitHub Actions workflows",
                  ", ".join(extra) if extra else "no Actions workflow files")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted GitHub Actions",
-                 "GitHub-hosted-only policy applies to every job and reusable workflow")]
     # Standard runner labels from GitHub's hosted runner reference.
     # Exact labels are intentional; do not replace with untrusted wildcards.
     hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-26.04",
@@ -499,8 +496,8 @@ def runner_workflow_problems(workflows, m):
         for value in runs_on_values(text):
             value = value.strip("\"'")
             if not value or value.startswith("$"):
-                if vis == "private":
-                    bad.append(f"{f}: dynamic/empty runs-on is not statically verifiable as GitHub-hosted")
+                if vis == "private" or runner == "self-hosted":
+                    bad.append(f"{f}: dynamic/empty runs-on cannot prove the approved runner selection")
                 continue
             if value.startswith("[") and value.endswith("]"):
                 labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
@@ -532,18 +529,18 @@ def runner_workflow_problems(workflows, m):
                           and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
                     bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
-    if vis == "private" and runner == "github-hosted":
+    if vis == "private" and runner in ("github-hosted", "self-hosted"):
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")
         absent = [f for f in required if f not in workflows]
         unsafe = [f for f in required if f in workflows and
                   (not re.search(r"^  workflow_dispatch\s*:", workflows[f], re.M)
-                   or "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in workflows[f]
+                   or "PRIVATE_ACTIONS_DISPATCH_REQUIRED" not in workflows[f]
                    or "github.event_name == 'workflow_dispatch'" not in workflows[f]
                    or "!true" not in workflows[f])]
         problem = absent + unsafe
-        out.append(("fail" if problem else "ok", "CI-3", "Private hosted jobs require an owner-initiated scoped dispatch",
+        out.append(("fail" if problem else "ok", "CI-3", "Private GH Actions jobs require a scope-bound manual dispatch",
                     ", ".join(problem) or "ci, governance/health, and release dispatch guards are present"))
-    if runner == "self-hosted":
+    if runner == "self-hosted" and vis == "public":
         unsafe = [f for f, text in workflows.items() if "pull_request:" in text and
                   "github.event.pull_request.head.repo.full_name == github.repository" not in text]
         out.append(("fail" if unsafe else "ok", "CI-2", "Self-hosted PR jobs exclude fork code",
@@ -608,9 +605,9 @@ def check_files(m, actual_repo=None):
     add("ok" if "git push" in claude and "deny" in claude else "warn", "AI-4", "Claude deny rules present", ".claude/settings.json")
 
     wf = [f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))]
-    if m.get("ci", {}).get("runner") == "none":
-        add("fail" if wf else "ok", "CI-1", "Local-only project has no GitHub Actions workflows",
-            ", ".join(wf[:8]) if wf else "make check is run locally; attach the successful output to each PR")
+    if m.get("ci", {}).get("runner") in ("none", "external"):
+        add("fail" if wf else "ok", "CI-1", "Local or external CI has no GitHub Actions workflows",
+            ", ".join(wf[:8]) if wf else "independent external checks must bind to exact SHA and an approved publisher")
     else:
         for level, rule, title, detail in runner_workflow_problems({f: read(f) for f in wf}, m):
             add(level, rule, title, detail)
@@ -631,7 +628,7 @@ def check_files(m, actual_repo=None):
         level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
         add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
     add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
-    if m.get("ci", {}).get("runner") != "none":
+    if m.get("ci", {}).get("runner") not in ("none", "external"):
         trusted_repo = actual_repo or m.get("repo")
         for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m, trusted_repo):
             add(level, rule, title, detail)
