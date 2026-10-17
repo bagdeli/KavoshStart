@@ -68,15 +68,14 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
         m["projectKind"] = "library"
     m["acceptance"] = ({"mode": "continuous", "assurance": "risk-based"} if tier == "T2" else {"mode": "none"})
     m["deploy"] = {"method": method, "environments": envs}
-    m["ui"] = {"kind": ui, "kavoshui": None if ui == "none" else "1.0.0", "locales": ["fa-IR"]}
+    m["ui"] = {"kind": ui, "designSystem": None if ui == "none" else
+               {"package": "@example/ui-kit", "version": "1.0.0"}, "locales": ["fa-IR"]}
     m["ci"]["monthlyMinutesBudget"] = 0
     if tier == "T0":  # a public tool: GitHub-hosted runners (CI-1)
         m["visibility"] = "public"
         m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
         m["data"] = {"sensitivity": "none", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 1, "lifetime": "weeks", "parallelStreams": 1}
-    else:
-        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
     if tier == "T1":
         m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
@@ -261,7 +260,7 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="self-hosted")
+        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="github-hosted")
         custom_manifest["deploy"]["method"] = "custom"
         custom_manifest["deploy"]["authorizationADR"] = "docs/decisions/0002-custom-deploy.md"
         (repo / "kavosh.project.json").write_text(json.dumps(custom_manifest, indent=2), encoding="utf-8")

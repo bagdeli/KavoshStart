@@ -47,11 +47,12 @@ make check    # lint + test + build — run before your single push
 - Search before creating: extend the existing owner of a table, service, route, state machine or UI primitive.
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
+- Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
+- Private repositories use **GitHub-hosted runners only** for GitHub Actions; local-only T1/static has no Actions jobs. Neither a self-hosted label nor an ADR overrides CI-1.
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI
-TODO(kavosh): if `ui.kind` is not `none`, use KavoshUI {{KAVOSHUI}} exactly as its consumer documentation says, never copy its
-components, and read KavoshUI `AGENTS.md` and `docs/foundations/DESIGN_STANDARD_FA.md` before UI work. Otherwise delete this section.
+TODO(kavosh): if `ui.kind` is not `none`, use the consumer-owned pinned Design System {{DESIGN_SYSTEM}} and follow that package's integration, RTL, accessibility and licence contracts. Do not copy components into unrelated modules or publish private package names in KavoshStart. Otherwise delete this section.
 
 ## Definition of Done
 - [ ] Acceptance criteria of the issue met and listed in the PR body

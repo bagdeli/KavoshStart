@@ -7,13 +7,13 @@
 | فاز | کار | خروجی | تأیید مالک |
 |---|---|---|---|
 | 0 | `bash scripts/audit-repo.sh bagdeli/<repo>` | گزارش خط پایه در همان سطح visibility پروژه | — |
-| 1 | intake + `kavosh.project.json` + `scaffold.py --adopt` در یک PR؛ `kavosh.yml` با `enforce: false` | PR پذیرش | ✅ |
+| 1 | intake + `kavosh.project.json` + `scaffold.py --adopt` در یک PR؛ governance با `enforce: true` (هیچ پذیرش report-only مجاز نیست) | PR پذیرش | ✅ |
 | 2 | `bootstrap-repo.sh --apply` + `install-agent-guards.sh` روی همه‌ی ماشین‌ها | تنظیمات و محافظ‌ها | ✅ |
 | 3 | یکی‌کردن حقیقت: هر شاخه‌ی بلندعمر به `main` ادغام یا بسته؛ پشتیبان bundle قبل از حذف شاخه‌ها | `main` = حقیقت | ✅ برای هر حذف |
 | 4 | پاک‌سازی دانش: حذف فایل‌های وضعیت، کوچک‌کردن AGENTS.md، شکستن اسناد بزرگ به spec/Issue، ADR برای تصمیم‌ها | governance سبز | ✅ |
 | 5 | بازسازی backlog: برچسب type، sub-issue، milestone | health سبز در WK | — |
-| 6 | CI مطابق visibility و runner policy، `make check`، job `required` | health سبز در CI | ✅ |
-| 7 | `enforce: true` | پذیرش کامل | ✅ |
+| 6 | CI با GitHub-hosted-only برای private و CI-1/2، `make check` و `required`؛ ثبت نیازهای مهاجرت runner جدا از شواهد Test/Production | health سبز و انتخاب runner سازگار | ✅ |
+| 7 | اثبات سبز بودن همهٔ gateها روی SHA فعلی | پذیرش کامل | ✅ |
 
 پشتیبان قبل از هر حذف:
 ```bash
@@ -23,9 +23,9 @@ git -C <repo>-backup.git bundle create ../<repo>-all-refs.bundle --all
 
 ## ترتیب پیشنهادی
 1. **KavoshStart** — ابتدا خود استاندارد باید self-conforming و سبز باشد.
-2. **KavoshUI** — چون عمومی است، برای آزمون واقعی adoption و GitHub-hosted CI گزینه‌ی مناسب بعدی است.
-3. **پروژه‌های private** — فقط با برنامه‌ی adoption داخل همان فضای private. KavoshStart عمومی نباید نام، URL، audit، هدف، backlog، وضعیت یا یافته‌های آن‌ها را ثبت کند.
-4. سایر پروژه‌های public هنگام کار بعدی روی هرکدام.
+2. **مصرف‌کنندهٔ عمومی با اطلاعات کاملاً ساختگی** — نمونهٔ مناسبی برای آزمایش workflow و الگوهای پذیرش بدون افشای مخزن خصوصی است.
+3. **پروژه‌های private** — پذیرش فقط داخل فضای private همان پروژه؛ نام، URL، audit، backlog و runtime در KavoshStart عمومی قرار نمی‌گیرد.
+4. سایر پروژه‌های public به‌شکل مستقل و نسخه‌دار.
 
 ## مرز اطلاعاتی public/private
 - audit یک پروژه باید در همان پروژه یا یک control surface با همان سطح visibility ذخیره شود.

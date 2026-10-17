@@ -14,6 +14,16 @@
 - Sub-issues and issue types — https://github.blog/changelog/2025-04-09-evolving-github-issues-and-projects/
 - Organization rulesets on Team — https://github.blog/changelog/2025-06-16-organization-rulesets-now-available-for-github-team-plans/
 
+## Third-party license and supply-chain compliance
+- MPL 2.0 FAQ and file-level copyleft — https://www.mozilla.org/en-US/MPL/2.0/FAQ/
+- GNU Affero GPL v3, network interaction §13 — https://www.gnu.org/licenses/agpl-3.0.html
+- GNU LGPL v3, linking and combined works — https://www.gnu.org/licenses/lgpl-3.0.html
+- SPDX license expressions — https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/
+- OpenChain ISO/IEC 5230 compliance program — https://openchainproject.org/licensecompliancespecification
+- GitHub dependency graph SBOM (coverage limits apply) — https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/exporting-a-software-bill-of-materials-for-your-repository
+- GitHub security guidance for self-hosted runners — https://docs.github.com/en/actions/reference/security/secure-use
+- GitHub-hosted runners (private billing/labels) — https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+
 ## AI agents
 - AGENTS.md standard — https://agents.md/
 - How to write a great agents.md (2,500 repositories) — https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/

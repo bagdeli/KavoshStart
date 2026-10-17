@@ -22,4 +22,5 @@ Co-Authored-By: <Agent> <noreply@example.com>
 - [ ] Within the PR size limit (or `size:exception` with a reason)
 - [ ] Searched for an existing owner before adding tables/services/routes/components
 - [ ] API + UI consumer + tests changed together (if an API changed)
+- [ ] Third-party licence/TCO and redistribution obligations checked if applicable (TP-1/TP-2)
 - [ ] Docs / ADR / runbook updated (if behaviour changed)

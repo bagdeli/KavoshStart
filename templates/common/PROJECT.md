@@ -20,7 +20,7 @@ TODO(kavosh): از `outOfScope`.
 | رده (Tier) | {{TIER}} |
 | اجرا (Runtime) | {{RUNTIME}} |
 | روش استقرار | {{DEPLOY_METHOD}} |
-| رابط کاربری | {{UI_KIND}} — KavoshUI {{KAVOSHUI}} |
+| رابط کاربری | {{UI_KIND}} — Design System {{DESIGN_SYSTEM}} |
 | بودجه‌ی دقیقه‌ی CI در ماه | {{BUDGET}} |
 
 <a id="architecture-decisions"></a>

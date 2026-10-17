@@ -33,4 +33,5 @@ Co-Authored-By: <Agent> <noreply@example.com>
 - [ ] Change is coherent/reviewable; any generated or broad mechanical diff documents its generator and verification
 - [ ] Searched for an existing owner before adding tables/services/routes/components
 - [ ] API + UI consumer + tests changed together (if an API changed)
+- [ ] Third-party changes reviewed for risk, licence/NOTICE and distribution/network obligations (TP-1/TP-2; N/A with reason if none)
 - [ ] Docs / ADR / runbook updated (if behaviour changed)

@@ -33,7 +33,7 @@ Pick the mode:
 |---|---|---|
 | **NEW** | "build / create project X" | §1 |
 | **ADOPT** | "bring existing repo X under KavoshStart" | §2 |
-| **UPGRADE** | "update X to KavoshStart vN / KavoshUI vN" | §3 |
+| **UPGRADE** | "update X to KavoshStart vN / its selected design-system package" | §3 |
 | **WORK** | "implement issue #n in X" (project already adopted) | §4 |
 
 Never skip a step. Never invent an answer the owner has not given — ask.
@@ -56,15 +56,19 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
-2. Explain the GitHub Free cost boundary. Do not run private hosted CI without direct owner approval for one named
-   execution; labels and a zero budget field are not authorization. Public standard hosted CI may run only where it
-   draws on no shared allowance. A T1/static project may choose `ci.runner: none` to use the local-only profile.
+2. Explain the GitHub Free cost boundary: a private repository may use **only standard GitHub-hosted**
+   GitHub Actions runners, and each billable run requires direct owner authorization for one exact ref/SHA.
+   Self-hosted is not an option for private repositories. Public standard hosted CI may run only where it
+   draws on no shared allowance. A T1/static project may select `ci.runner: none` (no Actions jobs).
+   Before selecting any material third-party component, apply `standard/15-third-party-components.md`.
+   Record risk-sized licence, distribution, security and total-ownership-cost decisions in the consumer project.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
 
 ### Step 3 — Manifest
 1. Write `kavosh.project.json` conforming to [`intake/kavosh.project.schema.json`](intake/kavosh.project.schema.json).
    Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`). Never copy the illustrative `vX.Y.Z` from the example and never use the reserved `self` value in a consumer project.
-   and, if the project has a UI, `ui.kavoshui` to the latest KavoshUI release.
+   For a UI project, record its selected exact package and version under `ui.designSystem`, or a scoped `ui.exceptionADR`.
+   Never publish consumer-private package names, URLs or evidence in public KavoshStart.
 2. For a new T2 project set `acceptance.mode: continuous` as required by ACC-1; T0/T1 may opt in. Plan source-bound assertions and the availability of real admitted evidence/decision producers from `templates/tier/T2/acceptance/README.md` before promising delivery. Missing producer setup is a visible prerequisite, not a marker-only workaround or permission to create a new service by default.
 3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G9 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
 4. Show both to the owner. Continue only after confirmation.
@@ -79,23 +83,21 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    fills placeholders from the manifest and refuses to overwrite existing files.
 3. Replace every remaining `TODO(kavosh)` marker. Create the project code skeleton for the chosen stack and make
    the **command contract** work (`make setup | lint | test | build | check`, rule `CI-8`).
-4. If `ui.kind` is not `none`: follow [`standard/10-kavoshui.md`](standard/10-kavoshui.md). Do not copy
-   KavoshUI components; consume the pinned version.
+4. If `ui.kind` is not `none`: follow [`standard/10-design-systems.md`](standard/10-design-systems.md).
+   Select an appropriate existing versioned design-system package in the **consumer repository** and comply with its licence/consumer contract; do not copy components without authority.
 5. `make check` must pass locally.
 6. First commit directly on `main` is allowed **only** for this initial scaffold of an empty repository:
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** public repositories default to standard GitHub-hosted. Private repositories may choose hosted or
-   isolated self-hosted based on trust, billing, network and workload. With this Free account, do not use private
-   hosted Actions without the owner's direct approval for this run; run the `ci` and `kavosh` workflows by
-   `workflow_dispatch`, naming the open PR and exact current head SHA. Stale heads fail closed. Self-hosted is optional;
-   document real isolation/containment and credential boundaries according to CI-2. Rootful Docker is
-   root-equivalent and requires an explicitly reviewed containment/trust strategy; rootless containers or
-   disposable VMs are options, not universal requirements. The owner creates the registration token. Verify: `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`.
-   For T1/static, the owner may select `ci.runner: none`: scaffold omits all workflows. Run `make check` locally and
-   attach its successful output to every PR. Bootstrap selects a PR-protected ruleset without CI status checks for
-   this profile. Never merge a red result or bypass an actual required check.
+8. **Runner (CI-1):** for private repositories, use only standard GitHub-hosted runners; self-hosted is
+   prohibited even with an isolation ADR. On this Free account, private billable runs require the owner's
+   direct authorization for the exact run: dispatch `ci` and `kavosh` for an open PR and its current head SHA.
+   Reject stale heads. GitHub-hosted does not imply access to a private Test server or acceptance evidence;
+   follow independent exact-source validation and pull-based deployment controls. For public repositories,
+   prefer standard GitHub-hosted; a self-hosted exception requires CI-2 ADR and must exclude untrusted fork PRs.
+   T1/static may select `ci.runner: none`: scaffold creates no workflows, so successful local `make check`
+   and its evidence in each PR replace CI (not an existing red required check).
 9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
    Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
    deploy units, configure distinct version/health plus the canonical origin, and require
@@ -131,7 +133,7 @@ manually (e.g. the Actions access setting). Stop.
 3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
 4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and migrate release-scoped assertions, source-bound receipts and real admitted producers using `templates/tier/T2/acceptance/README.md`. Identify missing prerequisites before claiming the upgrade complete. Existing requirement ledgers remain supporting traceability; do not turn every row into a new acceptance Issue or mark historical code accepted without evidence.
 5. Run the repository audit/governance and `make check`; resolve new violations or explicitly disposition genuine external blockers. Do not bundle unrelated product features into the upgrade PR.
-6. KavoshUI upgrades are separate PRs: `chore(ui): upgrade KavoshUI to vX.Y.Z`, with rendered screenshots (RTL + mobile) only when the package diff can affect rendering/interaction.
+6. Design-system package upgrades use a separate PR and exact version. Capture actual rendered/RTL/mobile evidence only for relevant render or interaction changes; do not publish private consumer details in this public standard.
 
 ## §4 WORK on an issue (every day)
 0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.

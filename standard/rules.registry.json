@@ -1474,7 +1474,7 @@
     },
     {
       "id": "CI-1",
-      "statement": "runner بر اساس visibility، trust، شبکه و هزینه انتخاب می‌شود: public پیش‌فرض GitHub-hosted است و self-hosted فقط با ADR ایزولیشن و بدون PR کد نامطمئن؛ private می‌تواند GitHub-hosted یا self-hosted باشد. هر private hosted run که سهمیهٔ مشترک مصرف کند فقط با dispatch مستقیم مالک برای PR/ref/SHA مشخص مجاز است؛ trigger خودکار آن خاموش است. `none` فقط برای T1/static با بودجهٔ صفر است.",
+      "statement": "در مخزن private، تمام jobهای GitHub Actions فقط از runnerهای GitHub-hosted استاندارد استفاده می‌کنند؛ self-hosted حتی به‌صورت ایزوله ممنوع است. اجرای private hosted سهمیه‌دار صرفاً با dispatch مستقیم مالک، محدود به PR/ref/SHA فعلی و بدون trigger خودکار است. `none` فقط برای T1/static بدون هیچ workflow و با اعتبارسنجی محلی مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR و منع اجرای fork/کد نامطمئن مجاز است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1503,7 +1503,7 @@
     },
     {
       "id": "CI-2",
-      "statement": "هر runner خودمیزبان باید trust model و isolation/containment واقعی و مستند داشته باشد؛ implementation خاص invariant نیست. ADR باید مرز کد نامطمئن و credential boundary را روشن کند و یک strategy واقعی مانند ephemeral/disposable، sandbox/container/rootless/VM یا runner اختصاصیِ همان repo با کنترل‌های معادل را نام ببرد. PR کد fork/نامطمئن بدون boundary مناسب اجرا نمی‌شود و credential تولید/production روی runner قرار نمی‌گیرد. تعداد runner با ظرفیت و SLO تعیین می‌شود، نه Tier ثابت.",
+      "statement": "هر استثنای self-hosted فقط برای مخزن public و پس از ADR ثبت‌شدهٔ trust model، isolation/containment واقعی، جداسازی کد نامطمئن و credential boundary مجاز است؛ اجرای fork PR روی آن ممنوع است. این استثنا هرگز به private تعمیم نمی‌یابد. credential تولید/production روی runner نگهداری نمی‌شود و ظرفیت براساس SLO تعیین می‌شود، نه Tier ثابت.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1713,6 +1713,60 @@
         "status": "active",
         "source": "standard/RULES.md",
         "introducedAtOrBefore": "v2.0.6",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TP-1",
+      "statement": "پیش از ورود جزء شخص ثالثِ معنادار، بلوغ/هزینهٔ کل مالکیت، امنیت، نگهداری، منبع و شرایط مجوز متناسب با ریسک و شیوهٔ مصرف بررسی می‌شود. GPL/AGPL ممنوعیت مطلق ندارند؛ مجوز نامشخص یا تعارض حقوقی برای انتشار همان جزء باز می‌ماند. تصمیم و مالک در همان PR/Spec یا فهرست اجزای پروژه ثبت می‌شوند.",
+      "level": "MUST",
+      "tier": "All",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v5.0.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TP-2",
+      "statement": "پیش از انتشار تجاری هر بسته/سرویسِ مشمول تعهد، اجزای توزیعی و استفادهٔ شبکه‌ای مؤثر، License/NOTICE/حقوق بازتوزیع/سورس و سازگاری قراردادها بررسی می‌شود؛ فهرست اجزا و SBOM متناسب با خروجی تهیه و ابهام مؤثر با تأیید حقوقی معتبر و مالک حل می‌شود. هیچ گزارش خودکار به‌تنهایی مجوز قانونی انتشار نیست.",
+      "level": "MUST",
+      "tier": "All",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v5.0.0",
         "deprecatedIn": null,
         "replacement": null
       },
@@ -2388,7 +2442,7 @@
     },
     {
       "id": "UI-1",
-      "statement": "KavoshUI با نسخهٔ دقیق پین‌شده پیش‌فرض است. استثنا با ADR پروژه، دلیل، دامنهٔ اجزا، دسترس‌پذیری و RTL مجاز است؛ کپی کامپوننت‌های KavoshUI ممنوع می‌ماند.",
+      "statement": "هر پروژهٔ دارای UI بستهٔ Design System منتخب را با نام و نسخهٔ دقیق در manifest همان پروژه ثبت می‌کند؛ عدم مصرف بسته نیازمند ADR با دامنه، RTL، دسترس‌پذیری و آزمون است. هیچ ارائه‌دهندهٔ نام‌دار یا اطلاعات پروژهٔ private وارد استاندارد عمومی نمی‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -2416,7 +2470,7 @@
     },
     {
       "id": "UI-2",
-      "statement": "ارتقای KavoshUI در PR جداست؛ برای تغییر مؤثر بر رندر/تعامل، آزمون مقایسه‌ای معتبر **یا** تأیید انسانی واقعی با نسخهٔ قابل انتساب کافی است، مگر ریسک هر دو را ایجاب کند. تغییر غیرنمایشی screenshot نمی‌خواهد. متن/link بدون مشاهدهٔ واقعی صرفاً اشاره به مدرک است، نه خود تأیید.",
+      "statement": "ارتقای بستهٔ Design System منتخب در PR مستقل و نسخه‌دار انجام می‌شود؛ برای تغییر مؤثر بر رندر/تعامل، آزمون مقایسه‌ای معتبر **یا** بازبینی انسانی واقعیِ مربوط به همان نسخه لازم است مگر ریسک هر دو را ایجاب کند. تغییر غیرنمایشی screenshot نمی‌خواهد و لینک صرف، اثبات مشاهده نیست.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -2444,7 +2498,7 @@
     },
     {
       "id": "UI-3",
-      "statement": "قواعد مصرف‌کننده‌ی KavoshUI (`docs/architecture/CONSUMER_CONFORMANCE_STANDARD_FA.md` در KavoshUI) رعایت می‌شود.",
+      "statement": "قواعد مصرف، دسترس‌پذیری و حقوق بستهٔ Design System منتخب رعایت می‌شوند؛ بررسی شواهد و نام بسته فقط در مخزن همان مصرف‌کننده ثبت می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

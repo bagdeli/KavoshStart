@@ -49,7 +49,7 @@ class IntakeArchitectureContract(unittest.TestCase):
     def test_identity_data_network_and_delivery_are_not_omitted(self):
         table = {r[0]: r for r in rows(self.questionnaire)}
         for key, expected in {"G2": "authorization", "G3": "authoritative", "G4": "offline",
-                              "G5": "recovery", "G6": "engineering", "G7": "KavoshUI",
+                              "G5": "recovery", "G6": "engineering", "G7": "selected design system",
                               "G8": "observability", "G9": "assertion"}.items():
             # G9 asks for evidence planning; exact assertion detail belongs to the Spec.
             value = table[key][4] + (self.spec if key == "G9" else "")
@@ -87,10 +87,10 @@ class IntakeArchitectureContract(unittest.TestCase):
         self.assertIn("not permission to invent receipts or build a new App by default", self.questionnaire)
         self.assertNotIn("unless the owner explicitly chooses a documented phased adoption", self.protocol)
 
-    def test_runner_instruction_matches_mechanism_neutral_CI2(self):
-        self.assertNotIn("so use rootless Docker or a disposable VM", self.protocol)
-        self.assertIn("options, not universal requirements", self.protocol)
-        self.assertIn("explicitly reviewed containment/trust strategy", self.protocol)
+    def test_runner_instruction_requires_hosted_only_for_private_CI1(self):
+        self.assertIn("prohibited even with an isolation ADR", self.protocol)
+        self.assertIn("a self-hosted exception requires CI-2 ADR", self.protocol)
+        self.assertNotIn("private repositories may choose hosted or", self.protocol)
 
     def test_spec_links_evidence_without_manufacturing_acceptance(self):
         self.assertIn("## Evidence plan", self.spec)

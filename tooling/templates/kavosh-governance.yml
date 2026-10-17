@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: JSON runner labels. Private repos pass their self-hosted labels (CI-1), e.g. '["self-hosted","linux","x64","kavoshsms"]'
+        description: JSON GitHub-hosted runner labels. Private repos are hosted-only; e.g. '["ubuntu-latest"]'. Public exceptions require CI-2 ADR.
         type: string
         default: '["ubuntu-latest"]'
       enforce:
