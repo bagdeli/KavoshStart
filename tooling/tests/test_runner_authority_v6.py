@@ -37,9 +37,13 @@ def setup_adrs(where):
         encoding="utf-8",
     )
     (directory / Path(RELEASE).name).write_text(
-        "Independent custom release: immutable vX.Y.Z tag, exact-source "
-        "identity, required check and release gate.\n", encoding="utf-8",
+        "Release strategy: custom, semver vX.Y.Z immutable tag, exact source "
+        "identity, provenance, required check and release gate.\n", encoding="utf-8",
     )
+    script = Path(where) / "scripts" / "release.sh"
+    script.parent.mkdir(parents=True, exist_ok=True)
+    script.write_text("#!/bin/sh\nexit 1  # never pretend to publish a release\n",
+                      encoding="utf-8")
     (directory / Path(TRUST).name).write_text(
         "Runner trust model with isolation: ephemeral virtual machine "
         "limits untrusted code; credential boundary excludes production.\n",
@@ -59,7 +63,7 @@ def mode_manifest(runner):
     m["ci"] = {"runner": runner, "monthlyMinutesBudget": 0}
     if runner == "external":
         m["ci"]["externalCIADR"] = EXTERNAL
-        m["release"] = {"strategy": "custom", "strategyADR": RELEASE}
+        m["release"] = {"strategy": "custom", "strategyADR": RELEASE, "externalCommand": "scripts/release.sh"}
     if runner == "self-hosted":
         m["ci"]["trustModelADR"] = TRUST
         m["ci"]["privateSelfHostedApprovalADR"] = APPROVAL
@@ -85,6 +89,9 @@ class RunnerAuthorityV6(unittest.TestCase):
             finally:
                 os.chdir(previous)
         m["release"]["strategy"] = "release-please"
+        self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
+        m = mode_manifest("external")
+        m["release"]["workflow"] = ".github/workflows/release.yml"
         self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
         self.assertTrue(has_fail(g.runner_manifest_problems(m), "CI-1"))
         m = mode_manifest("external")
