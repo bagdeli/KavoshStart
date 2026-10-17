@@ -54,6 +54,9 @@ def validate(node, schema, path="$"):
     if "enum" in schema and node not in schema["enum"]:
         errs.append(f"{path}: {node!r} not in {schema['enum']}")
         return errs
+    if "const" in schema and node != schema["const"]:
+        errs.append(f"{path}: {node!r} does not equal {schema['const']!r}")
+        return errs
     t = schema.get("type")
     types = t if isinstance(t, list) else ([t] if t else [])
     pytypes = {"object": dict, "array": list, "string": str, "integer": int, "boolean": bool, "null": type(None)}
@@ -84,6 +87,13 @@ def validate(node, schema, path="$"):
     if isinstance(node, int) and not isinstance(node, bool):
         if node < schema.get("minimum", -(10**18)) or node > schema.get("maximum", 10**18):
             errs.append(f"{path}: out of range")
+    for condition in schema.get("allOf", []):
+        errs += validate(node, condition, path)
+    if "if" in schema:
+        condition_met = not validate(node, schema["if"], path)
+        branch = schema.get("then" if condition_met else "else")
+        if branch is not None:
+            errs += validate(node, branch, path)
     return errs
 
 
@@ -347,10 +357,13 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: runner choice follows trust and cost; private hosted runs are manual and scoped."""
+    """CI-1 / CI-2: private GitHub Actions are hosted-only; public isolation exceptions are scoped."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
+    if vis == "private" and runner == "self-hosted":
+        return [("fail", "CI-1", "Private repositories prohibit self-hosted Actions runners",
+                 "use standard GitHub-hosted with one-run authorization, or T1/static local-only with no Actions jobs")]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
         if not eligible:
@@ -360,7 +373,7 @@ def runner_manifest_problems(m):
                  "no GitHub Actions workflows; the project's semantic check contract runs locally and its result is recorded in the PR")]
     if runner not in ("github-hosted", "self-hosted"):
         return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
-    out = [("ok", "CI-1", "Runner selected by trust/cost policy", f"{vis} → {runner}")]
+    out = [("ok", "CI-1", "Runner selected under visibility policy", f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
                     "workflow_dispatch must name an open PR and its exact current head SHA"))
@@ -433,17 +446,27 @@ def is_hosted(value):
 
 
 def runner_workflow_problems(workflows, m):
-    """CI-1: check every workflow runner against the manifest and fail closed for private hosted automation."""
+    """CI-1: private Actions jobs must use static standard hosted labels; deny unknown/dynamic runners."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return []
-    hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "windows-latest", "windows-2025",
-              "windows-2022", "macos-latest", "macos-15", "macos-14", "macos-13"}
+    if runner == "none":
+        extra = sorted(workflows)
+        return [("fail" if extra else "ok", "CI-1", "Local-only profile has no GitHub Actions workflows",
+                 ", ".join(extra) if extra else "no Actions workflow files")]
+    if vis == "private" and runner == "self-hosted":
+        return [("fail", "CI-1", "Private repositories prohibit self-hosted GitHub Actions",
+                 "GitHub-hosted-only policy applies to every job and reusable workflow")]
+    hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-24.04-arm", "ubuntu-22.04-arm",
+              "ubuntu-slim", "windows-latest", "windows-2025", "windows-2022", "windows-11-arm",
+              "macos-latest", "macos-15", "macos-14", "macos-13", "macos-15-intel", "macos-26"}
     bad = []
     for f, text in workflows.items():
         for value in runs_on_values(text):
             value = value.strip("\"'")
             if not value or value.startswith("$"):
+                if vis == "private":
+                    bad.append(f"{f}: dynamic/empty runs-on is not statically verifiable as GitHub-hosted")
                 continue
             if value.startswith("[") and value.endswith("]"):
                 labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
@@ -454,7 +477,7 @@ def runner_workflow_problems(workflows, m):
                     labels = [value]
             labels = labels if isinstance(labels, list) else [value]
             is_self = "self-hosted" in labels
-            is_standard = bool(labels) and all(x in hosted for x in labels)
+            is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
             if runner == "github-hosted" and not is_standard:
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
             elif runner == "self-hosted" and not is_self:
@@ -978,7 +1001,7 @@ def check_pr(m, event, repo):
     actual = "private" if event["repository"].get("private") else "public"
     if m.get("visibility") and m["visibility"] != actual:
         add("fail", "CI-1", "Manifest visibility matches the repository",
-            f"repository is {actual}, manifest says {m['visibility']} — a public repo must never run on self-hosted runners")
+            f"repository is {actual}, manifest says {m['visibility']} — actual visibility determines runner policy")
     add("ok" if CC_RE.match(title) else "fail", "PR-2", "Title is a Conventional Commit", title)
     add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
     add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")

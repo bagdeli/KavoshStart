@@ -19,6 +19,8 @@ ROW = re.compile(
     r"^\|\s*([A-Z]+-\d+)\s*\|(.*)\|\s*(MUST|SHOULD|MAY)\s*\|([^|]*)\|([^|]*)\|\s*$"
 )
 RULE_ID = re.compile(r"[A-Z]+-\d+")
+# First version planned for the new TP rules; the prior-rule baseline remains historically unchanged.
+NEW_RULE_INTRODUCED = {"TP-1": "v4.1.0", "TP-2": "v4.1.0"}
 MACHINE_LAYERS = {"A", "P", "M", "G", "H", "S", "O", "E"}
 COVERAGE_LAYERS = {"P", "M", "G", "H", "O", "E"}
 
@@ -71,7 +73,7 @@ def parse_rules(text: str | None = None) -> list[dict]:
                     "owner": "KavoshStart",
                     "status": "active",
                     "source": "standard/RULES.md",
-                    "introducedAtOrBefore": "v2.0.6",
+                    "introducedAtOrBefore": NEW_RULE_INTRODUCED.get(rule_id, "v2.0.6"),
                     "deprecatedIn": None,
                     "replacement": None,
                 },

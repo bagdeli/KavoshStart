@@ -75,8 +75,6 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
         m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
         m["data"] = {"sensitivity": "none", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 1, "lifetime": "weeks", "parallelStreams": 1}
-    else:
-        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
     if tier == "T1":
         m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
         m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
@@ -261,7 +259,7 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="self-hosted")
+        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="github-hosted")
         custom_manifest["deploy"]["method"] = "custom"
         custom_manifest["deploy"]["authorizationADR"] = "docs/decisions/0002-custom-deploy.md"
         (repo / "kavosh.project.json").write_text(json.dumps(custom_manifest, indent=2), encoding="utf-8")

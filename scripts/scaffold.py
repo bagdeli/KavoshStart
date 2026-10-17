@@ -98,6 +98,11 @@ def main() -> int:
         raise SystemExit(f"{mpath} not found — complete the intake first (START.md §1 steps 1–3)")
     manifest = json.loads(mpath.read_text(encoding="utf-8"))
     validate_standard_pin(manifest)
+    runner = manifest.get("ci", {}).get("runner")
+    if manifest.get("visibility") == "private" and runner == "self-hosted":
+        raise SystemExit("CI-1: private GitHub Actions require standard GitHub-hosted; self-hosted is prohibited")
+    if runner == "none" and not (manifest.get("tier") == "T1" and manifest.get("runtime") == "static"):
+        raise SystemExit("CI-1: local-only 'none' is supported only for T1/static")
     vals = values(manifest)
 
     plan = {}  # rel -> source file (later layers override earlier ones)

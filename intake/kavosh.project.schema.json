@@ -50,7 +50,7 @@
         "private",
         "public"
       ],
-      "description": "Actual repository visibility. Public defaults to standard GitHub-hosted. Private runner choice follows trust, billing, network and workload; private hosted runs require a one-run workflow_dispatch authorization and a manifest never grants it."
+      "description": "Actual repository visibility. Private GitHub Actions jobs use only standard GitHub-hosted runners, with owner-authorized scoped workflow_dispatch for billable runs; self-hosted is forbidden for private. Public defaults to hosted; a public self-hosted exception needs a CI-2 trust-model ADR."
     },
     "owner": {
       "type": "string"
@@ -313,7 +313,7 @@
             "github-hosted",
             "none"
           ],
-          "description": "Public defaults to standard GitHub-hosted; self-hosted on any visibility requires trustModelADR and same-repository PR gates. Private may choose hosted or isolated self-hosted. Private hosted workflow jobs run only through an owner-initiated workflow_dispatch scoped to an open PR and exact current head; manifest choice alone never authorizes shared quota."
+          "description": "Private: only github-hosted (or none for T1/static without GitHub Actions); self-hosted is forbidden regardless of isolation ADR. Public: GitHub-hosted preferred; self-hosted only with trustModelADR and same-repository PR boundary. Private hosted requires one owner-authorized workflow_dispatch scoped to the current ref/SHA."
         },
         "runnerLabels": {
           "type": "array",
@@ -321,13 +321,13 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Exact self-hosted labels for this repo: [self-hosted, linux, x64, <repo-slug>] (CI-2)"
+          "description": "Optional labels for an exceptional public self-hosted runner (CI-2); forbidden as a private self-hosted escape hatch."
         },
         "runners": {
           "type": "integer",
           "minimum": 1,
           "maximum": 20,
-          "description": "Capacity metric for self-hosted runners registered to this repository; size by queue and SLO, not tier."
+          "description": "Capacity of exceptional public self-hosted runners; size by queue/SLO. Does not authorize private self-hosted."
         },
         "monthlyMinutesBudget": {
           "type": "integer",
@@ -338,7 +338,7 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Required for self-hosted runners. Must document runner trust model, isolation/containment strategy, untrusted-code boundary and credential boundary. Mechanism may be ephemeral/disposable, sandbox/container/rootless/VM, or an equivalently bounded repository-dedicated runner; no single implementation is universal."
+          "description": "Applicable only to exceptional public self-hosted runners. Must document runner trust model, containment, untrusted-code and credential boundaries. Never overrides the private self-hosted ban."
         },
         "requiredWorkflow": {
           "type": "string",
@@ -510,5 +510,72 @@
       },
       "description": "Composable project capabilities. Tier controls assurance/process; runtime controls execution shape; capabilities control domain-specific applicability/evidence. Technology names are not capabilities."
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "visibility": {
+            "const": "private"
+          }
+        },
+        "required": [
+          "visibility"
+        ]
+      },
+      "then": {
+        "properties": {
+          "ci": {
+            "properties": {
+              "runner": {
+                "enum": [
+                  "github-hosted",
+                  "none"
+                ]
+              }
+            },
+            "required": [
+              "runner"
+            ]
+          }
+        },
+        "required": [
+          "ci"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ci": {
+            "properties": {
+              "runner": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "runner"
+            ]
+          }
+        },
+        "required": [
+          "ci"
+        ]
+      },
+      "then": {
+        "properties": {
+          "tier": {
+            "const": "T1"
+          },
+          "runtime": {
+            "const": "static"
+          }
+        },
+        "required": [
+          "tier",
+          "runtime"
+        ]
+      }
+    }
+  ]
 }
