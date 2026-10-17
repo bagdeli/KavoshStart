@@ -23,7 +23,7 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 
 - `ci.runner: external` باید `ci.externalCIADR` واقعی را معرفی کند؛ مدیر همان مخزن به‌طور مستقل مسئول راه‌اندازی CI و publisher است. هیچ Runner در Actions ثبت، هیچ `.github/workflows/` ایجاد و هیچ مزیت مخفی‌ای از GitHub-hosted فرض نمی‌شود.
 - کنترل‌های Core از طریق همان **semantic command contract** (مثلاً `make setup && make check` و ممیزی KavoshStart) روی exact commit اجرا شوند. نتیجه از GitHub App/سرویس معتبر با `required` و `kavosh / governance` و در صورت لزوم `main-guard / main-guard` روی SHA دقیق گزارش شود. خود فایل ADR، لاگ محلی یا متن PR **check سبز ایجاد نمی‌کند**؛ publisher باید واقعاً کار کند. کنترل App identity و plan/ruleset بسته به حساب در GitHub به‌طور جداگانه بررسی می‌شود.
-- انتشار external فقط با `release.strategy: custom` و `release.strategyADR` معتبر انجام می‌شود؛ tag immutable، بررسی آخرین SHA `main` و Required Check/پذیرش همان Commit طبق REL-5/6 لازم‌اند. `release-please` که به Actions وابسته است، با وجود نداشتن Actions workflow یک مسیر انتشار پنهانی نیست.
+- انتشار external فقط با `release.strategy: custom`، `release.strategyADR` و `release.externalCommand` به یک فایل واقعی در `scripts/` انجام می‌شود؛ tag immutable، بررسی آخرین SHA `main` و Required Check/پذیرش همان Commit طبق REL-5/6 لازم‌اند. `release-please` که به Actions وابسته است، با وجود نداشتن Actions workflow یک مسیر انتشار پنهانی نیست.
 - انتخاب محصول مستقل (Woodpecker، Jenkins، Dagger یا ابزار موجود سرور) تصمیم هر مصرف‌کننده است، نه dependency هسته. [Woodpecker](https://woodpecker-ci.org/docs/administration/general) فقط نمونهٔ الگوی server/agent و GitHub status reporting است.
 
 ### GH Actions خودمیزبان: استثنای خصوصی سخت‌گیرانه

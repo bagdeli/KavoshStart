@@ -113,8 +113,10 @@ def main() -> int:
     if runner == "external":
         if not ci.get("externalCIADR") or (set(ci) & {"runnerLabels", "runners", "trustModelADR", "privateSelfHostedApprovalADR", "requiredWorkflow"}):
             raise SystemExit("CI-1: independent SelfServer needs a documented externalCIADR and no GH Actions runner fields")
-        if manifest.get("release", {}).get("strategy") != "custom" or not manifest.get("release", {}).get("strategyADR"):
-            raise SystemExit("REL-4: external CI needs a documented custom non-Actions release adapter")
+        release = manifest.get("release", {})
+        if (release.get("strategy") != "custom" or not release.get("strategyADR")
+                or not release.get("externalCommand") or release.get("workflow")):
+            raise SystemExit("REL-4: external CI needs a custom non-Actions release script/ADR, not an Actions workflow")
     if runner == "none" and not (manifest.get("tier") == "T1" and manifest.get("runtime") == "static"):
         raise SystemExit("CI-1: local-only 'none' is supported only for T1/static")
     vals = values(manifest)

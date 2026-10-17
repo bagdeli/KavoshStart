@@ -27,7 +27,7 @@ A budget field, label, ADR, repository write permission or manual `workflow_disp
 
 An `external` manifest declares `ci.externalCIADR` describing independent CI, exact SHA checkout, trusted publisher identity, the real required and `kavosh / governance` checks, credential boundary and release gate. The consuming owner installs/configures the publisher separately. Scaffold emits **zero** GitHub Actions workflow files. Local logs or passing scripts without a genuine source-bound, publisher-verified check do not authorize PR merge.
 
-External release uses `release.strategy: custom` and a separate `release.strategyADR` explaining SemVer immutable tags, exact-main SHA, required passing checks, acceptance provenance and authorized release. This mode may run an existing engine (Jenkins/Woodpecker/locally owned tooling) but KavoshStart installs none and names no required vendor. It does not silently continue using Actions-only release-please.
+External release uses `release.strategy: custom`, `release.externalCommand` (a consumer-owned `scripts/*.sh` or `scripts/*.py` executable) and a separate `release.strategyADR` explaining SemVer immutable tags, exact-main SHA, required passing checks, acceptance provenance and authorized release. The release command may not masquerade as `.github/workflows/*`; file presence alone never proves that a release was actually executed. This mode may run an existing engine (Jenkins/Woodpecker/locally owned tooling) but KavoshStart installs none and names no required vendor. It does not silently continue using Actions-only release-please.
 
 ## Private GitHub Actions self-hosted exception
 

@@ -96,7 +96,7 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 8. **Runner (CI-1/2/3):** classify **execution authority**, not physical host.
    Choose `external` for independent SelfServer CI; require `ci.externalCIADR`, real publisher
    for `required` and `kavosh / governance` tied to exact SHA and `release.strategy: custom`
-   with reviewed release ADR. Scaffold creates no GitHub Actions workflows. Never treat local logs as
+   with reviewed release ADR and a consumer-owned `release.externalCommand` script. Scaffold creates no GitHub Actions workflows. Never treat local logs as
    GitHub check runs.
    For registered GH Actions `self-hosted`, public requires CI-2 safeguards; private first needs an
    explicit *actual* owner exception referenced by `ci.privateSelfHostedApprovalADR` plus
