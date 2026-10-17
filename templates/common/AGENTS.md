@@ -44,7 +44,9 @@ make check    # lint + test + build — run before your single push
 6. If `kavosh / governance` or `required` is red, fix the cause. Never work around a check.
 
 ## Code conventions
-- Search before creating: extend the existing owner of a table, service, route, state machine or UI primitive.
+- Read the affected data flow and callers, contracts, configs, tests and fixtures before editing. Prefer an existing owner/UI primitive, native/stdlib capability, or suitable already-reviewed dependency (TP-1/2) before writing the smallest **complete, readable** fix.
+- Avoid speculative wrappers, options, config and dependencies. Fix the root cause and affected consumers; do not trim trust validation, data-loss handling, accessibility or required checks to save lines.
+- Keep focused regression evidence for changed non-trivial logic. At handoff state what was verified, what was not checked, and residual risk; shorter code alone is never acceptance.
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
 - Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
