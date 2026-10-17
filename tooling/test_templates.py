@@ -246,7 +246,7 @@ def main():
         else:
             for name in ("ci.yml", "kavosh.yml", "release.yml", "rc.yml"):
                 text = (repo / ".github/workflows" / name).read_text(encoding="utf-8")
-                if "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in text or "workflow_dispatch" not in text:
+                if "PRIVATE_ACTIONS_DISPATCH_REQUIRED" not in text or "workflow_dispatch" not in text:
                     print(f"FAIL private hosted dispatch guard missing in {name}")
                     failures += 1
             ci_text = (repo / ".github/workflows/ci.yml").read_text(encoding="utf-8")
