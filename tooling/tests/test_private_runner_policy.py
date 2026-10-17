@@ -36,7 +36,7 @@ class PrivateActionsPolicy(unittest.TestCase):
                        trustModelADR="docs/decisions/0001-runner.md")
         self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
         workflows = {".github/workflows/ci.yml":
-                     "jobs:\\n  required:\\n    runs-on: [self-hosted, linux, x64, example]\\n"}
+                     "jobs:\n  required:\n    runs-on: [self-hosted, linux, x64, example]\n"}
         self.assertFalse(any(level == "fail" and rule == "CI-1"
                              for level, rule, _, _ in g.runner_workflow_problems(workflows, m)))
         self.assertFalse(any(level == "fail" and rule == "CI-1"
@@ -57,12 +57,12 @@ class PrivateActionsPolicy(unittest.TestCase):
                       "${{ matrix.os }}"):
             with self.subTest(value=value):
                 wf = {".github/workflows/ci.yml":
-                      "jobs:\\n  required:\\n    runs-on: " + value + "\\n"}
+                      "jobs:\n  required:\n    runs-on: " + value + "\n"}
                 self.assertTrue(any(level == "fail" and rule == "CI-1"
                                     for level, rule, _, _ in g.runner_workflow_problems(wf, m)))
         remote = {".github/workflows/kavosh.yml":
-                  "jobs:\\n  governance:\\n"
-                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\\n"}
+                  "jobs:\n  governance:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"}
         self.assertTrue(any(level == "fail" and rule == "CI-1"
                             for level, rule, _, _ in g.runner_workflow_problems(remote, m)))
 
