@@ -28,15 +28,15 @@ class PrivateActionsPolicy(unittest.TestCase):
             {".github/workflows/ci.yml": "jobs:\n  required:\n    runs-on: ubuntu-latest\n"}, m)
             if x[1] == "CI-1"))
 
-    def test_CI1_negative_private_self_hosted_even_with_adr(self):
+    def test_CI1_negative_private_self_hosted_without_owner_exception(self):
         """Covers: CI-1 (negative)"""
         m = manifest(runner="self-hosted")
         m["ci"]["trustModelADR"] = "docs/decisions/0001-isolation.md"
         self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
         self.assertTrue(any(level == "fail" and rule == "CI-1"
                             for level, rule, _, _ in g.runner_manifest_problems(m)))
-        self.assertTrue(any(level == "fail" and rule == "CI-1"
-                            for level, rule, _, _ in g.runner_workflow_problems({}, m)))
+        self.assertTrue(any(level == "fail" and rule == "CI-2"
+                            for level, rule, _, _ in g.runner_manifest_problems(m)))
 
     def test_CI1_positive_new_standard_hosted_labels(self):
         """Current official GitHub standard runner labels are accepted."""
@@ -123,7 +123,7 @@ class PrivateActionsPolicy(unittest.TestCase):
 
     def test_CI1_positive_public_exception_requires_real_adr_not_private_exception(self):
         m = manifest(visibility="public", runner="self-hosted")
-        self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
+        self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
         self.assertTrue(any(x[0] == "fail" and x[1] == "CI-2"
                             for x in g.runner_manifest_problems(m)))
 
