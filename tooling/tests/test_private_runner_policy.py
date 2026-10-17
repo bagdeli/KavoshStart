@@ -1,4 +1,4 @@
-"""Private GitHub-hosted-only Actions and risk-sized local-only regression checks."""
+"""Private self-hosted availability, consent-gated hosted Actions, and local-only checks."""
 import json
 import subprocess
 import sys
@@ -28,15 +28,43 @@ class PrivateActionsPolicy(unittest.TestCase):
             {".github/workflows/ci.yml": "jobs:\n  required:\n    runs-on: ubuntu-latest\n"}, m)
             if x[1] == "CI-1"))
 
-    def test_CI1_negative_private_self_hosted_even_with_adr(self):
-        """Covers: CI-1 (negative)"""
+    def test_CI1_positive_private_self_hosted_manifest_and_isolated_labels(self):
+        """Covers: CI-1 positive for a private runner hosted on an independent server."""
         m = manifest(runner="self-hosted")
-        m["ci"]["trustModelADR"] = "docs/decisions/0001-isolation.md"
-        self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
-        self.assertTrue(any(level == "fail" and rule == "CI-1"
+        m["repo"] = "demo/Example"
+        m["ci"].update(runnerLabels=["self-hosted", "linux", "x64", "example"],
+                       trustModelADR="docs/decisions/0001-runner.md")
+        self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
+        workflows = {".github/workflows/ci.yml":
+                     "jobs:\\n  required:\\n    runs-on: [self-hosted, linux, x64, example]\\n"}
+        self.assertFalse(any(level == "fail" and rule == "CI-1"
+                             for level, rule, _, _ in g.runner_workflow_problems(workflows, m)))
+        self.assertFalse(any(level == "fail" and rule == "CI-1"
+                             for level, rule, _, _ in g.runner_manifest_problems(m)))
+
+    def test_CI2_negative_private_self_hosted_without_isolation_adr(self):
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
+        self.assertTrue(any(level == "fail" and rule == "CI-2"
                             for level, rule, _, _ in g.runner_manifest_problems(m)))
+
+    def test_CI1_negative_private_self_hosted_wrong_labels_or_unpinned_remote_runner(self):
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        for value in ("ubuntu-latest", "[self-hosted, linux]",
+                      "[self-hosted, linux, x64, another-repo]", "custom-pool",
+                      "${{ matrix.os }}"):
+            with self.subTest(value=value):
+                wf = {".github/workflows/ci.yml":
+                      "jobs:\\n  required:\\n    runs-on: " + value + "\\n"}
+                self.assertTrue(any(level == "fail" and rule == "CI-1"
+                                    for level, rule, _, _ in g.runner_workflow_problems(wf, m)))
+        remote = {".github/workflows/kavosh.yml":
+                  "jobs:\\n  governance:\\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\\n"}
         self.assertTrue(any(level == "fail" and rule == "CI-1"
-                            for level, rule, _, _ in g.runner_workflow_problems({}, m)))
+                            for level, rule, _, _ in g.runner_workflow_problems(remote, m)))
 
     def test_CI1_positive_new_standard_hosted_labels(self):
         """Current official GitHub standard runner labels are accepted."""
@@ -127,17 +155,17 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertTrue(any(x[0] == "fail" and x[1] == "CI-2"
                             for x in g.runner_manifest_problems(m)))
 
-    def test_CI1_negative_scaffolder_rejects_private_self_hosted(self):
+    def test_CI1_positive_scaffolder_private_self_hosted_selects_local_labels(self):
         with tempfile.TemporaryDirectory() as temp:
             target = Path(temp)
             data = manifest(runner="self-hosted")
             data.update(name="Example", repo="demo/Example", summary="A purely synthetic example",
-                        kavoshStart="v4.0.0")
+                        kavoshStart="v6.0.0")
+            data["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
             (target / "kavosh.project.json").write_text(json.dumps(data), encoding="utf-8")
             proc = subprocess.run([sys.executable, str(SCAFFOLD), str(target), "--dry-run"],
                                   capture_output=True, text=True)
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("CI-1", proc.stderr + proc.stdout)
+            self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
 
 
 if __name__ == "__main__":

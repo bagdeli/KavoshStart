@@ -357,18 +357,15 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: private GitHub Actions are hosted-only; public isolation exceptions are scoped."""
+    """CI-1/2: a selected self-hosted runner needs isolation; private hosted is per-run gated."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted Actions runners",
-                 "use standard GitHub-hosted with one-run authorization, or T1/static local-only with no Actions jobs")]
-    if vis == "private":
+    if vis == "private" and runner != "self-hosted":
         extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"})
         if extra:
-            return [("fail", "CI-1", "Private repositories forbid self-hosted runner metadata",
-                     "remove obsolete private runner fields: " + ", ".join(extra))]
+            return [("fail", "CI-1", "Hosted/local-only CI must not contain self-hosted runner settings",
+                     "select self-hosted explicitly with a trust ADR or remove: " + ", ".join(extra))]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
         if not eligible:
@@ -451,7 +448,7 @@ def is_hosted(value):
 
 
 def runner_workflow_problems(workflows, m):
-    """CI-1: private Actions jobs must use static standard hosted labels; deny unknown/dynamic runners."""
+    """CI-1: require a statically verifiable runner matching the declared manifest mode."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return []
@@ -459,9 +456,6 @@ def runner_workflow_problems(workflows, m):
         extra = sorted(workflows)
         return [("fail" if extra else "ok", "CI-1", "Local-only profile has no GitHub Actions workflows",
                  ", ".join(extra) if extra else "no Actions workflow files")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted GitHub Actions",
-                 "GitHub-hosted-only policy applies to every job and reusable workflow")]
     # Standard runner labels from GitHub's hosted runner reference.
     # Exact labels are intentional; do not replace with untrusted wildcards.
     hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-26.04",
@@ -475,7 +469,7 @@ def runner_workflow_problems(workflows, m):
             value = value.strip("\"'")
             if not value or value.startswith("$"):
                 if vis == "private":
-                    bad.append(f"{f}: dynamic/empty runs-on is not statically verifiable as GitHub-hosted")
+                    bad.append(f"{f}: dynamic/empty runs-on cannot prove the selected runner mode")
                 continue
             if value.startswith("[") and value.endswith("]"):
                 labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
@@ -485,12 +479,11 @@ def runner_workflow_problems(workflows, m):
                 except (ValueError, TypeError):
                     labels = [value]
             labels = labels if isinstance(labels, list) else [value]
-            is_self = "self-hosted" in labels
             is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
             if runner == "github-hosted" and not is_standard:
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
-            elif runner == "self-hosted" and not is_self:
-                bad.append(f"{f}: {value} (manifest selects self-hosted)")
+            elif runner == "self-hosted" and labels != runner_labels(m):
+                bad.append(f"{f}: {value} (must match the manifest's isolated self-hosted labels)")
     if vis == "private":
         # A remotely called workflow selects its own job runners, even if the
         # caller has no runs-on key. Reject unknown remotely hosted code: we
@@ -506,6 +499,16 @@ def runner_workflow_problems(workflows, m):
                 elif not (target.startswith("bagdeli/KavoshStart/.github/workflows/")
                           and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
                     bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
+    if vis == "private" and runner == "self-hosted":
+        # Reusable workflow jobs have no local runs-on. The standard's
+        # reusable default is GitHub-hosted: require explicit self-hosted
+        # input at each callsite, not an unrelated runs-on elsewhere.
+        for file_name, source in workflows.items():
+            for job in re.split(r"(?m)^  [A-Za-z0-9_-]+:[ \\t]*(?:#.*)?$", source)[1:]:
+                called = re.search(r"(?m)^    uses:[ \\t]*(\\S+)", job)
+                if called and called.group(1).startswith("bagdeli/KavoshStart/.github/workflows/"):
+                    if not re.search(r"(?m)^      runs-on:[ \\t]*\\S", job):
+                        bad.append(f"{file_name}: standard reusable workflow needs explicit self-hosted runs-on input")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")

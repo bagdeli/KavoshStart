@@ -87,10 +87,11 @@ class IntakeArchitectureContract(unittest.TestCase):
         self.assertIn("not permission to invent receipts or build a new App by default", self.questionnaire)
         self.assertNotIn("unless the owner explicitly chooses a documented phased adoption", self.protocol)
 
-    def test_runner_instruction_requires_hosted_only_for_private_CI1(self):
-        self.assertIn("prohibited even with an isolation ADR", self.protocol)
-        self.assertIn("a self-hosted exception requires CI-2 ADR", self.protocol)
-        self.assertNotIn("private repositories may choose hosted or", self.protocol)
+    def test_runner_instruction_distinguishes_self_hosted_from_hosted_private_quota(self):
+        self.assertIn("self-hosted runner on an isolated server", self.protocol)
+        self.assertIn("explicit authorization", self.protocol)
+        self.assertIn("CI-2 trust ADR", self.protocol)
+        self.assertNotIn("Self-hosted is not an option for private repositories", self.protocol)
 
     def test_spec_links_evidence_without_manufacturing_acceptance(self):
         self.assertIn("## Evidence plan", self.spec)
