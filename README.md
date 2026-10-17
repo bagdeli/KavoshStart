@@ -31,6 +31,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`START.md`](START.md) | پروتکل اجرایی عامل AI (ساخت پروژه‌ی جدید / پذیرش پروژه‌ی موجود / ارتقا) | EN |
 | [`intake/`](intake/) | پرسش‌نامه، قواعد رده‌بندی، schema فایل `kavosh.project.json` | EN/FA |
 | [`standard/RULES.md`](standard/RULES.md) | **فهرست مرجع همه‌ی قواعد** با شناسه، سطح، Tier و مکانیزم اجرا | FA |
+| [`standard/15-third-party-components.md`](standard/15-third-party-components.md) | سیاست انتخاب، یکپارچه‌سازی و توزیع اجزای شخص ثالث | FA |
 | [`standard/`](standard/) | توضیح قواعد: مدل پلن رایگان، شاخه/PR، CI و دقیقه‌ها، AI، استقرار، KavoshUI … | FA |
 | [`templates/`](templates/) | فایل‌های آماده: `common/` + `tier/T0..T2` + `runtime/server` | EN |
 | [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با tag دقیق `@vX.Y.Z` و نسخهٔ مانیفست فرا می‌خوانند | — |
@@ -40,7 +41,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 
 ## واقعیت platform/account (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
-روی ریپوی private در GitHub Free **هیچ** branch protection، ruleset یا required check قابل اعمال نیست و GitHub Pages در دسترس نیست. GitHub-hosted Actions برای private از سهمیهٔ مشترک حساب استفاده می‌کند؛ KavoshStart هیچ private run را بدون dispatch مستقیم و محدود مالک اجرا نمی‌کند. انتخاب runner به trust، billing، شبکه و workload وابسته است: hosted با مجوز هر اجرا یا self-hosted ایزوله. برای public، runner استاندارد GitHub پیش‌فرض است (CI-1، [ADR-0009](docs/decisions/0009-human-authorized-operations.md)).
+در مخزن private با GitHub Free، کنترل‌های branch/ruleset قابل‌اعمال مانند مخزن public نیستند و باید محدودیت‌های پلن و وضعیت واقعی تنظیمات بررسی شوند. **KavoshStart اجرای GitHub Actions را در private فقط روی GitHub-hosted استاندارد مجاز می‌داند؛ self-hosted ممنوع است.** اجرای سهمیه‌دار private همچنان به dispatch دستی و مجوز مستقیم برای ref/SHA مشخص نیاز دارد. برای T1/static، پروفایل `ci.runner: none` بدون هیچ Actions job مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR سخت‌گیرانه و کنترل کد نامطمئن قابل بررسی است ([ADR-0015](docs/decisions/0015-private-github-hosted-only.md)، CI-1).
 
 | لایه | کِی عمل می‌کند | چه چیزی |
 |---|---|---|
@@ -53,6 +54,10 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | **O — ناظر پرتفوی عمومی** | روزانه، از بیرون | `kavosh-portfolio` در KavoshStart — فقط repoهای public؛ privateها پیش از inspection نادیده گرفته می‌شوند |
 
 مهم‌ترین قاعده‌ی انسانی: **«PR قرمز را ادغام نکن»** (PR-7) — نقضش را لایه‌ی M بعداً ثبت می‌کند. چند MUST دیگر فقط با بازبینی انسانی اجرا می‌شوند و در انتهای [RULES.md](standard/RULES.md) صریحاً فهرست شده‌اند؛ ادعای «اجرای کامل ماشینی» نداریم.
+
+## اجزای شخص ثالث
+
+اولویت با جزء بالغ و آماده است، اگر هزینهٔ کل مالکیت، امنیت، نگهداری و حقوق استفاده/توزیع آن قابل‌قبول باشد. Copyleft ممنوعیت مطلق ندارد؛ **نوع ترکیب، تغییر، توزیع و تعهد استفادهٔ شبکه‌ای** تعیین‌کننده است. بررسی release-scoped شامل License/NOTICE، حقوق بازتوزیع، سورس لازم و SBOM متناسب است. این سیاست از مجوز خود محصول و سامانهٔ entitlement آن مستقل است؛ کنترل حقوقی انسانی را با CI سبز جایگزین نکنید ([TP-1/2](standard/RULES.md)، [راهنما](standard/15-third-party-components.md)).
 
 ## نسخه‌بندی
 

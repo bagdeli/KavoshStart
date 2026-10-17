@@ -56,9 +56,12 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
-2. Explain the GitHub Free cost boundary. Do not run private hosted CI without direct owner approval for one named
-   execution; labels and a zero budget field are not authorization. Public standard hosted CI may run only where it
-   draws on no shared allowance. A T1/static project may choose `ci.runner: none` to use the local-only profile.
+2. Explain the GitHub Free cost boundary: a private repository may use **only standard GitHub-hosted**
+   GitHub Actions runners, and each billable run requires direct owner authorization for one exact ref/SHA.
+   Self-hosted is not an option for private repositories. Public standard hosted CI may run only where it
+   draws on no shared allowance. A T1/static project may select `ci.runner: none` (no Actions jobs).
+   Before selecting any material third-party component, apply `standard/15-third-party-components.md`.
+   Record risk-sized licence, distribution, security and total-ownership-cost decisions in the consumer project.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
 
 ### Step 3 — Manifest
@@ -86,16 +89,14 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** public repositories default to standard GitHub-hosted. Private repositories may choose hosted or
-   isolated self-hosted based on trust, billing, network and workload. With this Free account, do not use private
-   hosted Actions without the owner's direct approval for this run; run the `ci` and `kavosh` workflows by
-   `workflow_dispatch`, naming the open PR and exact current head SHA. Stale heads fail closed. Self-hosted is optional;
-   document real isolation/containment and credential boundaries according to CI-2. Rootful Docker is
-   root-equivalent and requires an explicitly reviewed containment/trust strategy; rootless containers or
-   disposable VMs are options, not universal requirements. The owner creates the registration token. Verify: `gh api repos/bagdeli/<repo>/actions/runners -q '.runners[] | [.name,.status] | @tsv'`.
-   For T1/static, the owner may select `ci.runner: none`: scaffold omits all workflows. Run `make check` locally and
-   attach its successful output to every PR. Bootstrap selects a PR-protected ruleset without CI status checks for
-   this profile. Never merge a red result or bypass an actual required check.
+8. **Runner (CI-1):** for private repositories, use only standard GitHub-hosted runners; self-hosted is
+   prohibited even with an isolation ADR. On this Free account, private billable runs require the owner's
+   direct authorization for the exact run: dispatch `ci` and `kavosh` for an open PR and its current head SHA.
+   Reject stale heads. GitHub-hosted does not imply access to a private Test server or acceptance evidence;
+   follow independent exact-source validation and pull-based deployment controls. For public repositories,
+   prefer standard GitHub-hosted; a self-hosted exception requires CI-2 ADR and must exclude untrusted fork PRs.
+   T1/static may select `ci.runner: none`: scaffold creates no workflows, so successful local `make check`
+   and its evidence in each PR replace CI (not an existing red required check).
 9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
    Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
    deploy units, configure distinct version/health plus the canonical origin, and require

@@ -1,6 +1,6 @@
 # 0009 — Human-authorized operations and Free-only execution
 
-- Status: accepted; enforced by the rules, templates and regression checks listed below
+- Status: accepted; **private-runner choice superseded by ADR-0015**. The per-run billing authorization and other decision boundaries still apply.
 - Deciders: bagdeli
 - Issue: bagdeli/KavoshStart#33
 
@@ -16,7 +16,7 @@ Absolute bans on every privileged operation prevent an agent from carrying out w
 - GitHub Free and zero shared-quota consumption are the default. A private hosted run needs direct approval tied to one dispatch/ref/SHA and a bounded run. Public standard hosted runners are allowed only where they incur no shared quota or charge. Paid runners/features, required paid AI APIs and overage are not dependencies.
 - Draft stacks may be arbitrarily deep while health warns. Ready PRs are normalized to main or one immediately mergeable parent. Merge requires a green shallow stack.
 - Heavy Draft CI defaults off; a direct workflow dispatch may request early feedback only within the same execution authorization and cost rules.
-- Runner isolation does not follow from a non-root account. Rootful Docker access is root-equivalent; this installer accepts rootless Docker only. A separately provisioned disposable worker VM must be destroyed after the job.
+- Runner isolation does not follow from a non-root account. Rootful Docker access is root-equivalent; disposable VM isolation needs real teardown. ADR-0015 now prohibits **all private self-hosted GitHub Actions**, and retires the private installer. These isolation principles apply only to a separately approved public exception.
 - Healthy continuous backup/PITR and a tested restore are the recovery baseline. A fresh snapshot is required for destructive/high-risk rewrites. A bounded T1 maintenance window may use downtime with verified backup and explicit authorization; production T2 keeps expand/contract as its default.
 - Deployment/UI and PR-size exceptions require scoped owner authorization and evidence. Exception labels are requests, never authority.
 

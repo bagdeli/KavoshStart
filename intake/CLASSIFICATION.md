@@ -60,12 +60,9 @@ Other capabilities such as `control-plane` and `infrastructure` are explicit bec
 | AI review workflow | no | optional (`ai-review.yml`) | yes |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated release strategy (release-please is the scaffold default) | + rc on test | + rc → UAT → final |
-| Runner (by visibility, CI-1) | private: hosted with per-run authorization or isolated self-hosted · public: standard hosted | private: hosted with per-run authorization or isolated self-hosted · public: standard hosted | capacity based on queue/SLO; same privacy/cost rules |
+| Runner (by visibility, CI-1) | private: **GitHub-hosted only**, authorized per run · public: hosted default | private: **GitHub-hosted only**, authorized per run · public: hosted default | no private self-hosted; public exceptions require CI-2 ADR |
 | **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
 ## Budget rule (CI-3)
-Runner choice is not determined by visibility alone: public defaults to standard hosted; private may use hosted or isolated self-hosted.
-Private hosted runs use shared quota and therefore require a direct, one-run authorization and manual dispatch. Every manifest keeps `monthlyMinutesBudget` at **0**: that field never authorizes
-shared quota. A private hosted run needs direct owner authorization for one bounded dispatch; the shared Free allowance is never consumed automatically. Keep pushes per PR low anyway (CI-6): self-hosted
-capacity is finite too.
+Private GitHub Actions runners are **GitHub-hosted only** (ADR-0015); public defaults to hosted and any public self-hosted exception requires a CI-2 ADR. Private hosted runs may consume shared quota and therefore require direct, one-run authorization and manual dispatch. Every manifest keeps `monthlyMinutesBudget` at **0**: that field never authorizes shared quota. A T1/static local-only project selects `none` (no Actions jobs), not a self-hosted runner.

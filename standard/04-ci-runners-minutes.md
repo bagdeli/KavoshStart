@@ -4,35 +4,34 @@
 
 ## Runtime contract for reusable controls
 
-Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer self-hosted runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
+Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
 
-## runner و هزینه (CI-1…3 — ADR-0009)
-| ریپو | پیش‌فرض | شرط |
+## Runner و هزینه (CI-1…3 — ADR-0015)
+
+| وضعیت ریپو | اجرای GitHub Actions | قید |
 |---|---|---|
-| **private** | بر اساس اعتماد، شبکه و دسترسی: GitHub-hosted مجاز؛ self-hosted یک گزینهٔ اختیاریِ ایزوله است | هر hosted run که از سهمیهٔ مشترک استفاده کند فقط با dispatch مستقیم مالک برای PR/ref/SHA مشخص؛ trigger خودکار خاموش |
-| **public** | runner استاندارد GitHub، مانند `ubuntu-latest` | self-hosted فقط با ADR ایزولیشن؛ PRهای fork/کد نامطمئن روی آن اجرا نمی‌شوند. runner بزرگ/custom پولی پیش‌فرض نیست |
-| **T1/static, هر visibility** | انتخاب اختیاری `ci.runner: none`، بودجهٔ ماهانه صفر | فقط حالت local-only است؛ scaffold هیچ workflowی نمی‌سازد و خروجی موفق `make check` باید در PR ثبت شود |
+| **private** | **فقط GitHub-hosted استاندارد** مانند `ubuntu-latest` | runner خودمیزبان، runner group خودمیزبان، ARC و برچسب‌های سفارشیِ حل‌شونده به self-hosted ممنوع‌اند؛ هر run سهمیه‌دار نیازمند اجازه و `workflow_dispatch` محدود به ref/SHA است |
+| **public** | GitHub-hosted استاندارد، پیش‌فرض و توصیه‌شده | self-hosted فقط با ADR مشخص و جداسازی واقعی؛ اجرای کد fork/نامطمئن بر آن ممنوع است |
+| **T1/static با `ci.runner: none`** | هیچ GitHub Actions jobای تولید/اجرا نمی‌شود | فقط profile محلی با بودجهٔ صفر؛ شواهد موفق `make check` در PR لازم است |
 
-### حالت local-only برای T1/static
+این ممنوعیت private یک **سیاست سخت‌گیرانهٔ KavoshStart** است، نه ادعای اینکه GitHub استفاده از self-hosted در private را ممنوع کرده است. GitHub نسبت به خطر persistence و دسترسی کد نامطمئن هشدار می‌دهد؛ hosted نیز ایمنی خودکار کد شخص ثالث، تفکیک Secrets و حفاظت از شبکه را تضمین نمی‌کند.
 
-مالک می‌تواند در intake، `ci.runner: "none"` را برای پروژهٔ T1/static انتخاب کند. این حالت هیچ فایل workflowی تولید نمی‌کند و هیچ دقیقهٔ GitHub Actions مصرف نمی‌کند. بودجه باید صفر باشد. عامل پیش از درخواست merge، `make setup` و `make check` را محلی اجرا می‌کند و در PR دستورها، کد خروجی، خلاصهٔ نتیجه و محیط اجرا را می‌نویسد. نتیجهٔ قرمز یا نبود شواهد مانع merge است. اگر یک status check واقعاً قرمز است، دورزدن آن ممنوع می‌ماند؛ این حالت فقط برای مخزنی است که عمداً CI status check ندارد و قواعد branch آن PR را همچنان الزامی می‌کنند.
+### اجرای private (fail closed)
 
-برای smoke test مرورگر، Chromium/Chrome headless نصب‌شدهٔ محلی را استفاده کنید؛ اگر موجود نیست، تست را با `SKIP` روشن گزارش کنید. خروجی هر فایل تست را در مسیر جداگانه‌ای مانند `artifacts/smoke/<test-name>/` بنویسید. در Windows، پردازهٔ برنامه و همهٔ فرزندانش را در Job Object مدیریت کنید و در مسیر cleanup کل درخت پردازه را ببندید. وابستگی یا مرورگر را هنگام اعتبارسنجی آفلاین دانلود نکنید.
+- انتخاب `ci.runner: self-hosted` برای private در schema، scaffold و governance رد می‌شود؛ ADR، label، بودجه یا وجود runner ثبت‌شده استثنا ایجاد نمی‌کند.
+- GitHub-hosted private در حساب دارای سهمیهٔ مشترک تنها پس از **مجوز مستقیم مالک برای همان اجرای مشخص** و با dispatch دستی برای PR باز و head SHA فعلی اجرا می‌شود. کنترل‌های `ci.yml` و workflowهای قابل‌استفادهٔ مجدد باید اعتبار ref/SHA را پیش از checkout/کار اصلی بررسی کنند. `push`، `pull_request`، `schedule` و `workflow_run` نباید job هزینه‌دار private را خودکار اجرا کنند.
+- محیط‌های داخلی/داده‌های Test/Production با GitHub-hosted به‌صورت خودکار قابل دسترسی یا اثبات‌شده نیستند. build/validation محلی و pull-based deployment می‌توانند مستقل باشند، اما **نباید** به‌عنوان اجرای GitHub Actions یا شواهد Test/Production جا زده شوند. هر test/release باید provenance، سطح اعتماد و شواهد واقعی خود را داشته باشد.
+- وجود self-hosted runner ثبت‌شده در GitHub به‌تنهایی اثبات نقض اجرای job نیست؛ خاموش‌کردن دسترسی، حذف ثبت/گروه و بازبینی workflows یک اقدام مدیریتی مالک در repositoryهای مصرف‌کننده است، نه کاری از داخل مخزن عمومی.
 
-برای پروژهٔ private، اگر مالک نمی‌خواهد سهمیهٔ مشترک مصرف شود، workflow روی runner خودمیزبان ایزوله یا profile محلی واجدشرایط اجرا می‌شود؛ برای GitHub-hosted، تنها `workflow_dispatch` با PR number و head SHA جاری مجاز است. ثبت این انتخاب در مانیفست به‌تنهایی مجوز اجرا نیست.
+### حالت محلی T1/static
 
-قواعد runner خودمیزبان (یک runner مشترک می‌تواند به صف و لغوهای زیاد منجر شود):
-- **برای هر ریپو** ثبت می‌شود، نه برای کل حساب؛ labelهای `self-hosted, linux, x64, <repo-slug>` دقیق‌اند.
-- Core یک implementation واحد برای isolation تحمیل نمی‌کند. rootless container، sandbox، VM disposable/ephemeral و runner اختصاصیِ یک repo می‌توانند بخشی از trust model معتبر باشند، اما ADR باید isolation واقعی، مرز کد نامطمئن و credential boundary را توضیح دهد. rootful Docker بدون containment مستقل همچنان root-equivalent است و قابل‌قبول نیست. runner persistent/dedicated نباید credential تولید/production داشته باشد و workflowهای PR باید boundary کد نامطمئن را machine-enforce کنند.
-- Runner capacity به صف و SLO بستگی دارد؛ تعداد ثابت برای همهٔ T2 الزام نیست.
-- رازهای production هرگز روی ماشین runner نیستند (استقرار pull-based است — بخش 07).
-- ظرفیت runner (`ci.runners`) براساس صف و SLO توسط مالک تعیین و در همان control surface بررسی می‌شود.
-- نصب: `sudo bash scripts/install-runner.sh <owner/repo> <token> [n]`؛ token را مالک می‌گیرد:
-  `gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token`
-- شبکه: runner باید به **مقصدهایی که workflow واقعاً مصرف می‌کند** دسترسی قابل اندازه‌گیری داشته باشد. عدم دسترسی به github.com، ghcr.io یا یک مخزن بسته تنها زمانی blocker است که همان مسیر برای این کار لازم باشد. مسیر جایگزین، proxy یا mirror جزء الزامات عمومی این استاندارد نیست؛ پس از تکرار خطا، جزئیات قابل‌رفعِ URL/DNS/IP را طبق `FLOW-3` گزارش کنید.
-- تغییر visibility یک ریپو = تغییر runner در همان PR؛ governance ناهمخوانی را قرمز می‌کند.
+مالک می‌تواند در intake، `ci.runner: "none"` را فقط برای T1/static انتخاب کند. scaffold هیچ workflowی نمی‌سازد و بودجه صفر است. عامل `make setup` و `make check` را محلی اجرا می‌کند و فرمان، کد خروجی، محیط و نتیجه را در PR ثبت می‌کند. خروجی ناموفق یا غایب مانع merge است؛ required check موجود نباید دور زده شود. اعتبارسنجی مرورگر اگر محلی ممکن نبود با SKIP صریح گزارش می‌شود، نه PASS جعلی.
 
-حساب Free استفاده می‌شود و shared quota فقط پس از اجازهٔ مستقیم برای یک اجرای مشخص مصرف می‌شود. budget یا گزارش دقیقه توقف قطعی هزینه نیست. artifact، cache، Packages و انتقال داده جدا بررسی می‌شوند؛ runner بزرگ و AI API پولی وابستگی استاندارد نیستند.
+### public self-hosted (استثنا، نه توصیه)
+
+اگر پروژهٔ public واقعاً نیازمند آن بود، ADR باید runner trust model، isolation/containment، boundary کد نامطمئن و credential boundary را با کنترل عملی بیان کند. rootful Docker دسترسی root-equivalent دارد و `--ephemeral` به‌تنهایی ایزولیشن host نیست. ظرفیت با صف/SLO تعیین می‌شود. نصب یا فعال‌سازی runner نیازمند فرایند مجزای مورد تأیید مالک است؛ installer قبلی private بازنشسته است.
+
+دقیقه، storage، cache، Packages و larger runner هزینه‌های مستقل‌اند. مقدار `monthlyMinutesBudget` مجوز خرج‌کردن یا توقف قطعی هزینه نیست؛ policy حساب و بررسی billing معتبر است.
 
 ## قواعد صرفه‌جویی (به ترتیب اثر)
 1. **CI-6:** CI سنگین روی Draft خاموش است؛ اجرای زودهنگام باید درخواست صریح و، اگر سهمیه مصرف می‌کند، مجوز مستقیم همان اجرا داشته باشد.
@@ -43,7 +42,7 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 6. `timeout-minutes` برای هر job (پیش‌فرض 360 دقیقه است!).
 
 ## اجرای زودهنگام و workflowهای هر پروژه
-روی Draft، CI سنگین خودکار اجرا نمی‌شود. در public یا self-hosted، افزودن `ci:full` اجرای زودهنگام را درخواست می‌کند؛ روی private GitHub-hosted، `workflow_dispatch` باید PR number و head SHA دقیق را بگیرد و برای suite سنگین ورودی `ci-full` هم صریحاً فعال شود. این عمل توسط صاحب ریپو انجام می‌شود و فقط همان run را مجاز می‌کند؛ SHA قدیمی یا PR بسته/تغییریافته fail-closed می‌شود.
+روی Draft، CI سنگین خودکار اجرا نمی‌شود. در public، افزودن `ci:full` اجرای زودهنگام را درخواست می‌کند؛ روی private GitHub-hosted، `workflow_dispatch` باید PR number و head SHA دقیق را بگیرد و برای suite سنگین ورودی `ci-full` هم صریحاً فعال شود. این عمل توسط صاحب ریپو انجام می‌شود و فقط همان run را مجاز می‌کند؛ SHA قدیمی یا PR بسته/تغییریافته fail-closed می‌شود.
 
 | فایل | رویداد | Tier |
 |---|---|---|

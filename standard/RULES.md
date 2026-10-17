@@ -107,8 +107,8 @@
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| CI-1 | runner بر اساس visibility، trust، شبکه و هزینه انتخاب می‌شود: public پیش‌فرض GitHub-hosted است و self-hosted فقط با ADR ایزولیشن و بدون PR کد نامطمئن؛ private می‌تواند GitHub-hosted یا self-hosted باشد. هر private hosted run که سهمیهٔ مشترک مصرف کند فقط با dispatch مستقیم مالک برای PR/ref/SHA مشخص مجاز است؛ trigger خودکار آن خاموش است. `none` فقط برای T1/static با بودجهٔ صفر است. | MUST | All | P, S, R |
-| CI-2 | هر runner خودمیزبان باید trust model و isolation/containment واقعی و مستند داشته باشد؛ implementation خاص invariant نیست. ADR باید مرز کد نامطمئن و credential boundary را روشن کند و یک strategy واقعی مانند ephemeral/disposable، sandbox/container/rootless/VM یا runner اختصاصیِ همان repo با کنترل‌های معادل را نام ببرد. PR کد fork/نامطمئن بدون boundary مناسب اجرا نمی‌شود و credential تولید/production روی runner قرار نمی‌گیرد. تعداد runner با ظرفیت و SLO تعیین می‌شود، نه Tier ثابت. | MUST | All | P, R |
+| CI-1 | در مخزن private، تمام jobهای GitHub Actions فقط از runnerهای GitHub-hosted استاندارد استفاده می‌کنند؛ self-hosted حتی به‌صورت ایزوله ممنوع است. اجرای private hosted سهمیه‌دار صرفاً با dispatch مستقیم مالک، محدود به PR/ref/SHA فعلی و بدون trigger خودکار است. `none` فقط برای T1/static بدون هیچ workflow و با اعتبارسنجی محلی مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR و منع اجرای fork/کد نامطمئن مجاز است. | MUST | All | P, S, R |
+| CI-2 | هر استثنای self-hosted فقط برای مخزن public و پس از ADR ثبت‌شدهٔ trust model، isolation/containment واقعی، جداسازی کد نامطمئن و credential boundary مجاز است؛ اجرای fork PR روی آن ممنوع است. این استثنا هرگز به private تعمیم نمی‌یابد. credential تولید/production روی runner نگهداری نمی‌شود و ظرفیت براساس SLO تعیین می‌شود، نه Tier ثابت. | MUST | All | P, R |
 | CI-3 | Core فقط reliability/trust/isolation/least-privilege و bounded execution را govern می‌کند. budget، plan و quota سیاست portfolio/account هستند و نباید invariant کیفیت نرم‌افزار شوند؛ هر مسیر billable همچنان باید طبق policy مالک مجاز باشد، اما مقدار budget داخل manifest به‌تنهایی مجوز یا failure مهندسی ایجاد نمی‌کند. | MUST | All | P, H, R |
 | CI-4 | workflowهای PR `concurrency` با `cancel-in-progress` دارند (روی `main` نه). | MUST | All | R |
 | CI-5 | jobهای سنگین (e2e کامل، migration rehearsal، اسکن عمیق امنیتی) فقط وقتی بر اساس ریسک/مرحله لازم‌اند، روی `main`، tag، برچسب `ci:full` یا اجرای صریحِ مالک انجام شوند؛ تست نفوذ جامع شرط پیش‌فرض هر PR/نسخهٔ اولیه نیست. | MUST | T1, T2 | R |
@@ -116,6 +116,12 @@
 | CI-7 | یک job تجمیعی با نام ثابت `required` نتیجه‌ی CI را اعلام می‌کند. | MUST | All | P |
 | CI-8 | پروژه یک command contract معنایی و مستند برای setup/lint/test/build/check (با N/A صریح برای عملیات نامربوط) ارائه می‌کند و CI همان contract را صدا می‌زند. scaffold پیش‌فرض می‌تواند Makefile adapter بسازد، اما زبان/tool خاص invariant عمومی نیست. | MUST | All | R |
 | CI-9 | نگه‌داری artifact حداکثر 7 روز؛ cache فقط برای وابستگی‌ها. | SHOULD | All | R |
+
+## TP — انتخاب و توزیع اجزای شخص ثالث
+| ID | قاعده | سطح | Tier | لایه |
+|---|---|---|---|---|
+| TP-1 | پیش از ورود جزء شخص ثالثِ معنادار، بلوغ/هزینهٔ کل مالکیت، امنیت، نگهداری، منبع و شرایط مجوز متناسب با ریسک و شیوهٔ مصرف بررسی می‌شود. GPL/AGPL ممنوعیت مطلق ندارند؛ مجوز نامشخص یا تعارض حقوقی برای انتشار همان جزء باز می‌ماند. تصمیم و مالک در همان PR/Spec یا فهرست اجزای پروژه ثبت می‌شوند. | MUST | All | R |
+| TP-2 | پیش از انتشار تجاری هر بسته/سرویسِ مشمول تعهد، اجزای توزیعی و استفادهٔ شبکه‌ای مؤثر، License/NOTICE/حقوق بازتوزیع/سورس و سازگاری قراردادها بررسی می‌شود؛ فهرست اجزا و SBOM متناسب با خروجی تهیه و ابهام مؤثر با تأیید حقوقی معتبر و مالک حل می‌شود. هیچ گزارش خودکار به‌تنهایی مجوز قانونی انتشار نیست. | MUST | All | R |
 
 ## AI — عامل‌های هوش مصنوعی
 | ID | قاعده | سطح | Tier | لایه |
@@ -167,5 +173,5 @@
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)
 این‌ها ماشینی بررسی نمی‌شوند؛ مالک هنگام بازبینی PR مسئول آن‌هاست و نقضشان «کشف خودکار» ندارد:
 WK-3 · WK-5 · CR-3 (تصمیم انسانی high/critical) · FLOW-1 · FLOW-2 · PR-6 (بخش high/critical؛ لایه‌ی A فقط عامل را محدود می‌کند) · PR-7 (تصمیم ادغام؛ لایه‌ی M پس از وقوع کشف می‌کند) ·
-REL-2 · CI-2 (ظرفیت/ایزولیشن عملیاتی runner خصوصی) · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · FLOW-3 · UI-2 · UI-3.
+REL-2 · CI-2 (بازبینی استثنای public self-hosted) · TP-1 · TP-2 · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · FLOW-3 · UI-2 · UI-3.
 هر وقت برای یکی از این‌ها check ارزان پیدا شد، لایه‌ی ماشینی اضافه و از این فهرست حذف می‌شود (ADR-0002).

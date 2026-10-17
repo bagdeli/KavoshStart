@@ -27,11 +27,14 @@
 
 مبنای بیرونی: [OWASP SAMM Security Testing](https://owaspsamm.org/model/verification/security-testing/) (baseline سریع + manual روی بخش پرخطر) و [NIST SSDF](https://csrc.nist.gov/Projects/ssdf) (انتخاب متناسب با ریسک و کاربرد).
 
-## سیاست runner خودمیزبان (CI-1، CI-2)
-- برای public، GitHub-hosted پیش‌فرض است؛ self-hosted فقط با ADR ایزولیشن و طوری که کد fork/نامطمئن روی آن اجرا نشود.
-- برای private، GitHub-hosted یا self-hosted بر اساس اعتماد/هزینه/شبکه انتخاب می‌شود؛ hosted فقط با مجوز همان اجرا و ref/SHA دقیق.
-- ثبت روی **یک** ریپو؛ Docker روت‌فل دسترسی root-equivalent می‌دهد. installer روت‌فل را رد می‌کند و Docker روت‌لس می‌خواهد. VM اختصاصی disposable باید پس از هر job توسط provisioner حذف شود؛ `--ephemeral` به‌تنهایی host isolation نیست.
-- تغییر visibility باعث بازبینی runner و trust ADR در PR می‌شود؛ self-hosted عمومی بدون ایزولیشن و کنترل fork قابل قبول نیست.
+## سیاست runner (CI-1، CI-2)
+
+- در مخازن **private، فقط GitHub-hosted استاندارد** مجاز است؛ self-hosted تحت هیچ ADR یا استثنای محلی مجاز نیست. `ci.runner: none` فقط برای T1/static بدون job است.
+- private hosted مصرف‌کنندهٔ سهمیه، فقط با `workflow_dispatch` صریح مالک برای ref/SHA فعلی اجرا می‌شود؛ محدودیت هزینه جدا از انتخاب runner کنترل می‌شود.
+- در public، GitHub-hosted پیش‌فرض است. self-hosted استثنایی به ADR جداسازی، عدم اجرای fork PR، مرز credential و کنترل واقعی شبکه/host نیاز دارد. `--ephemeral` به‌تنهایی ایزولیشن نیست و rootful Docker دسترسی root-equivalent ایجاد می‌کند.
+- GitHub-hosted به‌تنهایی شناسایی بدافزار وابستگی‌ها، امنیت Secretها یا دسترسی/شواهد محیط خصوصی را تضمین نمی‌کند. آزمون واقعی Test/Production و gate انتشار مستقل‌اند.
+
+منبع تصمیم: [ADR-0015](../docs/decisions/0015-private-github-hosted-only.md). برای تعهدات مجوز نرم‌افزار/فونت/داده/ایمیج از [سیاست اجزای شخص ثالث](15-third-party-components.md) استفاده کنید.
 
 
 ## مرز اطلاعاتی public/private (SEC-5)
