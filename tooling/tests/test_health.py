@@ -129,13 +129,14 @@ class AcceptanceDebt(unittest.TestCase):
 
 
 class TemplateHardening(unittest.TestCase):
-    def test_CI2_runner_installer_rejects_rootful_docker_and_is_ephemeral(self):
-        """Covers: CI-2 (negative rootful access, positive ephemeral rootless runner)"""
+    def test_CI2_retired_private_runner_installer_cannot_register_anything(self):
+        """Covers: CI-2 (negative retired installer); public exceptions require separate review"""
         text = (ROOT / "scripts/install-runner.sh").read_text(encoding="utf-8")
-        self.assertIn("rootful Docker is root-equivalent", text)
-        self.assertIn("only accepts rootless Docker runners", text)
+        self.assertIn("private repositories MUST use standard GitHub-hosted", text)
+        self.assertIn("exit 1", text)
         self.assertNotIn("usermod -aG docker", text)
-        self.assertIn("--ephemeral", text)
+        self.assertNotIn("registration-token", text)
+        self.assertNotIn("--ephemeral", text)
 
     def test_SEC1_gitleaks_download_is_checksum_verified(self):
         text = (ROOT / "templates/common/.github/workflows/ci.yml").read_text(encoding="utf-8")

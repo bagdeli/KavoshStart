@@ -158,10 +158,10 @@ class GovernanceFiles(unittest.TestCase):
             {"workflow.yml": "jobs:\n  test:\n    runs-on: ${{ fromJSON(inputs.runs-on) }}\n"},
             dict(EXAMPLE, visibility="public"))[0][0], "ok")
 
-    def test_CI1_positive_self_hosted_yaml_label_list(self):
-        m = dict(EXAMPLE, ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
-                             "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"]})
-        workflows = {"ci.yml": "jobs:\n  test:\n    runs-on: [self-hosted, linux, x64, kavoshsms]\n"}
+    def test_CI1_positive_public_self_hosted_yaml_label_list(self):
+        m = dict(EXAMPLE, visibility="public", ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
+                             "runnerLabels": ["self-hosted", "linux", "x64", "example"]})
+        workflows = {"ci.yml": "jobs:\n  test:\n    runs-on: [self-hosted, linux, x64, example]\n"}
         self.assertEqual(g.runner_workflow_problems(workflows, m)[0][0], "ok")
 
     def test_CI1_positive_private_hosted_is_allowed_with_per_run_scope(self):
@@ -182,7 +182,9 @@ class GovernanceFiles(unittest.TestCase):
     def test_CI1_negative_local_only_runner_outside_T1_static(self):
         m = local_only_static_manifest()
         m["runtime"] = "server"
-        self.assertTrue(fails_for("CI-1", manifest=m))
+        self.assertTrue(any(level == "fail" and rule == "CI-1"
+                            for level, rule, _, _ in g.runner_manifest_problems(m)))
+        self.assertTrue(g.validate(m, {"allOf": g.SCHEMA["allOf"]}))
 
     def test_CI3_positive_budget_hint_does_not_invalidate_local_only_profile(self):
         m = local_only_static_manifest()
@@ -302,29 +304,31 @@ class Manifest(unittest.TestCase):
     def test_CI2_positive_runner_capacity_is_not_fixed_by_tier(self):
         self.assertEqual(fails_for("CI-2"), [])
 
-    def test_CI2_negative_private_runner_labels_are_repo_scoped(self):
-        m = dict(EXAMPLE, ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
+    def test_CI2_negative_public_runner_labels_are_repo_scoped(self):
+        m = dict(EXAMPLE, visibility="public", ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
                              "runnerLabels": ["self-hosted", "linux", "x64", "another-repo"],
                              "trustModelADR": "docs/decisions/0002-runner.md"})
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("# Runner trust model\nIsolation uses rootless container execution. Untrusted code is excluded from this runner. Credential boundary excludes production credentials.", encoding="utf-8")
+            path.write_text("# Runner trust model\nIsolation uses rootless container execution. Untrusted code is excluded from this runner. Fork PRs cannot execute. Credential boundary excludes production credentials.", encoding="utf-8")
         self.assertTrue(fails_for("CI-2", setup, manifest=m))
 
-    def test_CI2_positive_private_rootless_runner_with_exact_repo_labels(self):
+    def test_CI2_positive_public_rootless_runner_with_exact_repo_labels(self):
         m = json.loads(json.dumps(EXAMPLE))
+        m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
                    "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
                    "trustModelADR": "docs/decisions/0002-runner.md"}
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("# Runner trust model\nIsolation uses rootless container execution. Untrusted code is excluded from this runner. Credential boundary excludes production credentials.", encoding="utf-8")
+            path.write_text("# Runner trust model\nIsolation uses rootless container execution. Untrusted code is excluded from this runner. Fork PRs cannot execute. Credential boundary excludes production credentials.", encoding="utf-8")
         self.assertEqual(fails_for("CI-2", setup, manifest=m), [])
 
-    def test_CI2_positive_private_dedicated_runner_with_bounded_trust(self):
+    def test_CI2_positive_public_dedicated_runner_with_bounded_trust(self):
         m = json.loads(json.dumps(EXAMPLE))
+        m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
                    "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
                    "trustModelADR": "docs/decisions/0002-runner.md"}
@@ -338,8 +342,9 @@ class Manifest(unittest.TestCase):
                 encoding="utf-8")
         self.assertEqual(fails_for("CI-2", setup, manifest=m), [])
 
-    def test_CI2_negative_dedicated_runner_without_trust_boundaries(self):
+    def test_CI2_negative_public_dedicated_runner_without_trust_boundaries(self):
         m = json.loads(json.dumps(EXAMPLE))
+        m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
                    "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
                    "trustModelADR": "docs/decisions/0002-runner.md"}

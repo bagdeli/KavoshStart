@@ -1,5 +1,4 @@
 """Private GitHub-hosted-only Actions and risk-sized local-only regression checks."""
-import importlib.util
 import json
 import subprocess
 import sys
