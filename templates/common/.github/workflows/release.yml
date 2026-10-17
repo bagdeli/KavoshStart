@@ -1,5 +1,5 @@
-# Gated release (REL-4, REL-5). Private GitHub-hosted runs need a direct manual dispatch on exact main.
-# PRIVATE_HOSTED_DISPATCH_REQUIRED: workflow_run is disabled for private hosted runner selections.
+# Gated release (REL-4, REL-5). Private GitHub Actions runs need a direct manual dispatch on exact main.
+# PRIVATE_ACTIONS_DISPATCH_REQUIRED: workflow_run is disabled for private hosted runner selections.
 name: release
 
 on:
@@ -26,7 +26,7 @@ permissions:
 jobs:
   release:
     if: >-
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && !{{PRIVATE_HOSTED}}) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && !{{PRIVATE_ACTIONS_RESTRICTED}}) ||
       (github.event_name == 'workflow_dispatch' && inputs.authorization-confirmed && github.ref == 'refs/heads/main')
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-release.yml@{{KAVOSHSTART}}
     with:

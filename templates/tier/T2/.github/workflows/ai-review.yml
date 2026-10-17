@@ -1,6 +1,6 @@
 # Independent AI review on ready PRs. Comments only — never approves or merges (PR-6).
 # Setup once: run /install-github-app in Claude Code, or add ANTHROPIC_API_KEY as a repository secret.
-# Costs Actions minutes (≈2–5 per review) + API usage: included in the T2 budget.
+# Optional: costs Actions minutes plus API usage. Private Actions jobs stay disabled by default.
 name: ai-review
 
 on:
@@ -20,7 +20,9 @@ permissions:
 
 jobs:
   review:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      !{{PRIVATE_ACTIONS_RESTRICTED}} &&
+      (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: {{RUNS_ON_YAML}}   # CI-1 (from kavosh.project.json)
     timeout-minutes: 15
     steps:
