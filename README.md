@@ -41,7 +41,7 @@ KavoshStart مرجع **عمومی و مستقل از مخازن مصرف‌کن�
 
 ## واقعیت platform/account (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
-در مخزن private با GitHub Free، کنترل‌های branch/ruleset قابل‌اعمال مانند مخزن public نیستند و باید محدودیت‌های پلن و وضعیت واقعی تنظیمات بررسی شوند. **KavoshStart اجرای GitHub Actions را در private فقط روی GitHub-hosted استاندارد مجاز می‌داند؛ self-hosted ممنوع است.** اجرای سهمیه‌دار private همچنان به dispatch دستی و مجوز مستقیم برای ref/SHA مشخص نیاز دارد. برای T1/static، پروفایل `ci.runner: none` بدون هیچ Actions job مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR سخت‌گیرانه و کنترل کد نامطمئن قابل بررسی است ([ADR-0015](docs/decisions/0015-private-github-hosted-only.md)، CI-1).
+در مخزن private با GitHub Free، کنترل‌های branch/ruleset قابل‌اعمال مانند مخزن public نیستند و باید محدودیت‌های پلن و وضعیت واقعی تنظیمات بررسی شوند. **در قرارداد نسخه ۶، Self-hosted GitHub Actions نصب‌شده روی سرور مستقل در Private در صورت وجود و ایزولیشن CI-2 مجاز است.** اما GitHub-hosted در Private حتی از سهمیهٔ رایگان بدون پرسش و دریافت اجازهٔ صریح مالک/ادمین برای همان Run ممنوع است؛ پس از مجوز فقط Dispatch دستی برای Workflow/PR/ref/SHA مشخص مجاز است. Public استاندارد GitHub-hosted از نظر دقیقه رایگان است؛ larger runners و storage ممکن است هزینه داشته باشند. Self-hosted عمومی با مدل اعتماد و منع کد fork نامطمئن قابل استفاده است. T1/static همچنان می‌تواند `ci.runner: none` بدون Actions داشته باشد ([ADR-0018](docs/decisions/0018-private-self-hosted-and-hosted-consent.md)، CI-1/2).
 
 | لایه | کِی عمل می‌کند | چه چیزی |
 |---|---|---|

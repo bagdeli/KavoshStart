@@ -56,10 +56,14 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
-2. Explain the GitHub Free cost boundary: a private repository may use **only standard GitHub-hosted**
-   GitHub Actions runners, and each billable run requires direct owner authorization for one exact ref/SHA.
-   Self-hosted is not an option for private repositories. Public standard hosted CI may run only where it
-   draws on no shared allowance. A T1/static project may select `ci.runner: none` (no Actions jobs).
+2. Explain the runner and cost boundary: in private, an existing
+   **self-hosted runner on an isolated server** registered in GitHub Actions may
+   be chosen with a CI-2 trust ADR and repository-scoped runner labels.
+   Private **GitHub-hosted** runs require **explicit authorization** from the
+   owner/admin for each exact workflow/PR/ref/head SHA *after asking*, even
+   while included free minutes remain. No reply means no hosted dispatch.
+   Public standard GitHub-hosted minutes are free under current GitHub rules;
+   larger runners and storage have separate terms. T1/static may select 'none'.
    Before selecting any material third-party component, apply `standard/15-third-party-components.md`.
    Record risk-sized licence, distribution, security and total-ownership-cost decisions in the consumer project.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
@@ -90,14 +94,18 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** for private repositories, use only standard GitHub-hosted runners; self-hosted is
-   prohibited even with an isolation ADR. On this Free account, private billable runs require the owner's
-   direct authorization for the exact run: dispatch `ci` and `kavosh` for an open PR and its current head SHA.
-   Reject stale heads. GitHub-hosted does not imply access to a private Test server or acceptance evidence;
-   follow independent exact-source validation and pull-based deployment controls. For public repositories,
-   prefer standard GitHub-hosted; a self-hosted exception requires CI-2 ADR and must exclude untrusted fork PRs.
-   T1/static may select `ci.runner: none`: scaffold creates no workflows, so successful local `make check`
-   and its evidence in each PR replace CI (not an existing red required check).
+8. **Runner (CI-1/2):** a private repository may select an available
+   **self-hosted runner on an isolated server** with a CI-2 trust ADR.
+   Reject untrusted fork/PR code and contain runner secrets and credentials.
+   For private GitHub-hosted usage, **explicit authorization** must first be
+   requested and received from the owner/admin for this exact run. Only after
+   approval, manually dispatch 'ci' and 'kavosh' for the current PR/head SHA;
+   stale heads fail closed. A budget field or generic permission to work is
+   not a one-run spending approval. Public standard GitHub-hosted is free for
+   Actions minutes; public self-hosted also requires CI-2 isolation review.
+   Hosted does not imply private Test/Production access. T1/static 'none'
+   creates no workflows: require real local 'make check' evidence, never
+   bypass an existing failed required check.
 9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
    Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
    deploy units, configure distinct version/health plus the canonical origin, and require
