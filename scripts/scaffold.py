@@ -104,6 +104,8 @@ def main() -> int:
     runner = manifest.get("ci", {}).get("runner")
     if manifest.get("visibility") == "private" and runner == "self-hosted":
         raise SystemExit("CI-1: private GitHub Actions require standard GitHub-hosted; self-hosted is prohibited")
+    if manifest.get("visibility") == "private" and (set(manifest.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"}):
+        raise SystemExit("CI-1: remove legacy self-hosted runner fields from the private manifest")
     if runner == "none" and not (manifest.get("tier") == "T1" and manifest.get("runtime") == "static"):
         raise SystemExit("CI-1: local-only 'none' is supported only for T1/static")
     vals = values(manifest)

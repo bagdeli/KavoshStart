@@ -47,6 +47,54 @@ class PrivateActionsPolicy(unittest.TestCase):
                 findings = g.runner_workflow_problems(wf, m)
                 self.assertTrue(any(x[0] == "fail" and x[1] == "CI-1" for x in findings), value)
 
+    def test_CI1_negative_private_hosted_with_stale_self_hosted_metadata(self):
+        for key, value in (("runnerLabels", ["self-hosted", "linux"]),
+                           ("runners", 1),
+                           ("trustModelADR", "docs/decisions/0001-trust.md")):
+            with self.subTest(field=key):
+                m = manifest()
+                m["ci"][key] = value
+                self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
+                self.assertTrue(any(x[0] == "fail" and x[1] == "CI-1"
+                                    for x in g.runner_manifest_problems(m)))
+
+    def test_CI1_negative_unverified_external_reusable_workflow(self):
+        m = manifest()
+        workflows = {".github/workflows/custom.yml": (
+            "jobs:\n  external:\n"
+            "    uses: external/example/.github/workflows/build.yml@" + "a" * 40 + "\n"
+        )}
+        findings = g.runner_workflow_problems(workflows, m)
+        self.assertTrue(any(x[0] == "fail" and x[1] == "CI-1"
+                            for x in findings))
+
+    def test_CI1_positive_local_reusable_workflow_with_hosted_job(self):
+        m = manifest()
+        workflows = {
+            ".github/workflows/call.yml":
+                "jobs:\n  local:\n    uses: ./.github/workflows/safe.yml\n",
+            ".github/workflows/safe.yml":
+                "jobs:\n  hosted:\n    runs-on: ubuntu-latest\n",
+        }
+        result = g.runner_workflow_problems(workflows, m)
+        self.assertFalse(any(x[0] == "fail" and x[1] == "CI-1" for x in result))
+
+    def test_CI1_negative_missing_local_reusable_workflow(self):
+        result = g.runner_workflow_problems({
+            ".github/workflows/custom.yml":
+                "jobs:\n  local:\n    uses: ./.github/workflows/missing.yml\n"
+        }, manifest())
+        self.assertTrue(any(x[0] == "fail" and x[1] == "CI-1" for x in result))
+
+    def test_CI1_positive_standard_reusable_workflow_uses_hosted_input(self):
+        workflows = {".github/workflows/kavosh.yml": (
+            "jobs:\n  governance:\n"
+            "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v5.0.0\n"
+            "    with:\n      runs-on: '[\"ubuntu-latest\"]'\n"
+        )}
+        result = g.runner_workflow_problems(workflows, manifest())
+        self.assertFalse(any(x[0] == "fail" and x[1] == "CI-1" for x in result))
+
     def test_CI1_positive_local_only_t1_static(self):
         m = manifest(runner="none", tier="T1", runtime="static")
         self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])

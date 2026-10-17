@@ -544,17 +544,22 @@
       "then": {
         "properties": {
           "ci": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "runner"
+            ],
             "properties": {
               "runner": {
                 "enum": [
                   "github-hosted",
                   "none"
                 ]
-              }
+              },
+              "monthlyMinutesBudget": {},
+              "requiredWorkflow": {}
             },
-            "required": [
-              "runner"
-            ]
+            "description": "Private CI has only standard hosted or no-Actions local-only mode; all self-hosted metadata is forbidden."
           }
         },
         "required": [

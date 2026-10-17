@@ -364,6 +364,11 @@ def runner_manifest_problems(m):
     if vis == "private" and runner == "self-hosted":
         return [("fail", "CI-1", "Private repositories prohibit self-hosted Actions runners",
                  "use standard GitHub-hosted with one-run authorization, or T1/static local-only with no Actions jobs")]
+    if vis == "private":
+        extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"})
+        if extra:
+            return [("fail", "CI-1", "Private repositories forbid self-hosted runner metadata",
+                     "remove obsolete private runner fields: " + ", ".join(extra))]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
         if not eligible:
@@ -482,6 +487,21 @@ def runner_workflow_problems(workflows, m):
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
             elif runner == "self-hosted" and not is_self:
                 bad.append(f"{f}: {value} (manifest selects self-hosted)")
+    if vis == "private":
+        # A remotely called workflow selects its own job runners, even if the
+        # caller has no runs-on key. Reject unknown remotely hosted code: we
+        # cannot prove its nested runner selection from this checkout.
+        for file_name, source in workflows.items():
+            for target in USES_RE.findall(source):
+                if "/.github/workflows/" not in target:
+                    continue  # ordinary pinned actions cannot select additional job runners
+                if target.startswith("./.github/workflows/"):
+                    local_file = target.removeprefix("./").split("@", 1)[0]
+                    if local_file not in workflows:
+                        bad.append(f"{file_name}: missing local reusable workflow {local_file}")
+                elif not (target.startswith("bagdeli/KavoshStart/.github/workflows/")
+                          and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
+                    bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")

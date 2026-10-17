@@ -18,7 +18,8 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 
 ### اجرای private (fail closed)
 
-- انتخاب `ci.runner: self-hosted` برای private در schema، scaffold و governance رد می‌شود؛ ADR، label، بودجه یا وجود runner ثبت‌شده استثنا ایجاد نمی‌کند.
+- انتخاب `ci.runner: self-hosted` یا باقی‌ماندن `ci.runnerLabels`، `ci.runners` و `ci.trustModelADR` برای private در schema، scaffold و governance رد می‌شود؛ ADR، label، بودجه یا وجود runner ثبت‌شده استثنا ایجاد نمی‌کند.
+- Workflowهای reusable بیرونی می‌توانند runner مستقلی انتخاب کنند: در private فقط Workflow محلیِ واقعاً موجود (که همراه مخزن ممیزی می‌شود) یا Workflow پین‌شدهٔ KavoshStart مجاز است. سایر reusable workflowهای بیرونی تا ورود منطق آن‌ها به مخزن مصرف‌کننده و ممیزی مستقل fail-closed هستند؛ صرف SHA pin مجوز runner نیست.
 - GitHub-hosted private در حساب دارای سهمیهٔ مشترک تنها پس از **مجوز مستقیم مالک برای همان اجرای مشخص** و با dispatch دستی برای PR باز و head SHA فعلی اجرا می‌شود. کنترل‌های `ci.yml` و workflowهای قابل‌استفادهٔ مجدد باید اعتبار ref/SHA را پیش از checkout/کار اصلی بررسی کنند. `push`، `pull_request`، `schedule` و `workflow_run` نباید job هزینه‌دار private را خودکار اجرا کنند.
 - محیط‌های داخلی/داده‌های Test/Production با GitHub-hosted به‌صورت خودکار قابل دسترسی یا اثبات‌شده نیستند. build/validation محلی و pull-based deployment می‌توانند مستقل باشند، اما **نباید** به‌عنوان اجرای GitHub Actions یا شواهد Test/Production جا زده شوند. هر test/release باید provenance، سطح اعتماد و شواهد واقعی خود را داشته باشد.
 - وجود self-hosted runner ثبت‌شده در GitHub به‌تنهایی اثبات نقض اجرای job نیست؛ خاموش‌کردن دسترسی، حذف ثبت/گروه و بازبینی workflows یک اقدام مدیریتی مالک در repositoryهای مصرف‌کننده است، نه کاری از داخل مخزن عمومی.

@@ -13,7 +13,7 @@ PRIVATE_PROJECT_LIKE = re.compile(r"\bkavosh(?!start)[a-z][a-z0-9_-]+\b", re.IGN
 class PublicRepositoryBoundary(unittest.TestCase):
     def test_public_tree_contains_no_named_consumer_project(self):
         paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
-        findings = []
+        found_sensitive_identifier = False
         for rel in paths:
             if not rel:
                 continue
@@ -21,11 +21,16 @@ class PublicRepositoryBoundary(unittest.TestCase):
             if not p.is_file():
                 continue
             if PRIVATE_PROJECT_LIKE.search(rel):
-                findings.append(f"filename: {rel}")
+                found_sensitive_identifier = True
             content = p.read_text(encoding="utf-8", errors="replace")
             if PRIVATE_PROJECT_LIKE.search(content):
-                findings.append(f"content: {rel}")
-        self.assertEqual(findings, [], "Public standard includes a consumer-specific name")
+                found_sensitive_identifier = True
+        self.assertFalse(found_sensitive_identifier,
+                         "A restricted consumer identity exists in public files; inspect locally without publishing identifiers")
+
+    def test_detector_catches_synthetic_consumer_but_not_public_standard(self):
+        self.assertIsNone(PRIVATE_PROJECT_LIKE.search("KavoshStart"))
+        self.assertIsNotNone(PRIVATE_PROJECT_LIKE.search("KavoshExampleConsumer"))
 
 
 if __name__ == "__main__":
