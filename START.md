@@ -56,10 +56,13 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
-2. Explain the GitHub Free cost boundary: a private repository may use **only standard GitHub-hosted**
-   GitHub Actions runners, and each billable run requires direct owner authorization for one exact ref/SHA.
-   Self-hosted is not an option for private repositories. Public standard hosted CI may run only where it
-   draws on no shared allowance. A T1/static project may select `ci.runner: none` (no Actions jobs).
+2. Explain the exact runner **authority**: `external` is independent SelfServer CI with no GitHub Actions
+   workflows, requiring an exact-SHA trusted external check publisher and custom independent release adapter.
+   `self-hosted` is always a GitHub-registered Actions runner, even on the owner's server; private defaults
+   to **deny** unless the owner explicitly approves a repository-scoped exception and isolation ADR.
+   Private `github-hosted` jobs consume account quota and require admin authorization for each exact run.
+   Public self-hosted needs CI-2 isolation/fork safeguards. `none` is only the narrow T1/static local mode.
+   Never infer owner/billing consent merely from a manifest, ADR or workflow_dispatch; verify the real grant.
    Before selecting any material third-party component, apply `standard/15-third-party-components.md`.
    Record risk-sized licence, distribution, security and total-ownership-cost decisions in the consumer project.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
@@ -90,14 +93,18 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** for private repositories, use only standard GitHub-hosted runners; self-hosted is
-   prohibited even with an isolation ADR. On this Free account, private billable runs require the owner's
-   direct authorization for the exact run: dispatch `ci` and `kavosh` for an open PR and its current head SHA.
-   Reject stale heads. GitHub-hosted does not imply access to a private Test server or acceptance evidence;
-   follow independent exact-source validation and pull-based deployment controls. For public repositories,
-   prefer standard GitHub-hosted; a self-hosted exception requires CI-2 ADR and must exclude untrusted fork PRs.
-   T1/static may select `ci.runner: none`: scaffold creates no workflows, so successful local `make check`
-   and its evidence in each PR replace CI (not an existing red required check).
+8. **Runner (CI-1/2/3):** classify **execution authority**, not physical host.
+   Choose `external` for independent SelfServer CI; require `ci.externalCIADR`, real publisher
+   for `required` and `kavosh / governance` tied to exact SHA and `release.strategy: custom`
+   with reviewed release ADR. Scaffold creates no GitHub Actions workflows. Never treat local logs as
+   GitHub check runs.
+   For registered GH Actions `self-hosted`, public requires CI-2 safeguards; private first needs an
+   explicit *actual* owner exception referenced by `ci.privateSelfHostedApprovalADR` plus
+   `ci.trustModelADR` and only manually scoped Actions runs. A claimed ADR does not prove approval.
+   Private `github-hosted` consumes shared allowance **only after admin grants per-run consent**
+   for the exact ref/head; Actions settings must prevent unrelated writers from spending quota.
+   Keep `none` T1/static local-only and fail closed on missing evidence/checks. Existing consumers
+   remain pinned; do not modify them until separately authorized. See ADR-0018 and the v6 migration.
 9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
    Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
    deploy units, configure distinct version/health plus the canonical origin, and require

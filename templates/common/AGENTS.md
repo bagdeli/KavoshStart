@@ -38,8 +38,8 @@ make check    # lint + test + build — run before your single push
 2. Open a **draft PR early** with your plan. Title = Conventional Commit (`feat(scope): …`). Body from the template with `Closes #<n>`.
 3. Keep the PR coherent and reviewable. Line/file counts are telemetry, never a universal hard cap. Split only when the pieces remain independently useful, testable and safely mergeable; generated or broad mechanical changes must disclose their generator/review method.
 4. Run `make check` locally, then push **once**. Heavy CI defaults off on Draft; explicit early CI never authorizes shared quota use by itself.
-   If `ci.runner` is `none`, this must be a T1/static project with no workflow files: run `make check` locally and put
-   its command, exit code and summary in the PR body. A red or missing result blocks merge; never bypass a real check.
+   If `ci.runner` is `none`, this must be T1/static with no workflow files and clear local evidence.
+   If `ci.runner` is `external`, there must be no GitHub Actions workflows and an independent trusted publisher must provide exact-SHA `required`/governance evidence; do not invent green checks. Any missing or red required result blocks merge.
 5. Update the PR body (Done / Remaining / Decisions / How verified / AI involvement with `Co-Authored-By:`), then mark ready.
 6. If `kavosh / governance` or `required` is red, fix the cause. Never work around a check.
 
@@ -50,7 +50,7 @@ make check    # lint + test + build — run before your single push
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
 - Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
-- Private repositories use **GitHub-hosted runners only** for GitHub Actions; local-only T1/static has no Actions jobs. Neither a self-hosted label nor an ADR overrides CI-1.
+- For private CI, `external` SelfServer is independent of Actions, requires actual source-bound check evidence and a custom release adapter; registered GH Actions `self-hosted` is denied unless an actual owner-reviewed per-repository exception and CI-2 isolation exist. Private `github-hosted` quota requires explicit admin approval for each run; a manifest/ADR/dispatch alone does not prove consent. Public self-hosted requires untrusted-code and credential controls. `none` is only T1/static.
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI
