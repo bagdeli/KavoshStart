@@ -65,7 +65,7 @@ CR-3 همچنان مالک evidence هر تغییر است. Capability project-l
 
 ## Profile examples
 
-### KavoshUI-like library
+### Versioned design-system library
 
 ```json
 {

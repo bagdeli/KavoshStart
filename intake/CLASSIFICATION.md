@@ -13,7 +13,7 @@ Core rules (`standard/RULES.md`, column "All") apply to every combination. Capab
 | Tier | Trigger (any one is enough) | Typical examples |
 |---|---|---|
 | **T2 — Platform** | `data.regulatedIntegrations` not empty · `data.sensitivity = financial` · `data.multiTenant = true` · `size.domains ≥ 4` · `size.parallelStreams ≥ 3` · `users.audience = customers` and `users.scale ≥ 100-1000` | regulated or multi-domain customer platform |
-| **T1 — Application** | `runtime = server` · `data.sensitivity = personal` · `size.domains 2–3` · `size.lifetime ≠ weeks` · `ui.kind ∈ {web, admin}` · `projectKind = library` (consumed by other Kavosh repos) | KavoshSMS, KavoshWebManager, KavoshUI |
+| **T1 — Application** | `runtime = server` · `data.sensitivity = personal` · `size.domains 2–3` · `size.lifetime ≠ weeks` · `ui.kind ∈ {web, admin}` · `projectKind = library` (consumed by other Kavosh repos) | illustrative server app, versioned component library |
 | **T0 — Tool** | none of the above | script, CLI, one-off importer, static landing page, prototype |
 
 The owner may move a project **up** freely. Moving **down** requires an ADR in the project explaining why the trigger does not apply.

@@ -15,7 +15,7 @@ Settled choices are selected, explicitly not-needed, or inherited with a referen
 
 Keep machine facts in existing manifest fields, reference them from the compact project sheet, and do not add a manifest schema, decision registry, workflow, service or per-answer approval object. Identify the availability of the v3 independent receipt producer during planning; missing admission remains a prerequisite, not a reason to forge or relax receipts.
 
-KavoshStart coordinates engineering choices and delivery. KavoshUI supplies UI contracts and presentation implementations. Product business models and chosen integrations stay in the product. Third-party/font licence administration and product entitlement enforcement are distinct concerns.
+KavoshStart coordinates engineering choices and delivery. Each consuming project chooses and versions its own design-system package and UI contracts; this public standard does not name private UI providers. Product models and chosen integrations remain private to the product. Third-party/font rights and product entitlements are separate.
 
 ## Verification and limitations
 

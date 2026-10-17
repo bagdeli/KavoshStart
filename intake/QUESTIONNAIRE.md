@@ -7,7 +7,7 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 ## A. Identity
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
-| A1 | R | نام پروژه و نام ریپو؟ | `name`, `repo` | repo = PascalCase like other Kavosh repos, e.g. `KavoshSMS` |
+| A1 | R | نام پروژه و نام ریپو؟ | `name`, `repo` | use a project-owned repository name; public examples are synthetic |
 | A2 | R | هدف پروژه در یک جمله؟ | `summary` | Must describe the product now, not the vision |
 | A3 | R | چه کسانی از آن استفاده می‌کنند و تقریباً چند نفر؟ | `users.audience`, `users.scale` | `internal` / `customers` / `public`; `1-10`, `10-100`, `100-1000`, `1000+` |
 | A4 | R | اولین خروجی قابل‌استفاده (v0.1.0) دقیقاً چه کاری انجام می‌دهد؟ | `firstRelease` | 1–5 bullet points; becomes milestone v0.1.0 |
@@ -44,15 +44,15 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
 | E1 | R | رابط کاربری دارد؟ چه نوعی؟ | `ui.kind` | `none` / `web` / `admin` / `desktop` |
-| E2 | R* | از KavoshUI استفاده شود؟ کدام نسخه؟ | `ui.kavoshui` | *if ui.kind≠none; default: latest KavoshUI release, pinned exactly |
+| E2 | R* | کدام بستهٔ Design System با چه نسخهٔ دقیقی انتخاب می‌شود؟ | `ui.designSystem` یا `ui.exceptionADR` | *if ui.kind≠none; انتخاب بسته و نسخهٔ دقیق و مستندات مصرف/حقوق فونت فقط در مخزن پروژه، بدون default اجباری |
 | E3 | R* | زبان‌ها و جهت؟ | `ui.locales` | default `["fa-IR"]` RTL; add `en` only if needed |
 
 ## F. Engineering
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
-| F1 | R | زبان/فریم‌ورک؟ محدودیتی هست؟ | `stack.languages`, `stack.frameworks` | defaults: API → Python 3.12 + FastAPI; Web → TypeScript + Next.js (KavoshUI compatible); CLI → Python |
+| F1 | R | زبان/فریم‌ورک؟ محدودیتی هست؟ | `stack.languages`, `stack.frameworks` | defaults: API → Python 3.12 + FastAPI; Web → TypeScript + Next.js (subject to the selected UI package); CLI → Python |
 | F2 | R | کدام عامل‌ها روی آن کار می‌کنند؟ | `agents` | `claude`, `codex`, `copilot`, `gemini` |
-| F3 |   | وابستگی به ریپوهای دیگر Kavosh؟ | `dependsOn` | e.g. `KavoshLicense`, `KavoshUI` |
+| F3 |   | وابستگی به ریپو یا سرویس دیگر هست؟ | `dependsOn` | منابع خصوصی تنها در مخزن مصرف‌کننده ثبت می‌شوند؛ نمونهٔ عمومی بدون وابستگی واقعی است |
 | F4 | R | آیا این پروژه را ریپوهای دیگر Kavosh مصرف می‌کنند (کتابخانه/استاندارد)؟ | `projectKind` | `application` / `library` / `tool`; library ⇒ at least T1 |
 | F5 | R | این پروژه چه capabilityهای پایدار دارد؟ | `capabilities` | choose from `control-plane`, `package`, `server`, `browser-ui`, `desktop`, `persistent-data`, `migration`, `infrastructure`, `release-artifact`, `regulated`, `cms-wordpress`; derive obvious entries from earlier answers, then ask only for non-derivable scope |
 
@@ -68,7 +68,7 @@ Review these subjects at initial intake for every project. **R** here means an e
 | G4 | R | کدام اتصال‌ها ضروری‌اند و هنگام قطع شبکه یا سرویس چه رفتاری لازم است؟ | `PROJECT.md#architecture-decisions` | Reference `dependsOn` and regulated integrations; distinguish required/optional services, offline needs, retry/queue needs and operator-visible failure. Ask channel/notification needs only when relevant; do not add an integration because it exists in the portfolio. |
 | G5 | R | دادهٔ موجود یا مهاجرت داریم؟ نگهداری، حذف و بازیابی داده چه انتظاری دارد؟ | `PROJECT.md#architecture-decisions` | For persistent data, record the starting data source, migration/retention and recovery expectations; detailed rehearsal belongs before affected operations. No database means no invented database migration or backup work. Existing DEP/SEC safeguards remain applicable. |
 | G6 | R | کدام روش پیاده‌سازی مصوب مناسب است و چه بخش‌هایی نباید دوباره ساخته شوند؟ | `PROJECT.md#architecture-decisions` | Reference `stack` and approved engineering decisions; prefer mature third-party options when risk, TCO and redistribution obligations allow. Review actual integration/distribution model per TP-1/TP-2; product licensing is separate. No universal framework is required. |
-| G7 | R | رابط روی چه دستگاه‌ها و با چه زبان، تقویم و هویت بصری استفاده می‌شود؟ چاپ یا خروجی خاص لازم است؟ | `PROJECT.md#architecture-decisions` | If `ui.kind=none`, record not-needed and do not create UI tasks. Otherwise reuse `ui` choices; select supported typography, density, accessibility and responsive needs from KavoshUI. Ask Help/search/print/export needs conditionally, not as universal product features. Known font licence administration remains with its recorded owner; do not ask it again. |
+| G7 | R | رابط روی چه دستگاه‌ها و با چه زبان، تقویم و هویت بصری استفاده می‌شود؟ چاپ یا خروجی خاص لازم است؟ | `PROJECT.md#architecture-decisions` | If `ui.kind=none`, record not-needed and do not create UI tasks. Otherwise reuse `ui` choices; select supported typography, density, accessibility and responsive needs from the selected design system. Ask Help/search/print/export needs conditionally, not as universal product features. Known font licence administration remains with its recorded owner; do not ask it again. |
 | G8 | R | محدودیت اجرا، هزینه، کارایی و مسئول نگهداری چیست؟ | `PROJECT.md#architecture-decisions` | Reference `deploy` and `ci`; decide relevant availability, recovery, observability and capacity expectations. Reuse approved operational profiles. A recorded budget or environment is not execution/credential/Production authorization. |
 | G9 | R | اولین خروجی با چه معیار و شاهدی پذیرفته می‌شود و کدام تصمیم‌ها با مالک می‌ماند؟ | `PROJECT.md#architecture-decisions` | Reference `firstRelease`, approved scope and authority. Plan risk-sized evidence with the capability. For continuous acceptance, identify the existing admitted evidence/decision producer and its availability before promising delivery; a missing producer is an explicit prerequisite, not permission to invent receipts or build a new App by default. |
 

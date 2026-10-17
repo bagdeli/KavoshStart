@@ -2,14 +2,14 @@
 
 **استاندارد شروع، ساخت و نگهداری پروژه‌های Kavosh با همکاری انسان و عامل‌های هوش مصنوعی؛ مستقل از زبان، ابزار release و اندازهٔ diff، با policyهای platform/account به‌صورت overlay.**
 
-KavoshStart برای «روش کار» همان نقشی را دارد که [KavoshUI](https://github.com/bagdeli/KavoshUI) برای «ظاهر» دارد: یک مرجع نسخه‌دار که همه‌ی پروژه‌ها از آن پیروی می‌کنند، به‌جای این‌که هر پروژه قواعد خودش را از نو بنویسد.
+KavoshStart مرجع **عمومی و مستقل از مخازن مصرف‌کننده** برای استاندارد مهندسی، امنیت، CI و انتشار است. بستهٔ UI و اسناد خصوصی، فقط در مخزن خودِ مصرف‌کننده انتخاب و نگه‌داری می‌شوند.
 
 ## چطور استفاده می‌شود
 
 به عامل AI (Claude Code، Codex، …) فقط بگویید:
 
 > پروژه‌ی **‹نام›** را با این مشخصات: ‹…› در **`bagdeli/‹repo›`** بساز.
-> برای اصول و روند کار از **KavoshStart** و برای ظاهر از **KavoshUI** استفاده کن.
+> از **KavoshStart** برای استاندارد مهندسی استفاده کن؛ بستهٔ UI نسخه‌دار متناسب را در مخزن خود پروژه انتخاب کن.
 
 عامل موظف است [`START.md`](START.md) را اجرا کند:
 
@@ -21,7 +21,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 5 Backlog    → Milestone و Issueها در GitHub (نه در فایل)
 6 Deliver    → هر Issue = یک تغییر coherent و reviewable؛ risk/evidence مستقل از اندازهٔ diff → ادغام فقط به main
 7 Decide     → low/medium پس از gate کامل delegated merge؛ high/critical نیازمند تصمیم انسانی، نه کلیک مکانیکی Merge
-8 Maintain   → گزارش سلامت، انتشار gated، و ارتقای KavoshStart/KavoshUI با PR
+8 Maintain   → گزارش سلامت، انتشار gated، و ارتقای KavoshStart و بسته‌های انتخابی با PR
 ```
 
 ## محتوا
@@ -32,7 +32,7 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 | [`intake/`](intake/) | پرسش‌نامه، قواعد رده‌بندی، schema فایل `kavosh.project.json` | EN/FA |
 | [`standard/RULES.md`](standard/RULES.md) | **فهرست مرجع همه‌ی قواعد** با شناسه، سطح، Tier و مکانیزم اجرا | FA |
 | [`standard/15-third-party-components.md`](standard/15-third-party-components.md) | سیاست انتخاب، یکپارچه‌سازی و توزیع اجزای شخص ثالث | FA |
-| [`standard/`](standard/) | توضیح قواعد: مدل پلن رایگان، شاخه/PR، CI و دقیقه‌ها، AI، استقرار، KavoshUI … | FA |
+| [`standard/`](standard/) | توضیح قواعد: مدل پلن رایگان، شاخه/PR، CI و دقیقه‌ها، AI، استقرار، کتابخانهٔ UI انتخابی … | FA |
 | [`templates/`](templates/) | فایل‌های آماده: `common/` + `tier/T0..T2` + `runtime/server` | EN |
 | [`.github/workflows/`](.github/workflows/) | workflowهای مشترک که پروژه‌ها با tag دقیق `@vX.Y.Z` و نسخهٔ مانیفست فرا می‌خوانند | — |
 | [`scripts/`](scripts/) | scaffold، راه‌اندازی ریپو، نصب محافظ‌های عامل، ممیزی، گزارش پرتفوی | — |
@@ -58,6 +58,10 @@ KavoshStart برای «روش کار» همان نقشی را دارد که [Kav
 ## اجزای شخص ثالث
 
 اولویت با جزء بالغ و آماده است، اگر هزینهٔ کل مالکیت، امنیت، نگهداری و حقوق استفاده/توزیع آن قابل‌قبول باشد. Copyleft ممنوعیت مطلق ندارد؛ **نوع ترکیب، تغییر، توزیع و تعهد استفادهٔ شبکه‌ای** تعیین‌کننده است. بررسی release-scoped شامل License/NOTICE، حقوق بازتوزیع، سورس لازم و SBOM متناسب است. این سیاست از مجوز خود محصول و سامانهٔ entitlement آن مستقل است؛ کنترل حقوقی انسانی را با CI سبز جایگزین نکنید ([TP-1/2](standard/RULES.md)، [راهنما](standard/15-third-party-components.md)).
+
+## قرارداد عمومی و مهاجرت Major
+
+این مخزن هیچ نام، URL، محتوا، شواهد یا وضعیت مخازن خصوصی را به‌عنوان نمونه یا dependency منتشر نمی‌کند. UI هر پروژه با نام بسته و نسخهٔ دقیق در همان مخزن انتخاب می‌شود؛ هیچ تأمین‌کنندهٔ مشخصی در Core الزامی نیست. مهاجرت از فیلدهای قدیمیِ وابسته به ارائه‌دهنده و سیاست جدید runner در private یک **تغییر ناسازگار (breaking)** است؛ [راهنمای مهاجرت](docs/migrations/v5-provider-neutral-and-hosted-only.md) را بخوانید.
 
 ## نسخه‌بندی
 

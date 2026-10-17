@@ -33,7 +33,7 @@ Pick the mode:
 |---|---|---|
 | **NEW** | "build / create project X" | §1 |
 | **ADOPT** | "bring existing repo X under KavoshStart" | §2 |
-| **UPGRADE** | "update X to KavoshStart vN / KavoshUI vN" | §3 |
+| **UPGRADE** | "update X to KavoshStart vN / its selected design-system package" | §3 |
 | **WORK** | "implement issue #n in X" (project already adopted) | §4 |
 
 Never skip a step. Never invent an answer the owner has not given — ask.
@@ -67,7 +67,8 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 3 — Manifest
 1. Write `kavosh.project.json` conforming to [`intake/kavosh.project.schema.json`](intake/kavosh.project.schema.json).
    Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`). Never copy the illustrative `vX.Y.Z` from the example and never use the reserved `self` value in a consumer project.
-   and, if the project has a UI, `ui.kavoshui` to the latest KavoshUI release.
+   For a UI project, record its selected exact package and version under `ui.designSystem`, or a scoped `ui.exceptionADR`.
+   Never publish consumer-private package names, URLs or evidence in public KavoshStart.
 2. For a new T2 project set `acceptance.mode: continuous` as required by ACC-1; T0/T1 may opt in. Plan source-bound assertions and the availability of real admitted evidence/decision producers from `templates/tier/T2/acceptance/README.md` before promising delivery. Missing producer setup is a visible prerequisite, not a marker-only workaround or permission to create a new service by default.
 3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G9 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
 4. Show both to the owner. Continue only after confirmation.
@@ -82,8 +83,8 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    fills placeholders from the manifest and refuses to overwrite existing files.
 3. Replace every remaining `TODO(kavosh)` marker. Create the project code skeleton for the chosen stack and make
    the **command contract** work (`make setup | lint | test | build | check`, rule `CI-8`).
-4. If `ui.kind` is not `none`: follow [`standard/10-kavoshui.md`](standard/10-kavoshui.md). Do not copy
-   KavoshUI components; consume the pinned version.
+4. If `ui.kind` is not `none`: follow [`standard/10-design-systems.md`](standard/10-design-systems.md).
+   Select an appropriate existing versioned design-system package in the **consumer repository** and comply with its licence/consumer contract; do not copy components without authority.
 5. `make check` must pass locally.
 6. First commit directly on `main` is allowed **only** for this initial scaffold of an empty repository:
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
@@ -132,7 +133,7 @@ manually (e.g. the Actions access setting). Stop.
 3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
 4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and migrate release-scoped assertions, source-bound receipts and real admitted producers using `templates/tier/T2/acceptance/README.md`. Identify missing prerequisites before claiming the upgrade complete. Existing requirement ledgers remain supporting traceability; do not turn every row into a new acceptance Issue or mark historical code accepted without evidence.
 5. Run the repository audit/governance and `make check`; resolve new violations or explicitly disposition genuine external blockers. Do not bundle unrelated product features into the upgrade PR.
-6. KavoshUI upgrades are separate PRs: `chore(ui): upgrade KavoshUI to vX.Y.Z`, with rendered screenshots (RTL + mobile) only when the package diff can affect rendering/interaction.
+6. Design-system package upgrades use a separate PR and exact version. Capture actual rendered/RTL/mobile evidence only for relevant render or interaction changes; do not publish private consumer details in this public standard.
 
 ## §4 WORK on an issue (every day)
 0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.
