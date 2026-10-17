@@ -5,4 +5,4 @@ One line per term. Agents: do not invent acronyms; if a new term is unavoidable,
 | Term | Meaning |
 |---|---|
 | KavoshStart | Kavosh engineering standard this repository follows (bagdeli/KavoshStart). |
-| KavoshUI | Kavosh shared UI platform and design system (bagdeli/KavoshUI). |
+| Design System | Versioned and project-selected UI component/design contract; private choices stay in the consumer. |

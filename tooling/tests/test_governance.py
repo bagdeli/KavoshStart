@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import governance as g  # noqa: E402
 
 SHA = "11bd71901bbe5b1630ceea73d27597364c9af683"
-M = {"repo": "bagdeli/KavoshSMS", "kavoshStart": "v1.1.0"}
+M = {"repo": "bagdeli/Example", "kavoshStart": "v1.1.0"}
 KAVOSH_OK = """jobs:
   kavosh:
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v1.1.0
@@ -298,7 +298,7 @@ class StandardPinIdentity(unittest.TestCase):
     def test_STD1_positive_consumer_exact_release_pin(self):
         """Covers: STD-1 (positive)"""
         self.assertEqual(fails(g.standard_pin_problems(
-            {"repo": "bagdeli/KavoshERP", "kavoshStart": "v1.7.0"}, "bagdeli/KavoshERP")), [])
+            {"repo": "bagdeli/ExampleConsumer", "kavoshStart": "v1.7.0"}, "bagdeli/ExampleConsumer")), [])
 
     def test_STD1_positive_canonical_standard_uses_self(self):
         self.assertEqual(fails(g.standard_pin_problems(
@@ -307,7 +307,7 @@ class StandardPinIdentity(unittest.TestCase):
     def test_STD1_negative_consumer_cannot_use_self(self):
         """Covers: STD-1 (negative)"""
         out = fails(g.standard_pin_problems(
-            {"repo": "bagdeli/KavoshERP", "kavoshStart": "self"}, "bagdeli/KavoshERP"))
+            {"repo": "bagdeli/ExampleConsumer", "kavoshStart": "self"}, "bagdeli/ExampleConsumer"))
         self.assertTrue(any(r[1] == "STD-1" for r in out))
 
     def test_STD1_negative_standard_cannot_pin_its_previous_release(self):

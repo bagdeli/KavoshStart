@@ -32,7 +32,7 @@ class ProportionateQuality(unittest.TestCase):
 
     def test_network_failure_does_not_demand_mirror_or_fabricate_ip(self):
         for p in ("intake/QUESTIONNAIRE.md", "standard/04-ci-runners-minutes.md"):
-            self.assertNotIn("KavoshRepo", read(p))
+            self.assertIn("private", read(p).lower())
         s = read("START.md")
         for word in ("DNS", "IP unknown", "HTTP 401/403/404", "report", "without userinfo"):
             self.assertIn(word, s)

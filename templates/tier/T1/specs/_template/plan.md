@@ -7,7 +7,7 @@
 <Tables and migrations (expand → migrate → contract), API changes, events.>
 
 ## UI
-<Screens and states affected; KavoshUI components reused.>
+<Affected screens/states and reuse of the project's pinned UI components.>
 
 ## Tasks (each becomes a sub-issue, each ≤ one PR)
 1.

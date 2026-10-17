@@ -220,7 +220,7 @@ def local_only_static_manifest():
     m.update(tier="T1", runtime="static", visibility="private")
     m["data"] = {"sensitivity": "internal", "regulatedIntegrations": [], "multiTenant": False}
     m["size"] = {"domains": 2, "lifetime": "months", "parallelStreams": 1}
-    m["ui"] = {"kind": "admin", "kavoshui": "1.0.0", "locales": ["fa-IR"]}
+    m["ui"] = {"kind": "admin", "designSystem": {"package": "@example/ui-kit", "version": "1.0.0"}, "locales": ["fa-IR"]}
     m["deploy"] = {"method": "pull-build", "environments": []}
     m["ci"] = {"runner": "none", "monthlyMinutesBudget": 0}
     return m
@@ -245,12 +245,12 @@ class Manifest(unittest.TestCase):
     def test_SRC5_negative_tier_below_classification(self):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T0")))
 
-    def test_UI1_negative_ui_without_kavoshui_pin(self):
-        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "kavoshui": None})))
+    def test_UI1_negative_ui_without_designSystem_pin(self):
+        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "designSystem": None})))
 
     def test_UI1_positive_ui_exception_with_safety_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
-        m["ui"] = {"kind": "admin", "kavoshui": None, "locales": ["fa-IR"],
+        m["ui"] = {"kind": "admin", "designSystem": None, "locales": ["fa-IR"],
                    "exceptionADR": "docs/decisions/0002-ui-exception.md"}
         def setup(d):
             path=d / m["ui"]["exceptionADR"]
@@ -260,7 +260,7 @@ class Manifest(unittest.TestCase):
 
     def test_UI1_negative_ui_exception_missing_evidence(self):
         m = json.loads(json.dumps(EXAMPLE))
-        m["ui"] = {"kind": "admin", "kavoshui": None, "locales": ["fa-IR"],
+        m["ui"] = {"kind": "admin", "designSystem": None, "locales": ["fa-IR"],
                    "exceptionADR": "docs/decisions/0002-ui-exception.md"}
         self.assertTrue(fails_for("UI-1", manifest=m))
 
@@ -318,7 +318,7 @@ class Manifest(unittest.TestCase):
         m = json.loads(json.dumps(EXAMPLE))
         m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
-                   "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
+                   "runnerLabels": ["self-hosted", "linux", "x64", "example"],
                    "trustModelADR": "docs/decisions/0002-runner.md"}
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
@@ -330,7 +330,7 @@ class Manifest(unittest.TestCase):
         m = json.loads(json.dumps(EXAMPLE))
         m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
-                   "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
+                   "runnerLabels": ["self-hosted", "linux", "x64", "example"],
                    "trustModelADR": "docs/decisions/0002-runner.md"}
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
@@ -346,7 +346,7 @@ class Manifest(unittest.TestCase):
         m = json.loads(json.dumps(EXAMPLE))
         m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "monthlyMinutesBudget": 0,
-                   "runnerLabels": ["self-hosted", "linux", "x64", "kavoshsms"],
+                   "runnerLabels": ["self-hosted", "linux", "x64", "example"],
                    "trustModelADR": "docs/decisions/0002-runner.md"}
         def setup(d):
             path=d / m["ci"]["trustModelADR"]
@@ -380,7 +380,7 @@ def run_pr(visibility="private", **kw):
     original, g.gh = g.gh, fake_gh(**gh_kw)
     try:
         g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility,
-                    "ui": {"kind": "admin", "kavoshui": "1.0.0"}}, pr_event(**kw), "o/r")
+                    "ui": {"kind": "admin", "designSystem": {"package": "@example/ui-kit", "version": "1.0.0"}}}, pr_event(**kw), "o/r")
     finally:
         g.gh = original
     return {r[1]: r[0] for r in g.results}
