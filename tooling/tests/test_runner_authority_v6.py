@@ -142,6 +142,21 @@ class RunnerAuthorityV6(unittest.TestCase):
             finally:
                 os.chdir(previous)
 
+    def test_registered_self_hosted_workflows_must_use_exact_repo_labels(self):
+        """An allowed runner must not accidentally select a shared GH host."""
+        m = mode_manifest("self-hosted")
+        good = {".github/workflows/ci.yml":
+                "jobs:\n  required:\n"
+                "    runs-on: [self-hosted, linux, x64, example]\n"}
+        self.assertFalse(has_fail(g.runner_workflow_problems(good, m), "CI-1"))
+        for labels in ("[self-hosted, linux]",
+                       "[self-hosted, linux, x64, unrelated]",
+                       "custom-label"):
+            with self.subTest(labels=labels):
+                bad = {".github/workflows/ci.yml":
+                       "jobs:\n  required:\n    runs-on: " + labels + "\n"}
+                self.assertTrue(has_fail(g.runner_workflow_problems(bad, m), "CI-1"))
+
     def test_scaffold_external_has_no_workflows_and_no_actions_release(self):
         with tempfile.TemporaryDirectory() as d:
             target = Path(d)
