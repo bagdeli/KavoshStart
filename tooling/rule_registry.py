@@ -20,7 +20,7 @@ ROW = re.compile(
 )
 RULE_ID = re.compile(r"[A-Z]+-\d+")
 # First version planned for the new TP rules; the prior-rule baseline remains historically unchanged.
-NEW_RULE_INTRODUCED = {"TP-1": "v4.1.0", "TP-2": "v4.1.0"}
+NEW_RULE_INTRODUCED = {"TP-1": "v5.0.0", "TP-2": "v5.0.0"}
 MACHINE_LAYERS = {"A", "P", "M", "G", "H", "S", "O", "E"}
 COVERAGE_LAYERS = {"P", "M", "G", "H", "O", "E"}
 
