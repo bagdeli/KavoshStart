@@ -357,43 +357,68 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: private GitHub Actions are hosted-only; public isolation exceptions are scoped."""
-    vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
+    """CI-1/2/3: independent SelfServer is not a GitHub Actions runner."""
+    vis, ci = m.get("visibility"), m.get("ci", {})
+    runner = ci.get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted Actions runners",
-                 "use standard GitHub-hosted with one-run authorization, or T1/static local-only with no Actions jobs")]
-    if vis == "private":
-        extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"})
-        if extra:
-            return [("fail", "CI-1", "Private repositories forbid self-hosted runner metadata",
-                     "remove obsolete private runner fields: " + ", ".join(extra))]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
-        if not eligible:
-            return [("fail", "CI-1", "Local-only validation is limited to the T1/static profile",
-                     f"got tier={m.get('tier')}, runtime={m.get('runtime')}")]
-        return [("ok", "CI-1", "Local-only T1/static validation profile",
-                 "no GitHub Actions workflows; the project's semantic check contract runs locally and its result is recorded in the PR")]
+        return [("ok" if eligible else "fail", "CI-1",
+                 "Local-only T1/static validation profile",
+                 "no Actions workflow; record local check evidence" if eligible
+                 else f"tier={m.get('tier')}, runtime={m.get('runtime')}")]
+    if runner == "external":
+        extra = sorted(set(ci) & {"runnerLabels", "runners", "trustModelADR",
+                                   "privateSelfHostedApprovalADR", "requiredWorkflow"})
+        issue = decision_adr_problem(ci.get("externalCIADR"),
+                                     ("independent ci", "exact sha", "trusted publisher",
+                                      "required", "kavosh / governance", "release gate",
+                                      "credential boundary"))
+        release = m.get("release", {})
+        if release.get("strategy") != "custom" or not release.get("strategyADR"):
+            issue = (issue or "") + "; external CI needs a documented custom release strategy"
+        if extra:
+            issue = (issue or "") + "; invalid GitHub Actions fields: " + ", ".join(extra)
+        return [("fail" if issue else "ok", "CI-1",
+                 "Independent SelfServer (outside GitHub Actions)",
+                 issue or "independent source-bound checks and release evidence are human verified")]
     if runner not in ("github-hosted", "self-hosted"):
         return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
-    out = [("ok", "CI-1", "Runner selected under visibility policy", f"{vis} → {runner}")]
-    if vis == "private" and runner == "github-hosted":
-        out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
-                    "workflow_dispatch must name an open PR and its exact current head SHA"))
-    if runner == "self-hosted":
-        problem = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
-        out.append(("fail" if problem else "ok", "CI-2", "Self-hosted runner has an isolated trust model",
-                    problem or m["ci"]["trustModelADR"]))
-        labels = runner_labels(m)
-        slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
-        expected = ["self-hosted", "linux", "x64", slug]
-        if not slug or labels != expected:
-            out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
-        else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
+    if runner == "github-hosted":
+        extra = sorted(set(ci) & {"runnerLabels", "runners", "trustModelADR",
+                                   "privateSelfHostedApprovalADR", "externalCIADR"})
+        out = [("fail" if extra else "ok", "CI-1",
+                "GitHub-hosted runner selection",
+                "unexpected fields: " + ", ".join(extra) if extra else f"{vis} → github-hosted")]
+        if vis == "private":
+            out.append(("ok", "CI-3", "Private GH-hosted requires administrator-authorized billing",
+                        "admin approval and per-run exact-SHA consent are a human/account boundary; a dispatch alone is not proof"))
+        return out
+    # Installed on a private server but registered to GitHub Actions = self-hosted.
+    extra = sorted(set(ci) & {"externalCIADR"})
+    problem = runner_trust_adr_problem(ci.get("trustModelADR"), vis)
+    out = [("fail" if problem or extra else "ok", "CI-2",
+            "Registered self-hosted Actions runner has an isolated trust model",
+            problem or ("invalid external CI fields: " + ", ".join(extra) if extra else ci["trustModelADR"]))]
+    labels = runner_labels(m)
+    slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
+    expected = ["self-hosted", "linux", "x64", slug]
+    out.append(("ok" if slug and labels == expected else "fail", "CI-2",
+                "Self-hosted labels are repository-specific",
+                f"expected {expected}, got {labels}"))
+    if vis == "private":
+        issue = decision_adr_problem(ci.get("privateSelfHostedApprovalADR"),
+                                     ("explicit owner approval", "scope", "exception",
+                                      "credential boundary", "untrusted code"))
+        out.append(("fail" if issue else "ok", "CI-1",
+                    "Private GH Actions self-hosted needs a real owner exception",
+                    issue or "ADR is an evidence pointer; human approval cannot be inferred from an editable file"))
+    elif "privateSelfHostedApprovalADR" in ci:
+        out.append(("fail", "CI-1", "Public runner cannot use a private exception",
+                    "remove privateSelfHostedApprovalADR"))
     return out
+
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
 
