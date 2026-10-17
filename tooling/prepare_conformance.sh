@@ -19,5 +19,5 @@ curl --fail --location --proto '=https' --tlsv1.2 --max-time 120 \
 printf '%s  wordpress.tar.gz\n' fd56bcdc15f1877e45dce67942ea75949ed650e8 | sha1sum --check
 # Only the two core hook implementation files are needed; never unpack a site.
 tar -xzf wordpress.tar.gz wordpress/wp-includes/plugin.php wordpress/wp-includes/class-wp-hook.php
-printf 'Terraform: '; ./terraform version | head -1
+printf 'Terraform: '; ./terraform version | sed -n '1p'
 printf 'WordPress fixture: 6.8.3 pinned core hook engine\n'
