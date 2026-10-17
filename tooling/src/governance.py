@@ -87,6 +87,14 @@ def validate(node, schema, path="$"):
     if isinstance(node, int) and not isinstance(node, bool):
         if node < schema.get("minimum", -(10**18)) or node > schema.get("maximum", 10**18):
             errs.append(f"{path}: out of range")
+    # The runner-policy schema uses not(anyOf(required-fields)) to reject
+    # mismatched execution modes. Ignore neither keyword: a superficially
+    # valid manifest must not be permitted to select two runner authorities.
+    if "anyOf" in schema and not any(not validate(node, option, path)
+                                     for option in schema["anyOf"]):
+        errs.append(f"{path}: no anyOf branch matched")
+    if "not" in schema and not validate(node, schema["not"], path):
+        errs.append(f"{path}: forbidden schema branch matched")
     for condition in schema.get("allOf", []):
         errs += validate(node, condition, path)
     if "if" in schema:
