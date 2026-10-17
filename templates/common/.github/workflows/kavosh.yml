@@ -1,5 +1,5 @@
 # KavoshStart controls, pinned to the exact release declared in the manifest.
-# PRIVATE_HOSTED_DISPATCH_REQUIRED: no automatic private hosted jobs may consume shared quota.
+# PRIVATE_ACTIONS_DISPATCH_REQUIRED: no automatic private GitHub Actions jobs may run on hosted or excepted self-hosted runners.
 name: kavosh
 
 on:
@@ -44,7 +44,7 @@ permissions:
 jobs:
   kavosh:
     if: >-
-      (github.event_name == 'pull_request' && !{{PRIVATE_HOSTED}} &&
+      (github.event_name == 'pull_request' && !{{PRIVATE_ACTIONS_RESTRICTED}} &&
        (!{{SELF_HOSTED}} || github.event.pull_request.head.repo.full_name == github.repository)) ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'pr-check')
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@{{KAVOSHSTART}}
@@ -56,7 +56,7 @@ jobs:
       comment: true
   main-guard:
     if: >-
-      (github.event_name == 'push' && !{{PRIVATE_HOSTED}}) ||
+      (github.event_name == 'push' && !{{PRIVATE_ACTIONS_RESTRICTED}}) ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'main-guard')
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-main-guard.yml@{{KAVOSHSTART}}
     with:
@@ -64,7 +64,7 @@ jobs:
       authorization-sha: ${{ inputs.expected-sha }}
   health:
     if: >-
-      (github.event_name == 'schedule' && !{{PRIVATE_HOSTED}}) ||
+      (github.event_name == 'schedule' && !{{PRIVATE_ACTIONS_RESTRICTED}}) ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'health')
     uses: bagdeli/KavoshStart/.github/workflows/kavosh-health.yml@{{KAVOSHSTART}}
     with:

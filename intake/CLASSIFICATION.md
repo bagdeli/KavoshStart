@@ -60,9 +60,9 @@ Other capabilities such as `control-plane` and `infrastructure` are explicit bec
 | AI review workflow | no | optional (`ai-review.yml`) | yes |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated release strategy (release-please is the scaffold default) | + rc on test | + rc → UAT → final |
-| Runner (by visibility, CI-1) | private: **GitHub-hosted only**, authorized per run · public: hosted default | private: **GitHub-hosted only**, authorized per run · public: hosted default | no private self-hosted; public exceptions require CI-2 ADR |
+| Runner (by execution authority, CI-1) | external SelfServer / approved GH-hosted / exceptional GH self-hosted / none | same contract | private registered GH self-hosted needs explicit owner exception; private hosted needs per-run admin quota authorization; external has no Actions workflows and requires trusted checks |
 | **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
 ## Budget rule (CI-3)
-Private GitHub Actions runners are **GitHub-hosted only** (ADR-0015); public defaults to hosted and any public self-hosted exception requires a CI-2 ADR. Private hosted runs may consume shared quota and therefore require direct, one-run authorization and manual dispatch. Every manifest keeps `monthlyMinutesBudget` at **0**: that field never authorizes shared quota. A T1/static local-only project selects `none` (no Actions jobs), not a self-hosted runner.
+`external` SelfServer is not GitHub Actions and produces no workflow; it needs independent exact-SHA checked evidence and a custom release strategy (ADR-0018). Registered GH Actions `self-hosted` remains private-denied except explicit owner-scoped exception plus CI-2 isolation. Private `github-hosted` requires administrator quota authorization for each manual exact-ref/SHA run. Public GH self-hosted is allowed only with CI-2 trust/untrusted-code safeguards. `monthlyMinutesBudget` defaults to **0** and is not execution permission. Local-only `none` stays T1/static.

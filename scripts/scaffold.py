@@ -50,7 +50,7 @@ def layers(manifest: dict) -> list:
 def values(m: dict) -> dict:
     ui = m.get("ui", {})
     slug = re.sub(r"[^a-z0-9]+", "-", m["repo"].split("/")[-1].lower()).strip("-")
-    # CI-1: the manifest selects the runner; private hosted callers are gated to one owner-initiated dispatch.
+    # CI-1: only GitHub Actions runner modes render Actions workflow files.
     runner = m.get("ci", {}).get("runner", "github-hosted")
     if runner == "self-hosted":
         labels = m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
@@ -77,7 +77,7 @@ def values(m: dict) -> dict:
         "CI_WORKFLOW": m.get("ci", {}).get("requiredWorkflow") or ".github/workflows/ci.yml",
         "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")),
         "RUNS_ON_YAML": ("[" + ", ".join(labels) + "]") if labels != ["ubuntu-latest"] else "ubuntu-latest",
-        "PRIVATE_HOSTED": "true" if m.get("visibility") == "private" and m.get("ci", {}).get("runner") == "github-hosted" else "false",
+        "PRIVATE_ACTIONS_RESTRICTED": "true" if m.get("visibility") == "private" and runner in ("github-hosted", "self-hosted") else "false",
         "SELF_HOSTED": "true" if m.get("ci", {}).get("runner") == "self-hosted" else "false",
     }
 
@@ -102,10 +102,19 @@ def main() -> int:
     manifest = json.loads(mpath.read_text(encoding="utf-8"))
     validate_standard_pin(manifest)
     runner = manifest.get("ci", {}).get("runner")
+    ci = manifest.get("ci", {})
+    if runner not in ("github-hosted", "self-hosted", "external", "none"):
+        raise SystemExit("CI-1: unknown runner selection")
     if manifest.get("visibility") == "private" and runner == "self-hosted":
-        raise SystemExit("CI-1: private GitHub Actions require standard GitHub-hosted; self-hosted is prohibited")
-    if manifest.get("visibility") == "private" and (set(manifest.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"}):
-        raise SystemExit("CI-1: remove legacy self-hosted runner fields from the private manifest")
+        if not ci.get("privateSelfHostedApprovalADR") or not ci.get("trustModelADR"):
+            raise SystemExit("CI-1: private GH Actions self-hosted requires an owner-approved scoped exception and isolation ADR")
+    if runner == "github-hosted" and (set(ci) & {"runnerLabels", "runners", "trustModelADR", "privateSelfHostedApprovalADR", "externalCIADR"}):
+        raise SystemExit("CI-1: GitHub-hosted cannot claim a custom self-hosted or external trust model")
+    if runner == "external":
+        if not ci.get("externalCIADR") or (set(ci) & {"runnerLabels", "runners", "trustModelADR", "privateSelfHostedApprovalADR", "requiredWorkflow"}):
+            raise SystemExit("CI-1: independent SelfServer needs a documented externalCIADR and no GH Actions runner fields")
+        if manifest.get("release", {}).get("strategy") != "custom" or not manifest.get("release", {}).get("strategyADR"):
+            raise SystemExit("REL-4: external CI needs a documented custom non-Actions release adapter")
     if runner == "none" and not (manifest.get("tier") == "T1" and manifest.get("runtime") == "static"):
         raise SystemExit("CI-1: local-only 'none' is supported only for T1/static")
     vals = values(manifest)
@@ -117,7 +126,9 @@ def main() -> int:
             for f in sorted(base.rglob("*")):
                 if f.is_file():
                     rel = f.relative_to(base).as_posix()
-                    if manifest.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
+                    if runner in ("none", "external") and rel.startswith(".github/workflows/"):
+                        continue
+                    if runner == "external" and rel in (".release-please-manifest.json", "release-please-config.json"):
                         continue
                     if rel == ".github/workflows/rc.yml" and "test" not in manifest.get("deploy", {}).get("environments", []):
                         continue

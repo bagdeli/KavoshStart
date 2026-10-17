@@ -87,6 +87,14 @@ def validate(node, schema, path="$"):
     if isinstance(node, int) and not isinstance(node, bool):
         if node < schema.get("minimum", -(10**18)) or node > schema.get("maximum", 10**18):
             errs.append(f"{path}: out of range")
+    # The runner-policy schema uses not(anyOf(required-fields)) to reject
+    # mismatched execution modes. Ignore neither keyword: a superficially
+    # valid manifest must not be permitted to select two runner authorities.
+    if "anyOf" in schema and not any(not validate(node, option, path)
+                                     for option in schema["anyOf"]):
+        errs.append(f"{path}: no anyOf branch matched")
+    if "not" in schema and not validate(node, schema["not"], path):
+        errs.append(f"{path}: forbidden schema branch matched")
     for condition in schema.get("allOf", []):
         errs += validate(node, condition, path)
     if "if" in schema:
@@ -294,14 +302,30 @@ def release_adapter_problems(m):
                         f"automation.interface={interface} requires release.artifact.command + paths"))
     if strategy == "release-please":
         return out
-    workflow = release.get("workflow")
-    if not workflow:
-        out.append(("fail", "REL-4", "Declared release workflow adapter",
-                    f"release.strategy={strategy} requires release.workflow"))
-    elif not Path(workflow).exists():
-        out.append(("fail", "REL-4", "Declared release workflow adapter", f"{workflow} does not exist"))
+    if m.get("ci", {}).get("runner") == "external":
+        command = release.get("externalCommand")
+        if release.get("workflow"):
+            out.append(("fail", "REL-4", "External CI cannot use an Actions release workflow",
+                        "remove release.workflow and provide a real external release command"))
+        if (not isinstance(command, str)
+                or not re.fullmatch(r"scripts/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+[.](?:sh|py)", command)):
+            out.append(("fail", "REL-4", "Independent release command path",
+                        "release.externalCommand must be a scripts/*.sh or scripts/*.py path"))
+        elif not Path(command).is_file():
+            out.append(("fail", "REL-4", "Independent release adapter exists",
+                        f"{command} is missing (no workflow is generated automatically)"))
+        else:
+            out.append(("ok", "REL-4", "Independent release adapter is present",
+                        f"{command} (execution and approved publisher require external human verification)"))
     else:
-        out.append(("ok", "REL-4", "Declared release workflow adapter", f"{strategy} → {workflow}"))
+        workflow = release.get("workflow")
+        if not workflow:
+            out.append(("fail", "REL-4", "Declared release workflow adapter",
+                        f"release.strategy={strategy} requires release.workflow"))
+        elif not Path(workflow).exists():
+            out.append(("fail", "REL-4", "Declared release workflow adapter", f"{workflow} does not exist"))
+        else:
+            out.append(("ok", "REL-4", "Declared release workflow adapter", f"{strategy} → {workflow}"))
 
     adr_problem = decision_adr_problem(
         release.get("strategyADR"),
@@ -357,43 +381,69 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: private GitHub Actions are hosted-only; public isolation exceptions are scoped."""
-    vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
+    """CI-1/2/3: independent SelfServer is not a GitHub Actions runner."""
+    vis, ci = m.get("visibility"), m.get("ci", {})
+    runner = ci.get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted Actions runners",
-                 "use standard GitHub-hosted with one-run authorization, or T1/static local-only with no Actions jobs")]
-    if vis == "private":
-        extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"})
-        if extra:
-            return [("fail", "CI-1", "Private repositories forbid self-hosted runner metadata",
-                     "remove obsolete private runner fields: " + ", ".join(extra))]
     if runner == "none":
         eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
-        if not eligible:
-            return [("fail", "CI-1", "Local-only validation is limited to the T1/static profile",
-                     f"got tier={m.get('tier')}, runtime={m.get('runtime')}")]
-        return [("ok", "CI-1", "Local-only T1/static validation profile",
-                 "no GitHub Actions workflows; the project's semantic check contract runs locally and its result is recorded in the PR")]
+        return [("ok" if eligible else "fail", "CI-1",
+                 "Local-only T1/static validation profile",
+                 "no Actions workflow; record local check evidence" if eligible
+                 else f"tier={m.get('tier')}, runtime={m.get('runtime')}")]
+    if runner == "external":
+        extra = sorted(set(ci) & {"runnerLabels", "runners", "trustModelADR",
+                                   "privateSelfHostedApprovalADR", "requiredWorkflow"})
+        issue = decision_adr_problem(ci.get("externalCIADR"),
+                                     ("independent ci", "exact sha", "trusted publisher",
+                                      "required", "kavosh / governance", "release gate",
+                                      "credential boundary"))
+        release = m.get("release", {})
+        if (release.get("strategy") != "custom" or not release.get("strategyADR")
+                or not release.get("externalCommand") or release.get("workflow")):
+            issue = (issue or "") + "; external CI needs a custom non-Actions release strategy, ADR and executable; no Actions release workflow"
+        if extra:
+            issue = (issue or "") + "; invalid GitHub Actions fields: " + ", ".join(extra)
+        return [("fail" if issue else "ok", "CI-1",
+                 "Independent SelfServer (outside GitHub Actions)",
+                 issue or "independent source-bound checks and release evidence are human verified")]
     if runner not in ("github-hosted", "self-hosted"):
         return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
-    out = [("ok", "CI-1", "Runner selected under visibility policy", f"{vis} → {runner}")]
-    if vis == "private" and runner == "github-hosted":
-        out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
-                    "workflow_dispatch must name an open PR and its exact current head SHA"))
-    if runner == "self-hosted":
-        problem = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
-        out.append(("fail" if problem else "ok", "CI-2", "Self-hosted runner has an isolated trust model",
-                    problem or m["ci"]["trustModelADR"]))
-        labels = runner_labels(m)
-        slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
-        expected = ["self-hosted", "linux", "x64", slug]
-        if not slug or labels != expected:
-            out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
-        else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
+    if runner == "github-hosted":
+        extra = sorted(set(ci) & {"runnerLabels", "runners", "trustModelADR",
+                                   "privateSelfHostedApprovalADR", "externalCIADR"})
+        out = [("fail" if extra else "ok", "CI-1",
+                "GitHub-hosted runner selection",
+                "unexpected fields: " + ", ".join(extra) if extra else f"{vis} → github-hosted")]
+        if vis == "private":
+            out.append(("ok", "CI-3", "Private GH-hosted requires administrator-authorized billing",
+                        "admin approval and per-run exact-SHA consent are a human/account boundary; a dispatch alone is not proof"))
+        return out
+    # Installed on a private server but registered to GitHub Actions = self-hosted.
+    extra = sorted(set(ci) & {"externalCIADR"})
+    problem = runner_trust_adr_problem(ci.get("trustModelADR"), vis)
+    out = [("fail" if problem or extra else "ok", "CI-2",
+            "Registered self-hosted Actions runner has an isolated trust model",
+            problem or ("invalid external CI fields: " + ", ".join(extra) if extra else ci["trustModelADR"]))]
+    labels = runner_labels(m)
+    slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
+    expected = ["self-hosted", "linux", "x64", slug]
+    out.append(("ok" if slug and labels == expected else "fail", "CI-2",
+                "Self-hosted labels are repository-specific",
+                f"expected {expected}, got {labels}"))
+    if vis == "private":
+        issue = decision_adr_problem(ci.get("privateSelfHostedApprovalADR"),
+                                     ("explicit owner approval", "scope", "exception",
+                                      "credential boundary", "untrusted code"))
+        out.append(("fail" if issue else "ok", "CI-1",
+                    "Private GH Actions self-hosted needs a real owner exception",
+                    issue or "ADR is an evidence pointer; human approval cannot be inferred from an editable file"))
+    elif "privateSelfHostedApprovalADR" in ci:
+        out.append(("fail", "CI-1", "Public runner cannot use a private exception",
+                    "remove privateSelfHostedApprovalADR"))
     return out
+
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
 
@@ -451,17 +501,14 @@ def is_hosted(value):
 
 
 def runner_workflow_problems(workflows, m):
-    """CI-1: private Actions jobs must use static standard hosted labels; deny unknown/dynamic runners."""
+    """GH Actions runner matching; external SelfServer must have no Actions workflows."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return []
-    if runner == "none":
+    if runner in ("none", "external"):
         extra = sorted(workflows)
-        return [("fail" if extra else "ok", "CI-1", "Local-only profile has no GitHub Actions workflows",
+        return [("fail" if extra else "ok", "CI-1", "External/local-only execution has no GitHub Actions workflows",
                  ", ".join(extra) if extra else "no Actions workflow files")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted GitHub Actions",
-                 "GitHub-hosted-only policy applies to every job and reusable workflow")]
     # Standard runner labels from GitHub's hosted runner reference.
     # Exact labels are intentional; do not replace with untrusted wildcards.
     hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-26.04",
@@ -474,8 +521,8 @@ def runner_workflow_problems(workflows, m):
         for value in runs_on_values(text):
             value = value.strip("\"'")
             if not value or value.startswith("$"):
-                if vis == "private":
-                    bad.append(f"{f}: dynamic/empty runs-on is not statically verifiable as GitHub-hosted")
+                if vis == "private" or runner == "self-hosted":
+                    bad.append(f"{f}: dynamic/empty runs-on cannot prove the approved runner selection")
                 continue
             if value.startswith("[") and value.endswith("]"):
                 labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
@@ -507,18 +554,18 @@ def runner_workflow_problems(workflows, m):
                           and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
                     bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
-    if vis == "private" and runner == "github-hosted":
+    if vis == "private" and runner in ("github-hosted", "self-hosted"):
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")
         absent = [f for f in required if f not in workflows]
         unsafe = [f for f in required if f in workflows and
                   (not re.search(r"^  workflow_dispatch\s*:", workflows[f], re.M)
-                   or "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in workflows[f]
+                   or "PRIVATE_ACTIONS_DISPATCH_REQUIRED" not in workflows[f]
                    or "github.event_name == 'workflow_dispatch'" not in workflows[f]
                    or "!true" not in workflows[f])]
         problem = absent + unsafe
-        out.append(("fail" if problem else "ok", "CI-3", "Private hosted jobs require an owner-initiated scoped dispatch",
+        out.append(("fail" if problem else "ok", "CI-3", "Private GH Actions jobs require a scope-bound manual dispatch",
                     ", ".join(problem) or "ci, governance/health, and release dispatch guards are present"))
-    if runner == "self-hosted":
+    if runner == "self-hosted" and vis == "public":
         unsafe = [f for f, text in workflows.items() if "pull_request:" in text and
                   "github.event.pull_request.head.repo.full_name == github.repository" not in text]
         out.append(("fail" if unsafe else "ok", "CI-2", "Self-hosted PR jobs exclude fork code",
@@ -583,9 +630,9 @@ def check_files(m, actual_repo=None):
     add("ok" if "git push" in claude and "deny" in claude else "warn", "AI-4", "Claude deny rules present", ".claude/settings.json")
 
     wf = [f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))]
-    if m.get("ci", {}).get("runner") == "none":
-        add("fail" if wf else "ok", "CI-1", "Local-only project has no GitHub Actions workflows",
-            ", ".join(wf[:8]) if wf else "make check is run locally; attach the successful output to each PR")
+    if m.get("ci", {}).get("runner") in ("none", "external"):
+        add("fail" if wf else "ok", "CI-1", "Local or external CI has no GitHub Actions workflows",
+            ", ".join(wf[:8]) if wf else "independent external checks must bind to exact SHA and an approved publisher")
     else:
         for level, rule, title, detail in runner_workflow_problems({f: read(f) for f in wf}, m):
             add(level, rule, title, detail)
@@ -606,7 +653,7 @@ def check_files(m, actual_repo=None):
         level, detail = release_tag_config(read("release-please-config.json") if "release-please-config.json" in files else None)
         add(level, "REL-3", "Release tags are plain vX.Y.Z", detail)
     add("ok" if ".github/dependabot.yml" in files else "fail", "SEC-4", "Dependabot configured", ".github/dependabot.yml")
-    if m.get("ci", {}).get("runner") != "none":
+    if m.get("ci", {}).get("runner") not in ("none", "external"):
         trusted_repo = actual_repo or m.get("repo")
         for level, rule, title, detail in wiring_problems({f: read(f) for f in wf}, m, trusted_repo):
             add(level, rule, title, detail)

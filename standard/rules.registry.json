@@ -1474,7 +1474,7 @@
     },
     {
       "id": "CI-1",
-      "statement": "در مخزن private، تمام jobهای GitHub Actions فقط از runnerهای GitHub-hosted استاندارد استفاده می‌کنند؛ self-hosted حتی به‌صورت ایزوله ممنوع است. اجرای private hosted سهمیه‌دار صرفاً با dispatch مستقیم مالک، محدود به PR/ref/SHA فعلی و بدون trigger خودکار است. `none` فقط برای T1/static بدون هیچ workflow و با اعتبارسنجی محلی مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR و منع اجرای fork/کد نامطمئن مجاز است.",
+      "statement": "Runner execution modes: `external` is an independent SelfServer system and never a GitHub Actions registered runner; it requires a real source-bound check publisher and an independently gated release adapter. Private GitHub-hosted Actions require the account administrator's explicit quota authorization for each exact ref/SHA. A private GitHub Actions self-hosted runner is blocked by default, except with a reviewed, repository-scoped, **explicit owner approval** and CI-2 isolation ADR. Public self-hosted requires CI-2 safeguards; `none` remains T1/static local-only. A manifest/ADR alone never proves a human grant.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1503,7 +1503,7 @@
     },
     {
       "id": "CI-2",
-      "statement": "هر استثنای self-hosted فقط برای مخزن public و پس از ADR ثبت‌شدهٔ trust model، isolation/containment واقعی، جداسازی کد نامطمئن و credential boundary مجاز است؛ اجرای fork PR روی آن ممنوع است. این استثنا هرگز به private تعمیم نمی‌یابد. credential تولید/production روی runner نگهداری نمی‌شود و ظرفیت براساس SLO تعیین می‌شود، نه Tier ثابت.",
+      "statement": "Every GitHub Actions self-hosted runner (public or specifically owner-approved private) requires real disposable/isolated trust containment, untrusted-code and credential boundaries, repository-scoped labels, and monitored manual triggering in private. No fork PR may execute on public self-hosted; private exception never automatically enables PR/push/schedule jobs. Production credentials must not persist on the runner. Physical SelfServer ownership does not bypass GitHub runner classification.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1642,7 +1642,7 @@
     },
     {
       "id": "CI-7",
-      "statement": "یک job تجمیعی با نام ثابت `required` نتیجه‌ی CI را اعلام می‌کند.",
+      "statement": "A stable `required` result is mandatory: either the real GitHub Actions aggregate job or an external CI check from an **authorized trusted publisher**, bound to the exact candidate SHA, with `kavosh / governance` and main/release checks as applicable. Local `make check`, an editable marker, a skipped job or a manual workflow_dispatch run not accepted by branch protection never becomes a fabricated required check. A missing/red check blocks merge and release.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1859,7 +1859,7 @@
     },
     {
       "id": "AI-4",
-      "statement": "محافظ‌ها موجود و فعال‌اند: `.githooks/`، `.claude/settings.json`، و `kavosh.yml` که governance، main-guard و health را فرا می‌خواند؛ report-only نامعتبر check را سبز نمی‌کند.",
+      "statement": "Repository agent guards (`.githooks/`, `.claude/settings.json`) remain active. GitHub Actions projects wire `kavosh.yml` governance/main-guard/health; independent SelfServer CI must instead provide equivalent verified source-bound checks, without any GitHub Actions workflow, and an auditable external release gate. No report-only bypass is allowed.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

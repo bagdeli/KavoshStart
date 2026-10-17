@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: JSON GitHub-hosted runner labels. Private repos are hosted-only; e.g. '["ubuntu-latest"]'. Public exceptions require CI-2 ADR.
+        description: JSON runner labels for GH Actions; private registered self-hosted requires explicit owner exception. Independent SelfServer uses no Actions.
         type: string
         default: '["ubuntu-latest"]'
       update-issue:

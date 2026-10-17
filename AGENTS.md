@@ -30,6 +30,7 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 ```
 
 ## Rules for changing KavoshStart
+- Trace affected callers, tests and fixtures and prefer the smallest complete fix; reuse existing code/platform features without weakening security, validation, CI, licensing or approval gates.
 - A rule change touches, in the same PR: `standard/RULES.md`, the explaining doc, the template, and the check that enforces it.
 - Every MUST names its enforcement layer (A/P/M/G/H/S/O/R). R-only MUSTs are listed as human-enforced in RULES.md.
 - Never edit `.github/workflows/kavosh-*.yml` by hand — edit `tooling/` and rebuild. Self-check fails on drift.

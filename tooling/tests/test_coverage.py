@@ -118,7 +118,7 @@ class GovernanceFiles(unittest.TestCase):
     def test_CI3_negative_private_hosted_without_scoped_dispatch_guard(self):
         def mutate(d):
             f = d / ".github/workflows/ci.yml"
-            f.write_text(f.read_text(encoding="utf-8").replace("PRIVATE_HOSTED_DISPATCH_REQUIRED", ""), encoding="utf-8")
+            f.write_text(f.read_text(encoding="utf-8").replace("PRIVATE_ACTIONS_DISPATCH_REQUIRED", ""), encoding="utf-8")
         self.assertTrue(fails_for("CI-3", mutate))
 
     def test_CI3_negative_private_hosted_with_automatic_job_gate_enabled(self):
@@ -174,7 +174,8 @@ class GovernanceFiles(unittest.TestCase):
         m = json.loads(json.dumps(EXAMPLE))
         m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "runnerLabels": ["self-hosted", "linux", "x64", "example"], "monthlyMinutesBudget": 0}
-        self.assertEqual(g.runner_manifest_problems(m)[1][0], "fail")
+        self.assertTrue(any(x[0] == "fail" and x[1] == "CI-2"
+                            for x in g.runner_manifest_problems(m)))
 
     def test_CI1_positive_local_only_T1_static(self):
         self.assertEqual(fails_for("CI-1", manifest=local_only_static_manifest()), [])

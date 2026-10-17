@@ -6,35 +6,43 @@
 
 Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
 
-## Runner و هزینه (CI-1…3 — ADR-0015)
+## Runner و هزینه (CI-1…3 — ADR-0018)
 
-| وضعیت ریپو | اجرای GitHub Actions | قید |
-|---|---|---|
-| **private** | **فقط GitHub-hosted استاندارد** مانند `ubuntu-latest` | runner خودمیزبان، runner group خودمیزبان، ARC و برچسب‌های سفارشیِ حل‌شونده به self-hosted ممنوع‌اند؛ هر run سهمیه‌دار نیازمند اجازه و `workflow_dispatch` محدود به ref/SHA است |
-| **public** | GitHub-hosted استاندارد، پیش‌فرض و توصیه‌شده | self-hosted فقط با ADR مشخص و جداسازی واقعی؛ اجرای کد fork/نامطمئن بر آن ممنوع است |
-| **T1/static با `ci.runner: none`** | هیچ GitHub Actions jobای تولید/اجرا نمی‌شود | فقط profile محلی با بودجهٔ صفر؛ شواهد موفق `make check` در PR لازم است |
+**Runner ثبت‌شدهٔ GitHub Actions با CI مستقلی که روی سرور شخصی اجرا می‌شود یکی نیست.** نام سرور، مالکیت ماشین یا استفاده از Container این تفاوت را تغییر نمی‌دهد.
 
-فهرست نام‌های مجاز GitHub-hosted در Governance با [مستندات Runnerهای استاندارد GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) همگام می‌شود. برچسب رسمی جدید نباید به‌اشتباه رد شود، اما الگوی wildcard/prefix جای اثبات انتخاب GitHub-hosted را نمی‌گیرد. کنترل ایستا نیز جای بررسی تنظیمات واقعی GitHub را نمی‌گیرد.
+| انتخاب `ci.runner` | مخزن خصوصی | مخزن عمومی | خروجی و مجوز |
+|---|---|---|---|
+| `external` (SelfServer مستقل) | مجاز | مجاز | **هیچ GitHub Actions workflowی وجود ندارد.** ADR واقعی برای اجرای `make check`، گزارش معتبر `required`/`kavosh / governance` روی exact SHA و انتشار مستقل لازم است |
+| `self-hosted` (ثبت‌شده در GitHub Actions) | پیش‌فرض **ممنوع**، استثنای موردی فقط با **تأیید صریح مالک/ناظر** و CI-2 | مجاز با CI-2 | ADR ایزولیشن، منع کد نامطمئن، جداسازی Secrets و گروه/برچسب مخزن؛ private فقط اجرای دستی و محدوده‌دار |
+| `github-hosted` (سهمیه GitHub) | فقط با **اجازه مدیر حساب/مخزن برای هزینه همان اجرا** | Runner استاندارد پیش‌فرض | در private اجرای دستی، محدود به PR/SHA فعلی و با بررسی مجوز مدیر؛ مقدار Budget اثبات اجازه نیست |
+| `none` | فقط T1/static | فقط T1/static | هیچ Actions workflow؛ `make check` و نتیجه محلی ثبت می‌شود؛ جای Required Check قرمز را نمی‌گیرد |
 
-این ممنوعیت private یک **سیاست سخت‌گیرانهٔ KavoshStart** است، نه ادعای اینکه GitHub استفاده از self-hosted در private را ممنوع کرده است. GitHub نسبت به خطر persistence و دسترسی کد نامطمئن هشدار می‌دهد؛ hosted نیز ایمنی خودکار کد شخص ثالث، تفکیک Secrets و حفاظت از شبکه را تضمین نمی‌کند.
+این **سیاست KavoshStart** است؛ GitHub خودِ self-hosted در مخزن خصوصی را به‌طور کلی ممنوع نمی‌کند. حتی در public نیز خطر اجرای PR نامطمئن روی runner دائم وجود دارد. مخزن public اجازه استفاده با کنترل‌های CI-2 را دارد، نه مجوز حذف آنها. [امنیت GitHub Actions](https://docs.github.com/en/actions/reference/security/secure-use)؛ [Runnerهای موقت](https://docs.github.com/en/actions/reference/runners/self-hosted-runners).
 
-### اجرای private (fail closed)
+### SelfServer مستقل: اثبات واقعی، نه CI ظاهری
 
-- انتخاب `ci.runner: self-hosted` یا باقی‌ماندن `ci.runnerLabels`، `ci.runners` و `ci.trustModelADR` برای private در schema، scaffold و governance رد می‌شود؛ ADR، label، بودجه یا وجود runner ثبت‌شده استثنا ایجاد نمی‌کند.
-- Workflowهای reusable بیرونی می‌توانند runner مستقلی انتخاب کنند: در private فقط Workflow محلیِ واقعاً موجود (که همراه مخزن ممیزی می‌شود) یا Workflow پین‌شدهٔ KavoshStart مجاز است. سایر reusable workflowهای بیرونی تا ورود منطق آن‌ها به مخزن مصرف‌کننده و ممیزی مستقل fail-closed هستند؛ صرف SHA pin مجوز runner نیست.
-- GitHub-hosted private در حساب دارای سهمیهٔ مشترک تنها پس از **مجوز مستقیم مالک برای همان اجرای مشخص** و با dispatch دستی برای PR باز و head SHA فعلی اجرا می‌شود. کنترل‌های `ci.yml` و workflowهای قابل‌استفادهٔ مجدد باید اعتبار ref/SHA را پیش از checkout/کار اصلی بررسی کنند. `push`، `pull_request`، `schedule` و `workflow_run` نباید job هزینه‌دار private را خودکار اجرا کنند.
-- محیط‌های داخلی/داده‌های Test/Production با GitHub-hosted به‌صورت خودکار قابل دسترسی یا اثبات‌شده نیستند. build/validation محلی و pull-based deployment می‌توانند مستقل باشند، اما **نباید** به‌عنوان اجرای GitHub Actions یا شواهد Test/Production جا زده شوند. هر test/release باید provenance، سطح اعتماد و شواهد واقعی خود را داشته باشد.
-- وجود self-hosted runner ثبت‌شده در GitHub به‌تنهایی اثبات نقض اجرای job نیست؛ خاموش‌کردن دسترسی، حذف ثبت/گروه و بازبینی workflows یک اقدام مدیریتی مالک در repositoryهای مصرف‌کننده است، نه کاری از داخل مخزن عمومی.
+- `ci.runner: external` باید `ci.externalCIADR` واقعی را معرفی کند؛ مدیر همان مخزن به‌طور مستقل مسئول راه‌اندازی CI و publisher است. هیچ Runner در Actions ثبت، هیچ `.github/workflows/` ایجاد و هیچ مزیت مخفی‌ای از GitHub-hosted فرض نمی‌شود.
+- کنترل‌های Core از طریق همان **semantic command contract** (مثلاً `make setup && make check` و ممیزی KavoshStart) روی exact commit اجرا شوند. نتیجه از GitHub App/سرویس معتبر با `required` و `kavosh / governance` و در صورت لزوم `main-guard / main-guard` روی SHA دقیق گزارش شود. خود فایل ADR، لاگ محلی یا متن PR **check سبز ایجاد نمی‌کند**؛ publisher باید واقعاً کار کند. کنترل App identity و plan/ruleset بسته به حساب در GitHub به‌طور جداگانه بررسی می‌شود.
+- انتشار external فقط با `release.strategy: custom` و `release.strategyADR` معتبر انجام می‌شود؛ tag immutable، بررسی آخرین SHA `main` و Required Check/پذیرش همان Commit طبق REL-5/6 لازم‌اند. `release-please` که به Actions وابسته است، با وجود نداشتن Actions workflow یک مسیر انتشار پنهانی نیست.
+- انتخاب محصول مستقل (Woodpecker، Jenkins، Dagger یا ابزار موجود سرور) تصمیم هر مصرف‌کننده است، نه dependency هسته. [Woodpecker](https://woodpecker-ci.org/docs/administration/general) فقط نمونهٔ الگوی server/agent و GitHub status reporting است.
 
-### حالت محلی T1/static
+### GH Actions خودمیزبان: استثنای خصوصی سخت‌گیرانه
 
-مالک می‌تواند در intake، `ci.runner: "none"` را فقط برای T1/static انتخاب کند. scaffold هیچ workflowی نمی‌سازد و بودجه صفر است. عامل `make setup` و `make check` را محلی اجرا می‌کند و فرمان، کد خروجی، محیط و نتیجه را در PR ثبت می‌کند. خروجی ناموفق یا غایب مانع merge است؛ required check موجود نباید دور زده شود. اعتبارسنجی مرورگر اگر محلی ممکن نبود با SKIP صریح گزارش می‌شود، نه PASS جعلی.
+`ci.privateSelfHostedApprovalADR` باید به **تصمیم واقعی و دامنه‌دار مالک** اشاره کند؛ `ci.trustModelADR` جداگانه runner trust model، isolation، untrusted code، credential boundary و containment را اثبات کند. یک PR یا ADR ویرایش‌پذیر **اثبات رمزنگاری‌شدهٔ رضایت مالک نیست**: بازبین باید اصل مجوز و وضعیت تنظیمات GitHub را بررسی کند. استثنا برای هر Repository مستقل است، نه برای همهٔ محصولات یا همهٔ Runnerها.
 
-### public self-hosted (استثنا، نه توصیه)
+در private، GH Actions خودمیزبان نیز مانند GitHub-hosted فقط از مسیر dispatch دستیِ مربوط به ref/SHA اجرا می‌شود؛ `pull_request`، `push`، `schedule` و `workflow_run` نباید خودکار job بسازند. runnerهای ephemeral/disposable بر persistent ترجیح دارند؛ جداسازی واقعی host، عدم persistence راز، least-privilege و محدودکردن runner group به repo/workflow باید در review بررسی شود. rootful Docker یا جدا بودن Container به‌تنهایی boundary معتبر نیست.
 
-اگر پروژهٔ public واقعاً نیازمند آن بود، ADR باید runner trust model، isolation/containment، boundary کد نامطمئن و credential boundary را با کنترل عملی بیان کند. rootful Docker دسترسی root-equivalent دارد و `--ephemeral` به‌تنهایی ایزولیشن host نیست. ظرفیت با صف/SLO تعیین می‌شود. نصب یا فعال‌سازی runner نیازمند فرایند مجزای مورد تأیید مالک است؛ installer قبلی private بازنشسته است.
+در public، fork PR یا کد ناشناس حق دسترسی به Runner خودمیزبان ندارد. CI-2 حتی وقتی انتخاب self-hosted برای public مجاز است لازم می‌ماند. [مدیریت runner group](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access).
 
-دقیقه، storage، cache، Packages و larger runner هزینه‌های مستقل‌اند. مقدار `monthlyMinutesBudget` مجوز خرج‌کردن یا توقف قطعی هزینه نیست؛ policy حساب و بررسی billing معتبر است.
+### GitHub-hosted خصوصی: مجوز سهمیه قابل استنتاج نیست
+
+فقط **ادمین حساب/مخزن** می‌تواند برای مصرف سهمیه اجازه دهد و مالک باید این اجازه را برای همان اجرا/ref/SHA تأیید کند. `workflow_dispatch` صرفاً ابزار اعمال محدوده SHA است، نه اثبات اینکه actor ادمین یا صاحب بودجه بوده است؛ بدون سیاست واقعی دسترسی/approval در GitHub، سطح این کنترل انسانی (R) باقی می‌ماند. `monthlyMinutesBudget` فقط راهنمای برنامه‌ریزی است. برای ربات‌های دارای write access نیز trigger دستی لزوماً به معنی تأیید صاحب بودجه نیست. [صورتحساب Actions](https://docs.github.com/en/actions/concepts/billing-and-usage).
+
+در private، reusable workflowهای خارجی می‌توانند `runs-on` مستقل انتخاب کنند؛ فقط نسخه پین‌شده و ممیزی‌شدهٔ استاندارد یا Workflow محلی واقعاً موجود قابل قبول است. Scanner استاتیک نمی‌تواند امنیت همهٔ مسیرهای dynamic Actions را ثابت کند.
+
+### انتخاب local-only
+
+`none` فقط برای T1/static بدون GitHub Actions است. شواهد `make check` محلی در PR ثبت می‌شوند. از آن برای دورزدن CI شکست‌خورده، release gate یا پروژه بزرگ‌تر استفاده نکنید.
 
 ## قواعد صرفه‌جویی (به ترتیب اثر)
 1. **CI-6:** CI سنگین روی Draft خاموش است؛ اجرای زودهنگام باید درخواست صریح و، اگر سهمیه مصرف می‌کند، مجوز مستقیم همان اجرا داشته باشد.
@@ -45,7 +53,7 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 6. `timeout-minutes` برای هر job (پیش‌فرض 360 دقیقه است!).
 
 ## اجرای زودهنگام و workflowهای هر پروژه
-روی Draft، CI سنگین خودکار اجرا نمی‌شود. در public، افزودن `ci:full` اجرای زودهنگام را درخواست می‌کند؛ روی private GitHub-hosted، `workflow_dispatch` باید PR number و head SHA دقیق را بگیرد و برای suite سنگین ورودی `ci-full` هم صریحاً فعال شود. این عمل توسط صاحب ریپو انجام می‌شود و فقط همان run را مجاز می‌کند؛ SHA قدیمی یا PR بسته/تغییریافته fail-closed می‌شود.
+روی Draft، CI سنگین خودکار اجرا نمی‌شود. در public، افزودن `ci:full` اجرای زودهنگام را درخواست می‌کند؛ روی private GitHub Actions، `workflow_dispatch` باید PR number و head SHA دقیق را بگیرد و برای suite سنگین ورودی `ci-full` هم صریحاً فعال شود. این عمل توسط صاحب ریپو انجام می‌شود و فقط همان run را مجاز می‌کند؛ SHA قدیمی یا PR بسته/تغییریافته fail-closed می‌شود.
 
 | فایل | رویداد | Tier |
 |---|---|---|

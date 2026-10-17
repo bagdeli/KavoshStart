@@ -41,3 +41,11 @@
 - Conventional Commits — https://www.conventionalcommits.org/ · SemVer — https://semver.org/ · release-please — https://github.com/googleapis/release-please
 - Diátaxis — https://diataxis.fr/ · MADR — https://adr.github.io/madr/
 - OpenSSF Scorecard — https://github.com/ossf/scorecard · SLSA — https://slsa.dev/
+
+### CI execution authority and external evidence
+
+- GitHub self-hosted runner isolation and ephemeral lifecycle — https://docs.github.com/en/actions/reference/runners/self-hosted-runners
+- GitHub Actions security and untrusted workflows — https://docs.github.com/en/actions/reference/security/secure-use
+- Required checks with external GitHub Apps and exact SHA — https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks
+- Independent server/agent CI reference (optional, not a dependency) — https://woodpecker-ci.org/docs/administration/general
+
