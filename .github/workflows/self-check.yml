@@ -65,7 +65,7 @@ jobs:
       - name: Retain actual conformance result
         id: conformance-artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cross-domain-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/cross-domain.xml
@@ -83,7 +83,7 @@ jobs:
           git archive --format=tar HEAD > "$RUNNER_TEMP/kavosh-verification/source.tar"
           git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/kavosh-verification/source-identity.txt"
           sha256sum "$RUNNER_TEMP/kavosh-verification/source.tar" > "$RUNNER_TEMP/kavosh-verification/source-sha256.txt"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
         with:
           name: kavosh-verified-source-${{ github.run_id }}-${{ github.run_attempt }}
