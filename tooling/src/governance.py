@@ -257,10 +257,10 @@ def check_manifest(actual_repo=None):
     else:
         add("ok", "DEP-5", "Migration strategy", "expand-contract (default)")
     ui = m.get("ui", {})
-    if ui.get("kind") != "none" and not ui.get("kavoshui"):
+    if ui.get("kind") != "none" and not ui.get("designSystem"):
         problem = decision_adr_problem(ui.get("exceptionADR"),
                                        ("ui exception", "scope", "rtl", "accessibility", "tests"))
-        add("fail" if problem else "ok", "UI-1", "KavoshUI pin or approved exception ADR",
+        add("fail" if problem else "ok", "UI-1", "Selected design-system pin or approved exception ADR",
             problem or ui["exceptionADR"])
     budget = m.get("ci", {}).get("monthlyMinutesBudget")
     if budget not in (None, 0):

@@ -16,7 +16,7 @@
   ],
   "outOfScope": [
     "Product code",
-    "Visual design (KavoshUI)",
+    "Project-specific visual design and component implementations",
     "Paid GitHub features as a requirement"
   ],
   "users": {
@@ -35,7 +35,7 @@
   },
   "ui": {
     "kind": "none",
-    "kavoshui": null
+    "designSystem": null
   },
   "stack": {
     "languages": [

@@ -66,7 +66,10 @@ def values(m: dict) -> dict:
         "CI_TIMEOUT": {"T0": "10", "T1": "15", "T2": "20"}.get(m.get("tier"), "10"),
         "RUNTIME": m["runtime"],
         "KAVOSHSTART": m["kavoshStart"],
-        "KAVOSHUI": ui.get("kavoshui") or "(not used)",
+        "DESIGN_SYSTEM": (
+            f"{ui['designSystem']['package']}@{ui['designSystem']['version']}"
+            if isinstance(ui.get("designSystem"), dict) else "(not selected)"
+        ),
         "UI_KIND": ui.get("kind", "none"),
         "DEPLOY_METHOD": m.get("deploy", {}).get("method", "none"),
         "BUDGET": str(m.get("ci", {}).get("monthlyMinutesBudget", "")),

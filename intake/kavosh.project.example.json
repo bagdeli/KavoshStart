@@ -1,32 +1,30 @@
 {
   "$schema": "https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json",
   "kavoshStart": "vX.Y.Z",
-  "name": "Kavosh SMS",
-  "repo": "bagdeli/KavoshSMS",
-  "summary": "Internal service that sends and tracks transactional SMS for Kavosh products through Iranian SMS providers.",
+  "name": "Example Request Service",
+  "repo": "bagdeli/Example",
+  "summary": "Fictional multitenant request tracker for illustration of intake and scaffold generation only.",
   "visibility": "private",
   "owner": "bagdeli",
   "tier": "T2",
   "runtime": "server",
   "firstRelease": [
-    "Send a single SMS through one provider via REST API",
-    "Delivery status stored and queryable",
-    "Admin page listing last 1000 messages"
+    "Submit a fictional request through a REST API",
+    "Read example request state",
+    "Filter demo requests on an admin screen"
   ],
   "outOfScope": [
-    "Marketing campaigns",
-    "Customer self-service portal"
+    "Real customer records",
+    "Production external integrations"
   ],
   "users": {
     "audience": "internal",
     "scale": "1-10"
   },
   "data": {
-    "sensitivity": "personal",
-    "regulatedIntegrations": [
-      "sms-provider"
-    ],
-    "multiTenant": false
+    "sensitivity": "internal",
+    "regulatedIntegrations": [],
+    "multiTenant": true
   },
   "size": {
     "domains": 1,
@@ -35,7 +33,10 @@
   },
   "ui": {
     "kind": "admin",
-    "kavoshui": "1.0.0",
+    "designSystem": {
+      "package": "@example/ui-kit",
+      "version": "1.0.0"
+    },
     "locales": [
       "fa-IR"
     ]
@@ -59,7 +60,7 @@
       "production"
     ],
     "urls": {
-      "test": "https://sms-test.example.ir"
+      "test": "https://test.example.org"
     }
   },
   "ci": {
@@ -75,9 +76,7 @@
     "claude",
     "codex"
   ],
-  "dependsOn": [
-    "bagdeli/KavoshUI"
-  ],
+  "dependsOn": [],
   "acceptance": {
     "mode": "continuous",
     "assurance": "risk-based"
@@ -93,7 +92,6 @@
     "server",
     "browser-ui",
     "persistent-data",
-    "migration",
-    "regulated"
+    "migration"
   ]
 }

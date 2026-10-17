@@ -192,13 +192,6 @@
             "desktop"
           ]
         },
-        "kavoshui": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "pattern": "^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$"
-        },
         "locales": {
           "type": "array",
           "items": {
@@ -208,7 +201,32 @@
         "exceptionADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "ADR required when a project opts out of KavoshUI."
+          "description": "Approved custom UI without a pinned design-system package; includes RTL, accessibility, ownership, scope and tests."
+        },
+        "designSystem": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "package",
+            "version"
+          ],
+          "properties": {
+            "package": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 160,
+              "description": "Design-system package selected by the consuming project. Never publish private provider identifiers in the public standard."
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^v?[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?$",
+              "description": "Exact package release version; no floating ranges."
+            }
+          },
+          "description": "Consumer-owned provider and exact pin; null requires an approved exception for UI projects."
         }
       }
     },
