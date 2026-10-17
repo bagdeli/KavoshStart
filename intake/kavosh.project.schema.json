@@ -773,6 +773,60 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "ci": {
+            "properties": {
+              "runner": {
+                "const": "github-hosted"
+              }
+            },
+            "required": [
+              "runner"
+            ]
+          }
+        },
+        "required": [
+          "ci"
+        ]
+      },
+      "then": {
+        "properties": {
+          "ci": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "runnerLabels"
+                  ]
+                },
+                {
+                  "required": [
+                    "runners"
+                  ]
+                },
+                {
+                  "required": [
+                    "trustModelADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "externalCIADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "privateSelfHostedApprovalADR"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }
