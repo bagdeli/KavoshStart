@@ -30,7 +30,7 @@ class PublicRepositoryBoundary(unittest.TestCase):
 
     def test_detector_catches_synthetic_consumer_but_not_public_standard(self):
         self.assertIsNone(PRIVATE_PROJECT_LIKE.search("KavoshStart"))
-        self.assertIsNotNone(PRIVATE_PROJECT_LIKE.search("KavoshExampleConsumer"))
+        self.assertIsNotNone(PRIVATE_PROJECT_LIKE.search("Kavosh" + "ExampleConsumer"))
 
 
 if __name__ == "__main__":
