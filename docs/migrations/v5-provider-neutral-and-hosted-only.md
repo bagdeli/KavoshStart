@@ -1,4 +1,6 @@
-# Major-version migration: provider-neutral UI and private GitHub-hosted CI
+# Historical v5 major migration — provider-neutral UI and superseded hosted-private CI
+
+**Historical note:** The private hosted-runner migration in this v5 guide is superseded by [ADR-0018](../decisions/0018-private-local-commands-only.md) and [v6 private local-only migration](v6-private-local-commands-only.md). **Never use the old private hosted instructions.**
 
 **Breaking change.** This is a migration guide for the planned next major release, **not** an announcement that the release tag exists. Upgrade consumers only after a stable release in their own approved PR.
 

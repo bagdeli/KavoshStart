@@ -1,7 +1,6 @@
 # Local validation without GitHub Actions
 
-Use this only when the manifest has `tier: "T1"`, `runtime: "static"`, `ci.runner: "none"`, and
-`ci.monthlyMinutesBudget: 0`. KavoshStart scaffolding omits every GitHub Actions workflow for this profile.
+For **every private Tier/Runtime**, set `ci.runner="none"` and `ci.monthlyMinutesBudget=0`. There are no GitHub Actions jobs/runners; only the owner executes tests, `git`, `gh` and release commands on a trusted GitHub-connected machine. Public T1/static may also use the local-only profile. Disable private Actions in GitHub settings before pushing any branch that might carry old workflows.
 
 Before each PR, run:
 

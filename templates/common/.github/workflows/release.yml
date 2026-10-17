@@ -1,4 +1,6 @@
 # Gated release (REL-4, REL-5). Private GitHub-hosted runs need a direct manual dispatch on exact main.
+# PUBLIC TEMPLATE ONLY: private scaffolds generate no GitHub Actions workflows (ADR-0018).
+# Any legacy PRIVATE_HOSTED conditional below is unreachable for a conforming private manifest.
 # PRIVATE_HOSTED_DISPATCH_REQUIRED: workflow_run is disabled for private hosted runner selections.
 name: release
 

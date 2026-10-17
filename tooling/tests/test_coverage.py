@@ -115,25 +115,12 @@ class GovernanceFiles(unittest.TestCase):
     def test_DOC1_negative_oversized_markdown(self):
         self.assertTrue(fails_for("DOC-1", lambda d: (d / "big.md").write_text("a" * 70000, encoding="utf-8")))
 
-    def test_CI3_negative_private_hosted_without_scoped_dispatch_guard(self):
-        def mutate(d):
-            f = d / ".github/workflows/ci.yml"
-            f.write_text(f.read_text(encoding="utf-8").replace("PRIVATE_HOSTED_DISPATCH_REQUIRED", ""), encoding="utf-8")
-        self.assertTrue(fails_for("CI-3", mutate))
-
-    def test_CI3_negative_private_hosted_with_automatic_job_gate_enabled(self):
-        def mutate(d):
-            for name in ("ci.yml", "kavosh.yml", "release.yml"):
-                f = d / ".github/workflows" / name
-                f.write_text(f.read_text(encoding="utf-8").replace("!true", "!false"), encoding="utf-8")
-        self.assertTrue(fails_for("CI-3", mutate))
-
-    def test_CI3_negative_private_hosted_without_dispatch(self):
-        def mutate(d):
-            for name in ("ci.yml", "kavosh.yml", "release.yml"):
-                f = d / ".github/workflows" / name
-                f.write_text(f.read_text(encoding="utf-8").replace("workflow_dispatch:", "manual_run_disabled:"), encoding="utf-8")
-        self.assertTrue(fails_for("CI-3", mutate))
+    def test_CI1_negative_any_workflow_is_forbidden_in_private_even_with_false_guard(self):
+        def mutate(root):
+            wf = root / ".github/workflows/ci.yml"
+            wf.parent.mkdir(parents=True, exist_ok=True)
+            wf.write_text("name: blocked\non: workflow_dispatch\njobs:\n  demo:\n    if: false\n    runs-on: ubuntu-latest\n", encoding="utf-8")
+        self.assertTrue(fails_for("CI-1", mutate))
 
     def test_CI1_positive_public_repo_on_github_hosted(self):
         m = dict(EXAMPLE, visibility="public", tier="T2", ci={"runner": "github-hosted", "monthlyMinutesBudget": 0})
@@ -156,7 +143,7 @@ class GovernanceFiles(unittest.TestCase):
     def test_CI1_positive_standard_reusable_runner_expression(self):
         self.assertEqual(g.runner_workflow_problems(
             {"workflow.yml": "jobs:\n  test:\n    runs-on: ${{ fromJSON(inputs.runs-on) }}\n"},
-            dict(EXAMPLE, visibility="public"))[0][0], "ok")
+            dict(EXAMPLE, visibility="public", ci={"runner": "github-hosted", "monthlyMinutesBudget": 0}))[0][0], "ok")
 
     def test_CI1_positive_public_self_hosted_yaml_label_list(self):
         m = dict(EXAMPLE, visibility="public", ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
@@ -164,11 +151,19 @@ class GovernanceFiles(unittest.TestCase):
         workflows = {"ci.yml": "jobs:\n  test:\n    runs-on: [self-hosted, linux, x64, example]\n"}
         self.assertEqual(g.runner_workflow_problems(workflows, m)[0][0], "ok")
 
-    def test_CI1_positive_private_hosted_is_allowed_with_per_run_scope(self):
+    def test_CI1_positive_private_local_only_for_every_tier(self):
+        m = json.loads(json.dumps(EXAMPLE))
+        for tier in ("T0", "T1", "T2"):
+            m["tier"] = tier
+            with self.subTest(tier=tier):
+                self.assertEqual(g.runner_manifest_problems(m)[0][0], "ok")
+        m["tier"] = "T2"
+        self.assertEqual(fails_for("CI-1", manifest=m), [])
+
+    def test_CI1_negative_private_hosted_even_with_budget_zero(self):
         m = json.loads(json.dumps(EXAMPLE))
         m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
-        self.assertEqual(g.runner_manifest_problems(m)[0][0], "ok")
-        self.assertEqual(fails_for("CI-1", manifest=m), [])
+        self.assertEqual(g.runner_manifest_problems(m)[0][0], "fail")
 
     def test_CI2_negative_public_self_hosted_without_trust_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
@@ -179,23 +174,44 @@ class GovernanceFiles(unittest.TestCase):
     def test_CI1_positive_local_only_T1_static(self):
         self.assertEqual(fails_for("CI-1", manifest=local_only_static_manifest()), [])
 
-    def test_CI1_negative_local_only_runner_outside_T1_static(self):
+    def test_CI1_negative_public_local_only_runner_outside_T1_static(self):
         m = local_only_static_manifest()
+        m["visibility"] = "public"
         m["runtime"] = "server"
         self.assertTrue(any(level == "fail" and rule == "CI-1"
                             for level, rule, _, _ in g.runner_manifest_problems(m)))
         self.assertTrue(g.validate(m, {"allOf": g.SCHEMA["allOf"]}))
 
-    def test_CI3_positive_budget_hint_does_not_invalidate_local_only_profile(self):
+    def test_CI1_negative_private_local_only_never_consumes_budget(self):
         m = local_only_static_manifest()
         m["ci"]["monthlyMinutesBudget"] = 1
-        self.assertEqual(fails_for("CI-1", manifest=m), [])
+        self.assertTrue(any(z[0] == "fail" and z[1] == "CI-1"
+                            for z in g.runner_manifest_problems(m)))
+        self.assertTrue(g.validate(m, {"allOf": g.SCHEMA["allOf"]}))
+
+    def test_CI3_positive_public_budget_hint_never_grants_execution(self):
+        """Covers: CI-3 (positive). The budget is telemetry, not authorization."""
+        m = json.loads(json.dumps(EXAMPLE))
+        m["visibility"] = "public"
+        m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 1}
+        self.assertEqual(g.runner_manifest_problems(m)[0][0], "ok")
+        self.assertEqual(g.validate(m, {"allOf": g.SCHEMA["allOf"]}), [])
+
+    def test_CI3_negative_private_budget_is_not_an_exception(self):
+        """Covers: CI-3 (negative). Budget cannot enable private Actions."""
+        m = local_only_static_manifest()
+        m["ci"]["monthlyMinutesBudget"] = 1
+        self.assertTrue(g.validate(m, {"allOf": g.SCHEMA["allOf"]}))
+        self.assertEqual(g.runner_manifest_problems(m)[0][0], "fail")
 
     def test_SEC3_negative_no_permissions(self):
         def mutate(d):
             f = d / ".github/workflows/ci.yml"
             f.write_text(f.read_text(encoding="utf-8").replace("permissions:\n  contents: read\n", ""), encoding="utf-8")
-        self.assertTrue(fails_for("SEC-3", mutate))
+        m = json.loads(json.dumps(EXAMPLE))
+        m.update(visibility="public")
+        m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
+        self.assertTrue(fails_for("SEC-3", mutate, manifest=m))
 
     def test_SEC4_negative_no_dependabot(self):
         self.assertTrue(fails_for("SEC-4", lambda d: (d / ".github/dependabot.yml").unlink()))

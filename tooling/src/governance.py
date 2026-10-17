@@ -357,42 +357,37 @@ def runner_labels(m):
 
 
 def runner_manifest_problems(m):
-    """CI-1 / CI-2: private GitHub Actions are hosted-only; public isolation exceptions are scoped."""
+    """CI-1/2: private local-only, public runner trust."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
-    if vis not in ("public", "private"):
+    if vis not in ("private", "public"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
-    if vis == "private" and runner == "self-hosted":
-        return [("fail", "CI-1", "Private repositories prohibit self-hosted Actions runners",
-                 "use standard GitHub-hosted with one-run authorization, or T1/static local-only with no Actions jobs")]
     if vis == "private":
-        extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"})
+        extra = sorted(set(m.get("ci", {})) - {"runner", "monthlyMinutesBudget"})
+        errors = []
+        if runner != "none":
+            errors.append("private must use runner=none; GitHub-hosted and self-hosted Actions forbidden")
+        if m.get("ci", {}).get("monthlyMinutesBudget") != 0:
+            errors.append("private monthlyMinutesBudget must be 0")
         if extra:
-            return [("fail", "CI-1", "Private repositories forbid self-hosted runner metadata",
-                     "remove obsolete private runner fields: " + ", ".join(extra))]
+            errors.append("private Actions metadata prohibited: " + ", ".join(extra))
+        return [("fail" if errors else "ok", "CI-1", "Private commands executed only by owner",
+                 "; ".join(errors) or "zero GitHub Actions; local git/gh/build/test commands")]
     if runner == "none":
-        eligible = m.get("tier") == "T1" and m.get("runtime") == "static"
-        if not eligible:
-            return [("fail", "CI-1", "Local-only validation is limited to the T1/static profile",
-                     f"got tier={m.get('tier')}, runtime={m.get('runtime')}")]
-        return [("ok", "CI-1", "Local-only T1/static validation profile",
-                 "no GitHub Actions workflows; the project's semantic check contract runs locally and its result is recorded in the PR")]
+        ok = m.get("tier") == "T1" and m.get("runtime") == "static"
+        return [("ok" if ok else "fail", "CI-1", "Public local-only profile",
+                 "public T1/static" if ok else "public none requires T1/static")]
     if runner not in ("github-hosted", "self-hosted"):
-        return [("fail", "CI-1", "Known runner mode", f"got {runner}")]
-    out = [("ok", "CI-1", "Runner selected under visibility policy", f"{vis} → {runner}")]
-    if vis == "private" and runner == "github-hosted":
-        out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
-                    "workflow_dispatch must name an open PR and its exact current head SHA"))
+        return [("fail", "CI-1", "Known public runner mode", f"got {runner}")]
+    out = [("ok", "CI-1", "Public runner under visibility policy", runner)]
     if runner == "self-hosted":
-        problem = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
-        out.append(("fail" if problem else "ok", "CI-2", "Self-hosted runner has an isolated trust model",
-                    problem or m["ci"]["trustModelADR"]))
+        issue = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
+        out.append(("fail" if issue else "ok", "CI-2", "Public self-hosted isolation",
+                    issue or m["ci"]["trustModelADR"]))
         labels = runner_labels(m)
         slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
         expected = ["self-hosted", "linux", "x64", slug]
-        if not slug or labels != expected:
-            out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
-        else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
+        out.append(("ok" if slug and labels == expected else "fail", "CI-2",
+                    "Public self-hosted labels", f"expected {expected}, got {labels}"))
     return out
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
@@ -451,10 +446,14 @@ def is_hosted(value):
 
 
 def runner_workflow_problems(workflows, m):
-    """CI-1: private Actions jobs must use static standard hosted labels; deny unknown/dynamic runners."""
+    """CI-1: private requires no tracked workflow files at all."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return []
+    if vis == "private":
+        files = sorted(workflows)
+        return [("fail" if files else "ok", "CI-1", "No Actions workflows for private repositories",
+                 ", ".join(files) if files else "local commands executed only by owner")]
     if runner == "none":
         extra = sorted(workflows)
         return [("fail" if extra else "ok", "CI-1", "Local-only profile has no GitHub Actions workflows",

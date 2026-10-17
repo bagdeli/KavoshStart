@@ -50,7 +50,7 @@ def layers(manifest: dict) -> list:
 def values(m: dict) -> dict:
     ui = m.get("ui", {})
     slug = re.sub(r"[^a-z0-9]+", "-", m["repo"].split("/")[-1].lower()).strip("-")
-    # CI-1: the manifest selects the runner; private hosted callers are gated to one owner-initiated dispatch.
+    # CI-1: private means no GitHub Actions; local commands only.
     runner = m.get("ci", {}).get("runner", "github-hosted")
     if runner == "self-hosted":
         labels = m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
@@ -102,12 +102,14 @@ def main() -> int:
     manifest = json.loads(mpath.read_text(encoding="utf-8"))
     validate_standard_pin(manifest)
     runner = manifest.get("ci", {}).get("runner")
-    if manifest.get("visibility") == "private" and runner == "self-hosted":
-        raise SystemExit("CI-1: private GitHub Actions require standard GitHub-hosted; self-hosted is prohibited")
-    if manifest.get("visibility") == "private" and (set(manifest.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"}):
-        raise SystemExit("CI-1: remove legacy self-hosted runner fields from the private manifest")
-    if runner == "none" and not (manifest.get("tier") == "T1" and manifest.get("runtime") == "static"):
-        raise SystemExit("CI-1: local-only 'none' is supported only for T1/static")
+    if manifest.get("visibility") == "private":
+        if runner != "none" or manifest.get("ci", {}).get("monthlyMinutesBudget") != 0:
+            raise SystemExit("CI-1: private requires runner=none and budget=0; no Actions")
+        bad = sorted(set(manifest.get("ci", {})) - {"runner", "monthlyMinutesBudget"})
+        if bad:
+            raise SystemExit("CI-1: remove private runner/Actions metadata: " + ", ".join(bad))
+    elif runner == "none" and not (manifest.get("tier") == "T1" and manifest.get("runtime") == "static"):
+        raise SystemExit("CI-1: public none is supported only for T1/static")
     vals = values(manifest)
 
     plan = {}  # rel -> source file (later layers override earlier ones)

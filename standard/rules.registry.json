@@ -1082,7 +1082,7 @@
     },
     {
       "id": "PR-7",
-      "statement": "**PR با check قرمز/غایب `kavosh` یا `required` ادغام نمی‌شود.** برای release-please PR که GitHub به‌علت ایجاد با `GITHUB_TOKEN` اجرای `pull_request` را approval-required می‌کند، workflowهای CI/Kavosh یک مسیر محدود `pull_request_target` دارند که فقط same-repository + `github-actions[bot]` + branch استاندارد release-please را می‌پذیرد. checkهای واجد ruleset با همان contextهای `required` و `kavosh / governance` روی exact head تولید می‌شوند؛ checkout کد candidate credentialless/read-only است و مسیر target برای PRهای دیگر context required ایجاد نمی‌کند. owner click/no-op commit/bypass جزو قرارداد نیست.",
+      "statement": "در public، ادغام نیازمند checkهای واقعی و موفق `required` و `kavosh` است. در private بدون هیچ Actions، مالک باید از سیستم مورداعتماد SHA فعلی، آزمون‌های محلی با exit code، شواهد نیاز، review و قابلیت ادغام را کنترل و شخصاً با `gh` ادغام کند؛ نبود check Actions، PASS محسوب نمی‌شود. required status قدیمی باید با تأیید مالک از تنظیمات ruleset اصلاح شود، نه bypass یا `--admin`.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1280,7 +1280,7 @@
     },
     {
       "id": "REL-5",
-      "statement": "**دروازه‌ی انتشار:** نسخه فقط از commit فعلی `main` ساخته می‌شود که checkهای الزامی (`required`، `main-guard / main-guard`) آن **وجود داشته و موفق** باشند. در دسترس نبودن CI مجوز انتشار نیست.",
+      "statement": "انتشار public فقط از `main` با checkهای واقعی و موفق و منبع دقیق انجام می‌شود. در private بدون GitHub Actions، مالک شخصاً از سیستم مورداعتمادِ دارای دسترسی GitHub، source/tag، خروجی build/test، checksum artifact، تصمیم پذیرش و مجوز انتشار را بررسی و سپس با CLI منتشر می‌کند؛ مدرک ناقص، release را می‌بندد و هیچ check ساختگی یا workflow ناشر جایگزین نمی‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1474,7 +1474,7 @@
     },
     {
       "id": "CI-1",
-      "statement": "در مخزن private، تمام jobهای GitHub Actions فقط از runnerهای GitHub-hosted استاندارد استفاده می‌کنند؛ self-hosted حتی به‌صورت ایزوله ممنوع است. اجرای private hosted سهمیه‌دار صرفاً با dispatch مستقیم مالک، محدود به PR/ref/SHA فعلی و بدون trigger خودکار است. `none` فقط برای T1/static بدون هیچ workflow و با اعتبارسنجی محلی مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR و منع اجرای fork/کد نامطمئن مجاز است.",
+      "statement": "در مخزن private در همهٔ Tier/Runtimeها `ci.runner=none` و `monthlyMinutesBudget=0` اجباری است؛ **هیچ GitHub Actions workflow/job/runner** (GitHub-hosted، self-hosted، ARC، reusable، dispatch، schedule، push یا PR) مجاز نیست. عامل فقط دستورهای قابل بررسی می‌دهد و تنها مالک روی رایانهٔ مورداعتمادِ متصل به GitHub آن‌ها را اجرا و شواهد واقعی را ثبت می‌کند. هیچ مجوز یا ADR موردی استثنا نیست. public پیش‌فرض GitHub-hosted دارد؛ public self-hosted تنها با CI-2.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

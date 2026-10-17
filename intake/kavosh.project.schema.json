@@ -331,7 +331,7 @@
             "github-hosted",
             "none"
           ],
-          "description": "Private: only github-hosted (or none for T1/static without GitHub Actions); self-hosted is forbidden regardless of isolation ADR. Public: GitHub-hosted preferred; self-hosted only with trustModelADR and same-repository PR boundary. Private hosted requires one owner-authorized workflow_dispatch scoped to the current ref/SHA."
+          "description": "PRIVATE: ci.runner=none only at every tier/runtime; no GitHub Actions or runners of any kind. AI offers commands; only human owner executes them from a trusted GitHub-connected computer. PUBLIC: hosted default; self-hosted exception needs ADR."
         },
         "runnerLabels": {
           "type": "array",
@@ -339,29 +339,29 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Optional labels for an exceptional public self-hosted runner (CI-2); forbidden as a private self-hosted escape hatch."
+          "description": "Only applies to approved PUBLIC self-hosted runner; forbidden in PRIVATE."
         },
         "runners": {
           "type": "integer",
           "minimum": 1,
           "maximum": 20,
-          "description": "Capacity of exceptional public self-hosted runners; size by queue/SLO. Does not authorize private self-hosted."
+          "description": "Approved PUBLIC self-hosted capacity only; forbidden in PRIVATE."
         },
         "monthlyMinutesBudget": {
           "type": "integer",
           "minimum": 0,
           "maximum": 2000,
-          "description": "Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution."
+          "description": "PRIVATE: 0 mandatory. PUBLIC: accounting hint, never approval for paid work."
         },
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Applicable only to exceptional public self-hosted runners. Must document runner trust model, containment, untrusted-code and credential boundaries. Never overrides the private self-hosted ban."
+          "description": "Approved PUBLIC self-hosted exception only; cannot override no-Actions rule for PRIVATE."
         },
         "requiredWorkflow": {
           "type": "string",
           "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
-          "description": "Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."
+          "description": "Relevant only to public Actions projects. Private local-command-only projects have no GitHub Actions workflows."
         }
       }
     },
@@ -547,19 +547,18 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "runner"
+              "runner",
+              "monthlyMinutesBudget"
             ],
             "properties": {
               "runner": {
-                "enum": [
-                  "github-hosted",
-                  "none"
-                ]
+                "const": "none"
               },
-              "monthlyMinutesBudget": {},
-              "requiredWorkflow": {}
+              "monthlyMinutesBudget": {
+                "const": 0
+              }
             },
-            "description": "Private CI has only standard hosted or no-Actions local-only mode; all self-hosted metadata is forbidden."
+            "description": "PRIVATE GitHub Actions are prohibited entirely. Only local owner-run git/gh/build/test/release commands. No Actions workflow or runner metadata."
           }
         },
         "required": [
@@ -570,6 +569,9 @@
     {
       "if": {
         "properties": {
+          "visibility": {
+            "const": "public"
+          },
           "ci": {
             "properties": {
               "runner": {
@@ -582,6 +584,7 @@
           }
         },
         "required": [
+          "visibility",
           "ci"
         ]
       },

@@ -1,4 +1,6 @@
 # KavoshStart controls, pinned to the exact release declared in the manifest.
+# PUBLIC TEMPLATE ONLY: private scaffolds generate no GitHub Actions workflows (ADR-0018).
+# Any legacy PRIVATE_HOSTED conditional below is unreachable for a conforming private manifest.
 # PRIVATE_HOSTED_DISPATCH_REQUIRED: no automatic private hosted jobs may consume shared quota.
 name: kavosh
 

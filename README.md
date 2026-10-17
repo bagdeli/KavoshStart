@@ -1,4 +1,6 @@
 # KavoshStart
+> **Private GitHub repositories — ADR-0018:** no GitHub Actions runners/jobs, hosted **or** self-hosted, under any circumstances. The AI supplies instructions only. The owner executes tests and `git`/`gh` commands on a trusted GitHub-connected machine, with genuine exit codes and source hashes. Disable Actions at repository settings **before** any PR/push with legacy workflow files.
+
 
 **استاندارد شروع، ساخت و نگهداری پروژه‌های Kavosh با همکاری انسان و عامل‌های هوش مصنوعی؛ مستقل از زبان، ابزار release و اندازهٔ diff، با policyهای platform/account به‌صورت overlay.**
 
@@ -41,7 +43,7 @@ KavoshStart مرجع **عمومی و مستقل از مخازن مصرف‌کن�
 
 ## واقعیت platform/account (خلاصه‌ی [ADR-0003](docs/decisions/0003-free-plan-enforcement-model.md))
 
-در مخزن private با GitHub Free، کنترل‌های branch/ruleset قابل‌اعمال مانند مخزن public نیستند و باید محدودیت‌های پلن و وضعیت واقعی تنظیمات بررسی شوند. **KavoshStart اجرای GitHub Actions را در private فقط روی GitHub-hosted استاندارد مجاز می‌داند؛ self-hosted ممنوع است.** اجرای سهمیه‌دار private همچنان به dispatch دستی و مجوز مستقیم برای ref/SHA مشخص نیاز دارد. برای T1/static، پروفایل `ci.runner: none` بدون هیچ Actions job مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR سخت‌گیرانه و کنترل کد نامطمئن قابل بررسی است ([ADR-0015](docs/decisions/0015-private-github-hosted-only.md)، CI-1).
+در مخزن **private** هیچ GitHub Actions و هیچ runnerی مجاز نیست، چه self-hosted چه GitHub-hosted. صرف‌نظر از Tier/Runtime، `ci.runner=none` و `monthlyMinutesBudget=0` انتخاب می‌شود؛ هوش مصنوعی فقط دستور می‌دهد و مالک در سیستم مورداعتمادِ دارای دسترسی GitHub اجرا می‌کند. قبل از push تغییراتِ دارای workflow قدیمی، Actions باید در تنظیمات repo توسط مالک غیرفعال شده باشد. کنترل‌های واقعی تست، بازبینی، ادغام و انتشار همچنان لازم‌اند؛ [ADR-0018](docs/decisions/0018-private-local-commands-only.md) و [مهاجرت v6](docs/migrations/v6-private-local-commands-only.md). Public می‌تواند طبق CI-2 از GitHub Actions استفاده کند.
 
 | لایه | کِی عمل می‌کند | چه چیزی |
 |---|---|---|
@@ -61,7 +63,7 @@ KavoshStart مرجع **عمومی و مستقل از مخازن مصرف‌کن�
 
 ## قرارداد عمومی و مهاجرت Major
 
-این مخزن هیچ نام، URL، محتوا، شواهد یا وضعیت مخازن خصوصی را به‌عنوان نمونه یا dependency منتشر نمی‌کند. UI هر پروژه با نام بسته و نسخهٔ دقیق در همان مخزن انتخاب می‌شود؛ هیچ تأمین‌کنندهٔ مشخصی در Core الزامی نیست. مهاجرت از فیلدهای قدیمیِ وابسته به ارائه‌دهنده و سیاست جدید runner در private یک **تغییر ناسازگار (breaking)** است؛ [راهنمای مهاجرت](docs/migrations/v5-provider-neutral-and-hosted-only.md) را بخوانید.
+این مخزن هیچ نام، URL، محتوا، شواهد یا وضعیت مخازن خصوصی را به‌عنوان نمونه یا dependency منتشر نمی‌کند. UI هر پروژه با نام بسته و نسخهٔ دقیق در همان مخزن انتخاب می‌شود؛ هیچ تأمین‌کنندهٔ مشخصی در Core الزامی نیست. مهاجرت از فیلدهای قدیمیِ وابسته به ارائه‌دهنده و سیاست جدید runner در private یک **تغییر ناسازگار (breaking)** است؛ [راهنمای مهاجرت v6 برای private](docs/migrations/v6-private-local-commands-only.md) (و راهنمای تاریخی v5 برای قراردادهای قبلی) را بخوانید.
 
 ## نسخه‌بندی
 

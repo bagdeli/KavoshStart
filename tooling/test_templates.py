@@ -70,7 +70,7 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "designSystem": None if ui == "none" else
                {"package": "@example/ui-kit", "version": "1.0.0"}, "locales": ["fa-IR"]}
-    m["ci"]["monthlyMinutesBudget"] = 0
+    m["ci"] = {"runner": "none", "monthlyMinutesBudget": 0}
     if tier == "T0":  # a public tool: GitHub-hosted runners (CI-1)
         m["visibility"] = "public"
         m["ci"] = {"runner": "github-hosted", "monthlyMinutesBudget": 0}
@@ -119,19 +119,25 @@ def main():
                     continue
             # REL-4/5/6: gated release in every repo, exact resolved KavoshStart pins, package only for artifact runtimes
             pin = json.loads((repo / "kavosh.project.json").read_text(encoding="utf-8"))["kavoshStart"]
-            rel = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
-            kav = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
             want_pkg = "true" if combo[1] in ("none", "desktop") else "false"
             problems = []
-            if f"kavosh-release.yml@{pin}" not in rel or f"package: {want_pkg}" not in rel:
-                problems.append("REL-4/5 release.yml")
-            if kav.count(f"@{pin}") != 3 or "@v1\n" in kav + rel:
-                problems.append("REL-6 exact pins")
+            local_only = manifest(*combo).get("ci", {}).get("runner") == "none"
+            if local_only:
+                unexpected = list((repo / ".github/workflows").glob("*.y*ml")) if (repo / ".github/workflows").exists() else []
+                if unexpected:
+                    problems.append("CI-1 local-only must have no Actions workflows")
+            else:
+                rel = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
+                kav = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
+                if f"kavosh-release.yml@{pin}" not in rel or f"package: {want_pkg}" not in rel:
+                    problems.append("REL-4/5 release.yml")
+                if kav.count(f"@{pin}") != 3 or "@v1\n" in kav + rel:
+                    problems.append("REL-6 exact pins")
             if want_pkg == "true" and "\npackage: " not in (repo / "Makefile").read_text(encoding="utf-8"):
                 problems.append("CI-8 make package target")
             rc_path = repo / ".github/workflows/rc.yml"
             need_rc = combo[1] in ("server", "static") and "test" in combo[4]
-            if need_rc:
+            if need_rc and not local_only:
                 if not rc_path.exists():
                     problems.append("REL-7 rc.yml missing for Test-capable server/static")
                 else:
@@ -194,9 +200,9 @@ def main():
             m["ci"] = {"runner": "self-hosted", "runnerLabels": ["self-hosted", "linux", "x64", "example"],
                        "monthlyMinutesBudget": 0}
             (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
-            wf = repo / ".github" / "workflows" / "ci.yml"
-            text = wf.read_text(encoding="utf-8")
-            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, example]", "runs-on: ubuntu-latest"), encoding="utf-8")
+            wf = repo / ".github/workflows/ci.yml"
+            wf.parent.mkdir(parents=True, exist_ok=True)
+            wf.write_text("name: forbidden\non: push\njobs:\n  required:\n    runs-on: ubuntu-latest\n", encoding="utf-8")
             (repo / ".githooks" / "pre-push").unlink()
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -232,35 +238,26 @@ def main():
                 failures += 1
             else:
                 print("ok  T1/static local-only scaffold has no Actions workflows; local governance PASS")
-    # Private GitHub-hosted CI must be opted in per run and bind the dispatch to the current PR head.
-    with tempfile.TemporaryDirectory() as d:
-        repo = Path(d)
-        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-        private_manifest = manifest("T1", "server", "pull-build", "admin", ["test"], runner="github-hosted")
-        (repo / "kavosh.project.json").write_text(json.dumps(private_manifest, indent=2), encoding="utf-8")
-        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace")
-        if r.returncode != 0:
-            print(f"FAIL private hosted scaffold:\n{r.stdout}{r.stderr}")
-            failures += 1
-        else:
-            for name in ("ci.yml", "kavosh.yml", "release.yml", "rc.yml"):
-                text = (repo / ".github/workflows" / name).read_text(encoding="utf-8")
-                if "PRIVATE_HOSTED_DISPATCH_REQUIRED" not in text or "workflow_dispatch" not in text:
-                    print(f"FAIL private hosted dispatch guard missing in {name}")
-                    failures += 1
-            ci_text = (repo / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-            if "(github.event_name == 'push' && !true)" not in ci_text or "github.event_name == 'workflow_dispatch'" not in ci_text:
-                print("FAIL private hosted CI dispatch is not the only runner path")
+    # In every private tier/runtime, even Test-capable server projects, workflows are absent.
+    for tier in ("T1", "T2"):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+            m = manifest(tier, "server", "pull-build", "admin", ["test"], runner="none")
+            (repo / "kavosh.project.json").write_text(json.dumps(m, indent=2), encoding="utf-8")
+            result = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
+                                    capture_output=True, text=True, encoding="utf-8")
+            workflows = list((repo / ".github/workflows").glob("*.y*ml")) if (repo / ".github/workflows").exists() else []
+            if result.returncode != 0 or workflows or not (repo / "deploy/kavosh-deploy.sh").exists():
+                print(f"FAIL private {tier} local-only: {result.stdout} {result.stderr} workflows={workflows}")
                 failures += 1
-            if (repo / "deploy/kavosh-deploy.sh").exists() is False:
-                print("FAIL default pull deploy scaffold missing")
-                failures += 1
+            else:
+                print(f"ok private {tier}/server has no GitHub Actions and retains deploy contract")
     # Custom deployment is opt-in by ADR and must not ship the pull-based deployer as if it matched that method.
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="github-hosted")
+        custom_manifest = manifest("T1", "server", "pull-build", "admin", [], runner="none")
         custom_manifest["deploy"]["method"] = "custom"
         custom_manifest["deploy"]["authorizationADR"] = "docs/decisions/0002-custom-deploy.md"
         (repo / "kavosh.project.json").write_text(json.dumps(custom_manifest, indent=2), encoding="utf-8")

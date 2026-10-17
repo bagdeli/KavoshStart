@@ -1,4 +1,6 @@
 # CI — command contract. Draft CI is off by default; explicit ci:full / dispatch requests early feedback.
+# PUBLIC TEMPLATE ONLY: private scaffolds generate no GitHub Actions workflows (ADR-0018).
+# Any legacy PRIVATE_HOSTED conditional below is unreachable for a conforming private manifest.
 # PRIVATE_HOSTED_DISPATCH_REQUIRED: private GitHub-hosted runs require direct workflow_dispatch for one exact PR head.
 name: ci
 

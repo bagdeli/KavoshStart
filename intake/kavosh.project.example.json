@@ -64,9 +64,8 @@
     }
   },
   "ci": {
-    "runner": "github-hosted",
-    "monthlyMinutesBudget": 0,
-    "requiredWorkflow": ".github/workflows/ci.yml"
+    "runner": "none",
+    "monthlyMinutesBudget": 0
   },
   "limits": {
     "maxOpenReadyPRs": 3,

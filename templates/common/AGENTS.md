@@ -37,9 +37,7 @@ make check    # lint + test + build — run before your single push
 1. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` — types: feat fix docs refactor test ci chore perf build.
 2. Open a **draft PR early** with your plan. Title = Conventional Commit (`feat(scope): …`). Body from the template with `Closes #<n>`.
 3. Keep the PR coherent and reviewable. Line/file counts are telemetry, never a universal hard cap. Split only when the pieces remain independently useful, testable and safely mergeable; generated or broad mechanical changes must disclose their generator/review method.
-4. Run `make check` locally, then push **once**. Heavy CI defaults off on Draft; explicit early CI never authorizes shared quota use by itself.
-   If `ci.runner` is `none`, this must be a T1/static project with no workflow files: run `make check` locally and put
-   its command, exit code and summary in the PR body. A red or missing result blocks merge; never bypass a real check.
+4. For private, the agent supplies the commands; the owner runs `make check` and `git`/`gh` from the trusted workstation and records the actual SHA, exit code and outcome. There are no Actions workflows for private even on T2/server/desktop. Public CI may run under its own policy. A red/missing test cannot be called PASS.
 5. Update the PR body (Done / Remaining / Decisions / How verified / AI involvement with `Co-Authored-By:`), then mark ready.
 6. If `kavosh / governance` or `required` is red, fix the cause. Never work around a check.
 
@@ -48,7 +46,7 @@ make check    # lint + test + build — run before your single push
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
 - Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
-- Private repositories use **GitHub-hosted runners only** for GitHub Actions; local-only T1/static has no Actions jobs. Neither a self-hosted label nor an ADR overrides CI-1.
+- **Private means no GitHub Actions**, hosted or self-hosted, across every Tier/Runtime. AI agents only write reviewed commands; the owner runs them locally on a trusted GitHub-connected computer. `ci.runner=none`, zero budget, no workflow, no agent GitHub mutation/dispatch or runner exception. Disable Actions in settings before changing old workflows (ADR-0018).
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI
@@ -56,7 +54,7 @@ TODO(kavosh): if `ui.kind` is not `none`, use the consumer-owned pinned Design S
 
 ## Definition of Done
 - [ ] Acceptance criteria of the issue met and listed in the PR body
-- [ ] Tests added/updated; `make check` green locally and in CI
+- [ ] Tests updated; `make check` passes on the owner's machine with actual exit code/SHA; public CI also passes where enabled, private never uses GitHub Actions.
 - [ ] Docs / ADR / runbook updated if behaviour changed
 - [ ] If `acceptance.mode=continuous`: PR maps affected AC-* IDs (or justified not-applicable); live evidence/approval stays on the canonical GitHub Issue
 - [ ] Persistent server/static environments pass exact release identity + independent health + canonical route via `--verify-environment` (DEP-7/8)

@@ -1,6 +1,6 @@
 # 0015 — GitHub-hosted-only Actions in private repositories
 
-- Status: accepted
+- Status: superseded by [ADR-0018](0018-private-local-commands-only.md); historical, not active
 - Deciders: repository owner
 - Tracking: issue #141
 - Supersedes: only the private runner-choice portions of ADR-0009 and the current CI-1/2 explanations; older ADR-0004 and ADR-0008 remain historical.

@@ -1,6 +1,6 @@
 # 0009 — Human-authorized operations and Free-only execution
 
-- Status: accepted; **private-runner choice superseded by ADR-0015**. The per-run billing authorization and other decision boundaries still apply.
+- Status: accepted; **private execution choice superseded by ADR-0018**. The per-run billing authorization and other decision boundaries still apply.
 - Deciders: bagdeli
 - Issue: bagdeli/KavoshStart#33
 
@@ -13,10 +13,10 @@ Absolute bans on every privileged operation prevent an agent from carrying out w
 - Authorization names one action, target, environment and current object/head where relevant. A material state change invalidates it. An issue, manifest, label, credential possession or general project policy does not itself authorize an action.
 - A human may explicitly authorize an agent to squash-merge a specified PR after fresh checks, mergeability, base and review-thread preflight. The authorization never permits `--admin`, bypass, red/missing/skipped checks, direct main push or tag mutation.
 - A human may authorize one credential for one login/action. Prefer execution that does not expose the value to the agent. Never log, commit, persist, upload or reuse the credential elsewhere. Regulated banking credentials, OTP/CAPTCHA and signing keys remain unavailable.
-- GitHub Free and zero shared-quota consumption are the default. A private hosted run needs direct approval tied to one dispatch/ref/SHA and a bounded run. Public standard hosted runners are allowed only where they incur no shared quota or charge. Paid runners/features, required paid AI APIs and overage are not dependencies.
+- GitHub Free and zero shared-quota consumption are the default. Private GitHub Actions runs are prohibited even with owner dispatch approval; the owner executes reviewed commands locally and records actual source-bound outcomes. Public standard hosted runners are allowed only where they incur no shared quota or charge. Paid runners/features, required paid AI APIs and overage are not dependencies.
 - Draft stacks may be arbitrarily deep while health warns. Ready PRs are normalized to main or one immediately mergeable parent. Merge requires a green shallow stack.
 - Heavy Draft CI defaults off; a direct workflow dispatch may request early feedback only within the same execution authorization and cost rules.
-- Runner isolation does not follow from a non-root account. Rootful Docker access is root-equivalent; disposable VM isolation needs real teardown. ADR-0015 now prohibits **all private self-hosted GitHub Actions**, and retires the private installer. These isolation principles apply only to a separately approved public exception.
+- Runner isolation does not follow from a non-root account. Rootful Docker access is root-equivalent; disposable VM isolation needs real teardown. ADR-0018 now prohibits **all private GitHub Actions**, both hosted and self-hosted. No private runner installer or manual dispatch exception exists. These isolation principles apply only to a separately approved public exception.
 - Healthy continuous backup/PITR and a tested restore are the recovery baseline. A fresh snapshot is required for destructive/high-risk rewrites. A bounded T1 maintenance window may use downtime with verified backup and explicit authorization; production T2 keeps expand/contract as its default.
 - Deployment/UI and PR-size exceptions require scoped owner authorization and evidence. Exception labels are requests, never authority.
 

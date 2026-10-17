@@ -29,12 +29,12 @@
 
 ## سیاست runner (CI-1، CI-2)
 
-- در مخازن **private، فقط GitHub-hosted استاندارد** مجاز است؛ self-hosted تحت هیچ ADR یا استثنای محلی مجاز نیست. `ci.runner: none` فقط برای T1/static بدون job است.
-- private hosted مصرف‌کنندهٔ سهمیه، فقط با `workflow_dispatch` صریح مالک برای ref/SHA فعلی اجرا می‌شود؛ محدودیت هزینه جدا از انتخاب runner کنترل می‌شود.
+- در مخازن **private هیچ GitHub Actions و هیچ runnerی** مجاز نیست؛ self-hosted و GitHub-hosted هر دو ممنوع‌اند، حتی با dispatch یا استثنای مالک. در تمام Tier/Runtimeها `ci.runner=none` و budget=0؛ فقط اجرای دستور محلی توسط مالک در سیستم دارای GitHub access.
+- قبل از هر push/PR با workflow قدیمی، مالک Actions مخزن خصوصی را در Settings غیرفعال می‌کند. عامل runner نصب/فعال یا workflow dispatch نمی‌کند. تست واقعی، کنترل محرمانگی، تأیید منبع و مرز انتشار برقرار می‌مانند.
 - در public، GitHub-hosted پیش‌فرض است. self-hosted استثنایی به ADR جداسازی، عدم اجرای fork PR، مرز credential و کنترل واقعی شبکه/host نیاز دارد. `--ephemeral` به‌تنهایی ایزولیشن نیست و rootful Docker دسترسی root-equivalent ایجاد می‌کند.
 - GitHub-hosted به‌تنهایی شناسایی بدافزار وابستگی‌ها، امنیت Secretها یا دسترسی/شواهد محیط خصوصی را تضمین نمی‌کند. آزمون واقعی Test/Production و gate انتشار مستقل‌اند.
 
-منبع تصمیم: [ADR-0015](../docs/decisions/0015-private-github-hosted-only.md). برای تعهدات مجوز نرم‌افزار/فونت/داده/ایمیج از [سیاست اجزای شخص ثالث](15-third-party-components.md) استفاده کنید.
+منبع تصمیم فعلی: [ADR-0018](../docs/decisions/0018-private-local-commands-only.md). ADR-0015 تنها سابقهٔ منسوخ است. برای تعهدات مجوز نرم‌افزار/فونت/داده/ایمیج از [سیاست اجزای شخص ثالث](15-third-party-components.md) استفاده کنید.
 
 
 ## مرز اطلاعاتی public/private (SEC-5)

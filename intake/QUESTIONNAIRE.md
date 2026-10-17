@@ -16,7 +16,7 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 ## B. Runtime and deployment
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
-| B0 | R | ریپو خصوصی باشد یا عمومی؟ | `visibility`, `ci.runner` | private → **فقط GitHub-hosted** با مجوز مستقیم هر run؛ self-hosted ممنوع. public → GitHub-hosted پیش‌فرض و self-hosted فقط با ADR سخت‌گیرانه. T1/static می‌تواند `ci.runner: none` بدون workflow داشته باشد. Default private |
+| B0 | R | ریپو خصوصی باشد یا عمومی؟ | `visibility`, `ci.runner` | private → **هیچ GitHub Actions/runnerی**، `ci.runner=none`، بودجه صفر و اجرای دستور توسط مالک در سیستم مورداعتماد. public → hosted پیش‌فرض؛ self-hosted با ADR. Default private |
 | B0b | R* | اگر برای **ریپوی public** استثنای self-hosted درخواست شد، trust model، جداسازی کد نامطمئن، مرز credential و خطر fork چیست؟ | `ci.runnerLabels`, `ci.runners`, `ci.trustModelADR` | استثنا فقط برای public و با ADR/کنترل عملی؛ private هیچ استثنایی ندارد. capacity تابع صف/SLO است. |
 | B1 | R | آیا برنامه باید روی سرور همیشه روشن اجرا شود؟ | `runtime` | No → `none` (library/CLI/script) or `desktop`; only static files → `static`; yes → `server` |
 | B2 | R* | سرور کجاست؟ ایران / خارج / هر دو؟ | `deploy.location` | *if runtime=server |

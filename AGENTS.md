@@ -1,4 +1,6 @@
 # AGENTS.md — KavoshStart
+> **Private GitHub repositories — ADR-0018:** no GitHub Actions runners/jobs, hosted **or** self-hosted, under any circumstances. The AI supplies instructions only. The owner executes tests and `git`/`gh` commands on a trusted GitHub-connected machine, with genuine exit codes and source hashes. Disable Actions at repository settings **before** any PR/push with legacy workflow files.
+
 
 ## Project
 Canonical GitHub repository: https://github.com/bagdeli/KavoshStart (public).

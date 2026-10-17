@@ -12,7 +12,7 @@ KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/is
 | Required reviewers / CODEOWNERS اجباری | ❌ | CODEOWNERS فقط درخواست بازبینی است |
 | Merge queue، Environments با reviewer | ❌ | — |
 | GitHub Pages | ❌ برای private | سایت ایستا روی سرور خودمان |
-| Actions | ✅ standard GitHub-hosted runner در **repo عمومی رایگان و نامحدود** است؛ private GitHub-hosted تابع سهمیهٔ پلن است | budget فقط برای مسیرهای billable؛ storage/cache/Packages و larger runners جدا |
+| Actions | GitHub از نظر محصول ممکن است برای private runner ارائه کند، **اما سیاست مالک (ADR-0018) اجرای هر نوع GitHub Actions در private را ممنوع کرده است**؛ public می‌تواند hosted داشته باشد | برای private محاسبهٔ job در GitHub صفر؛ build/test و release با دستورهای مالک روی ماشین مورداعتماد، همراه شواهد واقعی. Storage/Packages هزینهٔ جدا دارند. |
 | Issues، sub-issues، Projects، Milestones، Releases، Labels | ✅ | — |
 | Issue Types | ❌ (فقط Organization) | برچسب `type:*` |
 | Reusable workflow از ریپوی private دیگر همان کاربر | ✅ با تنظیم Access | KavoshStart مرکز workflowهاست |

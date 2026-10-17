@@ -1,4 +1,6 @@
 # START.md — agent protocol
+> **Private GitHub repositories — ADR-0018:** no GitHub Actions runners/jobs, hosted **or** self-hosted, under any circumstances. The AI supplies instructions only. The owner executes tests and `git`/`gh` commands on a trusted GitHub-connected machine, with genuine exit codes and source hashes. Disable Actions at repository settings **before** any PR/push with legacy workflow files.
+
 
 You are an AI agent asked to create, adopt or maintain a Kavosh project "using KavoshStart".
 Follow this protocol exactly. Rules are referenced by ID (e.g. `BR-1`); their canonical list is
@@ -56,10 +58,11 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
-2. Explain the GitHub Free cost boundary: a private repository may use **only standard GitHub-hosted**
-   GitHub Actions runners, and each billable run requires direct owner authorization for one exact ref/SHA.
-   Self-hosted is not an option for private repositories. Public standard hosted CI may run only where it
-   draws on no shared allowance. A T1/static project may select `ci.runner: none` (no Actions jobs).
+2. Explain the absolute **private local-only** boundary (ADR-0018): no GitHub Actions whatsoever,
+   hosted or self-hosted, for any private Tier/Runtime. Set `ci.runner=none`, budget 0; no workflow
+   files or runner metadata. AI supplies commands only; the owner executes them on a trusted GitHub-connected
+   workstation. The owner disables Actions in GitHub settings before any push/PR that could trigger old
+   workflows. Public CI retains its separate reviewed runner/cost policy.
    Before selecting any material third-party component, apply `standard/15-third-party-components.md`.
    Record risk-sized licence, distribution, security and total-ownership-cost decisions in the consumer project.
 3. The owner confirms or overrides. An override is recorded later as an ADR in the new repo.
@@ -90,14 +93,13 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
-8. **Runner (CI-1):** for private repositories, use only standard GitHub-hosted runners; self-hosted is
-   prohibited even with an isolation ADR. On this Free account, private billable runs require the owner's
-   direct authorization for the exact run: dispatch `ci` and `kavosh` for an open PR and its current head SHA.
-   Reject stale heads. GitHub-hosted does not imply access to a private Test server or acceptance evidence;
-   follow independent exact-source validation and pull-based deployment controls. For public repositories,
-   prefer standard GitHub-hosted; a self-hosted exception requires CI-2 ADR and must exclude untrusted fork PRs.
-   T1/static may select `ci.runner: none`: scaffold creates no workflows, so successful local `make check`
-   and its evidence in each PR replace CI (not an existing red required check).
+8. **Private execution (CI-1):** for every private repository and any Tier/Runtime, select `ci.runner=none`,
+   `monthlyMinutesBudget=0`. No GitHub Actions YAML, GitHub-hosted, self-hosted, ARC, reusable call or
+   dispatch is ever used. The agent supplies an explicit command list only; the **owner** uses local `make
+   check`, targeted tests and `git`/`gh` commands on an authorized GitHub-connected workstation and
+   records exact SHA, exit code and evidence in the private PR. The owner must disable Actions in repository
+   settings before old workflow files could be triggered, and reconcile incompatible required-status branch
+   rules without bypass. For public, prefer standard hosted; self-hosted requires CI-2 ADR and fork isolation.
 9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
    Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
    deploy units, configure distinct version/health plus the canonical origin, and require
@@ -114,7 +116,7 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 
 ### Step 6 — Hand over
 Report: repository URL, tier/runtime/capabilities, budget, the first 3 tasks you recommend, anything the owner must do
-manually (e.g. the Actions access setting). Stop.
+manually (e.g. for private: disabling Actions before any push, running local checks, and GitHub CLI changes). Stop.
 
 ---
 
