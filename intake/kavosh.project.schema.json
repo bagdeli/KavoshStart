@@ -50,7 +50,7 @@
         "private",
         "public"
       ],
-      "description": "Actual repository visibility. Private GitHub Actions jobs use only standard GitHub-hosted runners, with owner-authorized scoped workflow_dispatch for billable runs; self-hosted is forbidden for private. Public defaults to hosted; a public self-hosted exception needs a CI-2 trust-model ADR."
+      "description": "Actual repository visibility. Registered self-hosted GH Actions differs from independent SelfServer execution; private Actions self-hosted needs one explicit owner exception; hosted quota runs require administrator authorization."
     },
     "owner": {
       "type": "string"
@@ -329,9 +329,10 @@
           "enum": [
             "self-hosted",
             "github-hosted",
-            "none"
+            "none",
+            "external"
           ],
-          "description": "Private: only github-hosted (or none for T1/static without GitHub Actions); self-hosted is forbidden regardless of isolation ADR. Public: GitHub-hosted preferred; self-hosted only with trustModelADR and same-repository PR boundary. Private hosted requires one owner-authorized workflow_dispatch scoped to the current ref/SHA."
+          "description": "github-hosted = GitHub Actions standard hosted; self-hosted = GitHub Actions registered runner (private exceptional owner approval only); external = independent SelfServer CI without GitHub Actions; none = local-only T1/static."
         },
         "runnerLabels": {
           "type": "array",
@@ -339,13 +340,13 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Optional labels for an exceptional public self-hosted runner (CI-2); forbidden as a private self-hosted escape hatch."
+          "description": "Only registered GitHub Actions self-hosted labels; external CI never selects GitHub Actions runners."
         },
         "runners": {
           "type": "integer",
           "minimum": 1,
           "maximum": 20,
-          "description": "Capacity of exceptional public self-hosted runners; size by queue/SLO. Does not authorize private self-hosted."
+          "description": "GH Actions self-hosted capacity; no permission to install, register or run."
         },
         "monthlyMinutesBudget": {
           "type": "integer",
@@ -356,12 +357,22 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Applicable only to exceptional public self-hosted runners. Must document runner trust model, containment, untrusted-code and credential boundaries. Never overrides the private self-hosted ban."
+          "description": "Required for any registered GitHub Actions self-hosted selection, including explicit private exception."
         },
         "requiredWorkflow": {
           "type": "string",
           "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
           "description": "Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."
+        },
+        "externalCIADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+          "description": "For independent server CI (no GitHub Actions). Defines exact-SHA check publisher, trust boundaries, and non-Actions release process."
+        },
+        "privateSelfHostedApprovalADR": {
+          "type": "string",
+          "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+          "description": "Private GH Actions self-hosted only: evidence pointer for a specific explicit owner-approved exception, not machine proof of human consent."
         }
       }
     },
@@ -553,13 +564,44 @@
               "runner": {
                 "enum": [
                   "github-hosted",
+                  "self-hosted",
+                  "external",
                   "none"
                 ]
               },
               "monthlyMinutesBudget": {},
-              "requiredWorkflow": {}
+              "requiredWorkflow": {},
+              "runnerLabels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "description": "Only registered GitHub Actions self-hosted labels; external CI never selects GitHub Actions runners."
+              },
+              "runners": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20,
+                "description": "GH Actions self-hosted capacity; no permission to install, register or run."
+              },
+              "trustModelADR": {
+                "type": "string",
+                "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+                "description": "Required for any registered GitHub Actions self-hosted selection, including explicit private exception."
+              },
+              "externalCIADR": {
+                "type": "string",
+                "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+                "description": "For independent server CI (no GitHub Actions). Defines exact-SHA check publisher, trust boundaries, and non-Actions release process."
+              },
+              "privateSelfHostedApprovalADR": {
+                "type": "string",
+                "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
+                "description": "Private GH Actions self-hosted only: evidence pointer for a specific explicit owner-approved exception, not machine proof of human consent."
+              }
             },
-            "description": "Private CI has only standard hosted or no-Actions local-only mode; all self-hosted metadata is forbidden."
+            "description": "Private server CI external allowed; GH-hosted quota requires administrator authorization; registered self-hosted GitHub Actions forbidden unless owner approves isolated exception."
           }
         },
         "required": [
@@ -598,6 +640,138 @@
           "tier",
           "runtime"
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ci": {
+            "properties": {
+              "runner": {
+                "const": "external"
+              }
+            },
+            "required": [
+              "runner"
+            ]
+          }
+        },
+        "required": [
+          "ci"
+        ]
+      },
+      "then": {
+        "properties": {
+          "ci": {
+            "required": [
+              "externalCIADR"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "runnerLabels"
+                  ]
+                },
+                {
+                  "required": [
+                    "runners"
+                  ]
+                },
+                {
+                  "required": [
+                    "trustModelADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "privateSelfHostedApprovalADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "requiredWorkflow"
+                  ]
+                }
+              ]
+            }
+          },
+          "release": {
+            "properties": {
+              "strategy": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "strategy",
+              "strategyADR"
+            ]
+          }
+        },
+        "required": [
+          "release"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "visibility": {
+            "const": "private"
+          },
+          "ci": {
+            "properties": {
+              "runner": {
+                "const": "self-hosted"
+              }
+            },
+            "required": [
+              "runner"
+            ]
+          }
+        },
+        "required": [
+          "visibility",
+          "ci"
+        ]
+      },
+      "then": {
+        "properties": {
+          "ci": {
+            "required": [
+              "trustModelADR",
+              "privateSelfHostedApprovalADR"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ci": {
+            "properties": {
+              "runner": {
+                "const": "self-hosted"
+              }
+            },
+            "required": [
+              "runner"
+            ]
+          }
+        },
+        "required": [
+          "ci"
+        ]
+      },
+      "then": {
+        "properties": {
+          "ci": {
+            "required": [
+              "trustModelADR"
+            ]
+          }
+        }
       }
     }
   ]
