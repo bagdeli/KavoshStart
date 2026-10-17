@@ -532,7 +532,6 @@ def runner_workflow_problems(workflows, m):
                 except (ValueError, TypeError):
                     labels = [value]
             labels = labels if isinstance(labels, list) else [value]
-            is_self = "self-hosted" in labels
             is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
             if runner == "github-hosted" and not is_standard:
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
