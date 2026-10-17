@@ -38,6 +38,18 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertTrue(any(level == "fail" and rule == "CI-1"
                             for level, rule, _, _ in g.runner_workflow_problems({}, m)))
 
+    def test_CI1_positive_new_standard_hosted_labels(self):
+        """Current official GitHub standard runner labels are accepted."""
+        m = manifest()
+        for label in ("ubuntu-26.04", "ubuntu-26.04-arm",
+                      "windows-11-vs2026-arm", "macos-26-intel", "xcode-27"):
+            with self.subTest(label=label):
+                wf = {".github/workflows/ci.yml":
+                      "jobs:\n  required:\n    runs-on: " + label + "\n"}
+                findings = g.runner_workflow_problems(wf, m)
+                self.assertFalse(any(x[0] == "fail" and x[1] == "CI-1"
+                                     for x in findings), label)
+
     def test_CI1_negative_private_dynamic_and_group_runners(self):
         m = manifest()
         for value in ("\u0024{{ matrix.os }}", "{group: trusted-pool, labels: ubuntu-latest}",

@@ -462,9 +462,13 @@ def runner_workflow_problems(workflows, m):
     if vis == "private" and runner == "self-hosted":
         return [("fail", "CI-1", "Private repositories prohibit self-hosted GitHub Actions",
                  "GitHub-hosted-only policy applies to every job and reusable workflow")]
-    hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-24.04-arm", "ubuntu-22.04-arm",
-              "ubuntu-slim", "windows-latest", "windows-2025", "windows-2022", "windows-11-arm",
-              "macos-latest", "macos-15", "macos-14", "macos-13", "macos-15-intel", "macos-26"}
+    # Standard runner labels from GitHub's hosted runner reference.
+    # Exact labels are intentional; do not replace with untrusted wildcards.
+    hosted = {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-26.04",
+              "ubuntu-24.04-arm", "ubuntu-22.04-arm", "ubuntu-26.04-arm", "ubuntu-slim",
+              "windows-latest", "windows-2025", "windows-2022", "windows-11-arm",
+              "windows-11-vs2026-arm", "macos-latest", "macos-14", "macos-15",
+              "macos-15-intel", "macos-26", "macos-26-intel", "xcode-27"}
     bad = []
     for f, text in workflows.items():
         for value in runs_on_values(text):

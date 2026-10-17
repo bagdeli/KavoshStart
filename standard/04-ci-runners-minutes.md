@@ -14,6 +14,8 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 | **public** | GitHub-hosted استاندارد، پیش‌فرض و توصیه‌شده | self-hosted فقط با ADR مشخص و جداسازی واقعی؛ اجرای کد fork/نامطمئن بر آن ممنوع است |
 | **T1/static با `ci.runner: none`** | هیچ GitHub Actions jobای تولید/اجرا نمی‌شود | فقط profile محلی با بودجهٔ صفر؛ شواهد موفق `make check` در PR لازم است |
 
+فهرست نام‌های مجاز GitHub-hosted در Governance با [مستندات Runnerهای استاندارد GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) همگام می‌شود. برچسب رسمی جدید نباید به‌اشتباه رد شود، اما الگوی wildcard/prefix جای اثبات انتخاب GitHub-hosted را نمی‌گیرد. کنترل ایستا نیز جای بررسی تنظیمات واقعی GitHub را نمی‌گیرد.
+
 این ممنوعیت private یک **سیاست سخت‌گیرانهٔ KavoshStart** است، نه ادعای اینکه GitHub استفاده از self-hosted در private را ممنوع کرده است. GitHub نسبت به خطر persistence و دسترسی کد نامطمئن هشدار می‌دهد؛ hosted نیز ایمنی خودکار کد شخص ثالث، تفکیک Secrets و حفاظت از شبکه را تضمین نمی‌کند.
 
 ### اجرای private (fail closed)
