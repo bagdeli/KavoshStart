@@ -639,6 +639,42 @@
           },
           "runtime": {
             "const": "static"
+          },
+          "ci": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "runnerLabels"
+                  ]
+                },
+                {
+                  "required": [
+                    "runners"
+                  ]
+                },
+                {
+                  "required": [
+                    "trustModelADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "privateSelfHostedApprovalADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "externalCIADR"
+                  ]
+                },
+                {
+                  "required": [
+                    "requiredWorkflow"
+                  ]
+                }
+              ]
+            }
           }
         },
         "required": [
