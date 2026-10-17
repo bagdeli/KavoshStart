@@ -464,7 +464,7 @@
         "workflow": {
           "type": "string",
           "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
-          "description": "Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."
+          "description": "GitHub Actions release workflow adapter only; forbidden for external SelfServer CI. Independent release uses externalCommand + strategyADR."
         },
         "artifact": {
           "type": "object",
@@ -493,6 +493,11 @@
             }
           },
           "description": "Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."
+        },
+        "externalCommand": {
+          "type": "string",
+          "pattern": "^scripts/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\\.(?:sh|py)$",
+          "description": "Independent SelfServer release executable owned by consumer; no GitHub Actions workflow. An actual, separately authorized external release gate is required; mere file existence is not authorization."
         }
       }
     },
@@ -704,8 +709,14 @@
             },
             "required": [
               "strategy",
-              "strategyADR"
-            ]
+              "strategyADR",
+              "externalCommand"
+            ],
+            "not": {
+              "required": [
+                "workflow"
+              ]
+            }
           }
         },
         "required": [
