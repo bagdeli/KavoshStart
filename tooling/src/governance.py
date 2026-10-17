@@ -536,8 +536,8 @@ def runner_workflow_problems(workflows, m):
             is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
             if runner == "github-hosted" and not is_standard:
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
-            elif runner == "self-hosted" and not is_self:
-                bad.append(f"{f}: {value} (manifest selects self-hosted)")
+            elif runner == "self-hosted" and labels != runner_labels(m):
+                bad.append(f"{f}: {value} (self-hosted runner must use exact repository-scoped manifest labels)")
     if vis == "private":
         # A remotely called workflow selects its own job runners, even if the
         # caller has no runs-on key. Reject unknown remotely hosted code: we
