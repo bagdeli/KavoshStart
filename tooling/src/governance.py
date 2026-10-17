@@ -302,14 +302,30 @@ def release_adapter_problems(m):
                         f"automation.interface={interface} requires release.artifact.command + paths"))
     if strategy == "release-please":
         return out
-    workflow = release.get("workflow")
-    if not workflow:
-        out.append(("fail", "REL-4", "Declared release workflow adapter",
-                    f"release.strategy={strategy} requires release.workflow"))
-    elif not Path(workflow).exists():
-        out.append(("fail", "REL-4", "Declared release workflow adapter", f"{workflow} does not exist"))
+    if m.get("ci", {}).get("runner") == "external":
+        command = release.get("externalCommand")
+        if release.get("workflow"):
+            out.append(("fail", "REL-4", "External CI cannot use an Actions release workflow",
+                        "remove release.workflow and provide a real external release command"))
+        if (not isinstance(command, str)
+                or not re.fullmatch(r"scripts/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+[.](?:sh|py)", command)):
+            out.append(("fail", "REL-4", "Independent release command path",
+                        "release.externalCommand must be a scripts/*.sh or scripts/*.py path"))
+        elif not Path(command).is_file():
+            out.append(("fail", "REL-4", "Independent release adapter exists",
+                        f"{command} is missing (no workflow is generated automatically)"))
+        else:
+            out.append(("ok", "REL-4", "Independent release adapter is present",
+                        f"{command} (execution and approved publisher require external human verification)"))
     else:
-        out.append(("ok", "REL-4", "Declared release workflow adapter", f"{strategy} → {workflow}"))
+        workflow = release.get("workflow")
+        if not workflow:
+            out.append(("fail", "REL-4", "Declared release workflow adapter",
+                        f"release.strategy={strategy} requires release.workflow"))
+        elif not Path(workflow).exists():
+            out.append(("fail", "REL-4", "Declared release workflow adapter", f"{workflow} does not exist"))
+        else:
+            out.append(("ok", "REL-4", "Declared release workflow adapter", f"{strategy} → {workflow}"))
 
     adr_problem = decision_adr_problem(
         release.get("strategyADR"),
@@ -384,8 +400,9 @@ def runner_manifest_problems(m):
                                       "required", "kavosh / governance", "release gate",
                                       "credential boundary"))
         release = m.get("release", {})
-        if release.get("strategy") != "custom" or not release.get("strategyADR"):
-            issue = (issue or "") + "; external CI needs a documented custom release strategy"
+        if (release.get("strategy") != "custom" or not release.get("strategyADR")
+                or not release.get("externalCommand") or release.get("workflow")):
+            issue = (issue or "") + "; external CI needs a custom non-Actions release strategy, ADR and executable; no Actions release workflow"
         if extra:
             issue = (issue or "") + "; invalid GitHub Actions fields: " + ", ".join(extra)
         return [("fail" if issue else "ok", "CI-1",
