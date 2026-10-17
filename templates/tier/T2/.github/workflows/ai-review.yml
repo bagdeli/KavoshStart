@@ -20,7 +20,12 @@ permissions:
 
 jobs:
   review:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    # Private hosted review is disabled (both manual and automatic); this optional
+    # paid API integration must not silently consume private hosted minutes.
+    if: >-
+      !{{PRIVATE_HOSTED}} &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: {{RUNS_ON_YAML}}   # CI-1 (from kavosh.project.json)
     timeout-minutes: 15
     steps:
