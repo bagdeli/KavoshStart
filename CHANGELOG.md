@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.0.0](https://github.com/bagdeli/KavoshStart/compare/v4.0.0...v5.0.0) (2026-10-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Private GitHub Actions require hosted runners and UI providers are consumer-selected and exactly pinned.
+
+### Features
+
+* **policy:** enforce private hosted-only CI and vendor-neutral standards ([#142](https://github.com/bagdeli/KavoshStart/issues/142)) ([65201d8](https://github.com/bagdeli/KavoshStart/commit/65201d85f5fc6faca6a3c1f1019b9a9f139a94fa)), closes [#141](https://github.com/bagdeli/KavoshStart/issues/141)
+
+
+### Bug Fixes
+
+* **conformance:** drain Terraform version output under pipefail ([#145](https://github.com/bagdeli/KavoshStart/issues/145)) ([9bb53ac](https://github.com/bagdeli/KavoshStart/commit/9bb53acf2b1ea25fdd4b6c1754a233ac969cf5fa)), closes [#136](https://github.com/bagdeli/KavoshStart/issues/136)
+
+
+### Documentation
+
+* **licensing:** explicitly permit AGPL after case-specific licence-compatibility, network-source and contract-obligation review ([#148](https://github.com/bagdeli/KavoshStart/pull/148)) ([2d7e2b1](https://github.com/bagdeli/KavoshStart/commit/2d7e2b15bdc209018c1f554ae00f10a0317e6d63))
+
 ## [4.0.0](https://github.com/bagdeli/KavoshStart/compare/v3.0.2...v4.0.0) (2026-10-15)
 
 
