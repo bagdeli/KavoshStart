@@ -50,7 +50,7 @@
         "private",
         "public"
       ],
-      "description": "Actual repository visibility. Private GitHub Actions jobs use only standard GitHub-hosted runners, with owner-authorized scoped workflow_dispatch for billable runs; self-hosted is forbidden for private. Public defaults to hosted; a public self-hosted exception needs a CI-2 trust-model ADR."
+      "description": "Actual repository visibility. Private repositories may use an available isolated, repository-scoped GitHub Actions self-hosted runner under CI-2. Standard GitHub-hosted Actions in private are prohibited unless the owner/admin explicitly approves each exact proposed run before manual dispatch, even within included free minutes. Public standard GitHub-hosted is allowed under current public-repository terms; isolated public self-hosted requires CI-2. An independent CI worker outside GitHub Actions is a separate execution mechanism."
     },
     "owner": {
       "type": "string"
@@ -331,7 +331,7 @@
             "github-hosted",
             "none"
           ],
-          "description": "Private: only github-hosted (or none for T1/static without GitHub Actions); self-hosted is forbidden regardless of isolation ADR. Public: GitHub-hosted preferred; self-hosted only with trustModelADR and same-repository PR boundary. Private hosted requires one owner-authorized workflow_dispatch scoped to the current ref/SHA."
+          "description": "Private GitHub Actions: self-hosted on an authorized isolated server may run automatically when available; standard GitHub-hosted is prohibited without one explicit owner/admin authorization for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."
         },
         "runnerLabels": {
           "type": "array",
@@ -339,13 +339,13 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Optional labels for an exceptional public self-hosted runner (CI-2); forbidden as a private self-hosted escape hatch."
+          "description": "Exact repo-specific self-hosted labels [self-hosted, linux, x64, repo-slug] for public or private; do not select unapproved runner groups or dynamic labels."
         },
         "runners": {
           "type": "integer",
           "minimum": 1,
           "maximum": 20,
-          "description": "Capacity of exceptional public self-hosted runners; size by queue/SLO. Does not authorize private self-hosted."
+          "description": "Self-hosted capacity hint; does not provision a runner or certify its isolation. Size by queue/SLO."
         },
         "monthlyMinutesBudget": {
           "type": "integer",
@@ -356,7 +356,7 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Applicable only to exceptional public self-hosted runners. Must document runner trust model, containment, untrusted-code and credential boundaries. Never overrides the private self-hosted ban."
+          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval."
         },
         "requiredWorkflow": {
           "type": "string",
@@ -545,21 +545,38 @@
         "properties": {
           "ci": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "runner"
             ],
-            "properties": {
-              "runner": {
-                "enum": [
-                  "github-hosted",
-                  "none"
-                ]
+            "if": {
+              "properties": {
+                "runner": {
+                  "enum": [
+                    "github-hosted",
+                    "none"
+                  ]
+                }
               },
-              "monthlyMinutesBudget": {},
-              "requiredWorkflow": {}
+              "required": [
+                "runner"
+              ]
             },
-            "description": "Private CI has only standard hosted or no-Actions local-only mode; all self-hosted metadata is forbidden."
+            "then": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "runner": {
+                  "enum": [
+                    "github-hosted",
+                    "none"
+                  ]
+                },
+                "monthlyMinutesBudget": {},
+                "requiredWorkflow": {}
+              },
+              "description": "Private GitHub-hosted or no-Actions modes cannot declare self-hosted runner metadata; GitHub-hosted requires explicit owner authorization before each run."
+            },
+            "description": "Private self-hosted is allowed with CI-2 trust verification; hosted remains consent-gated."
           }
         },
         "required": [

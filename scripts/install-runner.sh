@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Retired legacy installer. KavoshStart no longer provisions GitHub Actions self-hosted runners.
+# The legacy runner installer stays retired. V6 permits separately provisioned
+# self-hosted GitHub Actions runners; never register one implicitly.
 set -euo pipefail
 printf '%s\n' \
-  'KavoshStart CI-1: private repositories MUST use standard GitHub-hosted Actions runners.' \
-  'The old private self-hosted runner installer has been retired; it cannot register a runner.' \
-  'Exceptional public self-hosted runners require a CI-2 isolation/fork/credential ADR and separate owner-approved provisioning.' >&2
+  'KavoshStart CI-1/2: existing isolated self-hosted GitHub Actions runners are allowed in private repositories.' \
+  'This retired script neither registers a runner nor certifies isolation.' \
+  'Provisioning needs a separate authorized operation, scoped runner labels and a CI-2 trust ADR.' \
+  'Private GitHub-hosted runs require separate explicit approval for each exact run.' >&2
 exit 1

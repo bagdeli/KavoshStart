@@ -60,9 +60,9 @@ Other capabilities such as `control-plane` and `infrastructure` are explicit bec
 | AI review workflow | no | optional (`ai-review.yml`) | yes |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated release strategy (release-please is the scaffold default) | + rc on test | + rc → UAT → final |
-| Runner (by visibility, CI-1) | private: **GitHub-hosted only**, authorized per run · public: hosted default | private: **GitHub-hosted only**, authorized per run · public: hosted default | no private self-hosted; public exceptions require CI-2 ADR |
+| Runner (CI-1/2) | Private: existing isolated self-hosted allowed; hosted only with explicit per-run approval | Same; exact-head dispatch for private hosted only | Public standard GitHub-hosted minutes free; self-hosted requires CI-2 trust ADR and excludes untrusted fork code |
 | **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
 ## Budget rule (CI-3)
-Private GitHub Actions runners are **GitHub-hosted only** (ADR-0015); public defaults to hosted and any public self-hosted exception requires a CI-2 ADR. Private hosted runs may consume shared quota and therefore require direct, one-run authorization and manual dispatch. Every manifest keeps `monthlyMinutesBudget` at **0**: that field never authorizes shared quota. A T1/static local-only project selects `none` (no Actions jobs), not a self-hosted runner.
+Private GitHub Actions may run on an existing isolated self-hosted server runner with CI-2 trust ADR (ADR-0018). Private GitHub-hosted usage is prohibited without explicit prior owner/admin approval of **each exact run** after asking, even before free allowance is exhausted; only manual scoped dispatch may use it. Public standard GitHub-hosted minutes are free; larger runners/storage cost separately. 'monthlyMinutesBudget' is a planning hint, not spending authorization. T1/static may choose 'none' without Actions.

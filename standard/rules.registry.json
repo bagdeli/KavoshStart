@@ -1474,7 +1474,7 @@
     },
     {
       "id": "CI-1",
-      "statement": "در مخزن private، تمام jobهای GitHub Actions فقط از runnerهای GitHub-hosted استاندارد استفاده می‌کنند؛ self-hosted حتی به‌صورت ایزوله ممنوع است. اجرای private hosted سهمیه‌دار صرفاً با dispatch مستقیم مالک، محدود به PR/ref/SHA فعلی و بدون trigger خودکار است. `none` فقط برای T1/static بدون هیچ workflow و با اعتبارسنجی محلی مجاز است. در public، GitHub-hosted پیش‌فرض است و self-hosted فقط با ADR و منع اجرای fork/کد نامطمئن مجاز است.",
+      "statement": "در مخزن private، runner خودمیزبان GitHub Actions روی سرور مستقل در صورت وجود و انطباق با CI-2 مجاز است؛ اجرای GitHub-hosted استاندارد حتی در سهمیهٔ رایگان بدون پرسش و مجوز صریح مالک/ادمین برای همان اجرای مشخص ممنوع است و فقط با dispatch دستی به PR/ref/SHA فعلی انجام می‌شود. در public، GitHub-hosted استاندارد پیش‌فرض و رایگان است؛ larger runner/Storage احکام هزینهٔ جدا دارند. `none` فقط برای T1/static بدون هیچ workflow و با شواهد محلی مجاز است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1503,7 +1503,7 @@
     },
     {
       "id": "CI-2",
-      "statement": "هر استثنای self-hosted فقط برای مخزن public و پس از ADR ثبت‌شدهٔ trust model، isolation/containment واقعی، جداسازی کد نامطمئن و credential boundary مجاز است؛ اجرای fork PR روی آن ممنوع است. این استثنا هرگز به private تعمیم نمی‌یابد. credential تولید/production روی runner نگهداری نمی‌شود و ظرفیت براساس SLO تعیین می‌شود، نه Tier ثابت.",
+      "statement": "runner خودمیزبان در private یا public نیازمند trust model ثبت‌شده، ایزولیشن/containment واقعی، جداسازی کد نامطمئن و credential boundary است؛ اجرای کد fork/PR نامطمئن روی آن ممنوع است. runnerLabels باید دقیقاً به runner ایزولهٔ مخزن اشاره کنند، نه گروه مشترک یا انتخاب دینامیک. این کنترل مجوز هزینه برای GitHub-hosted نیست؛ credentialهای تولید/production روی runner باقی نمی‌مانند و ظرفیت براساس SLO تعیین می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

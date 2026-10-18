@@ -132,7 +132,8 @@ class TemplateHardening(unittest.TestCase):
     def test_CI2_retired_private_runner_installer_cannot_register_anything(self):
         """Covers: CI-2 (negative retired installer); public exceptions require separate review"""
         text = (ROOT / "scripts/install-runner.sh").read_text(encoding="utf-8")
-        self.assertIn("private repositories MUST use standard GitHub-hosted", text)
+        self.assertIn("existing isolated self-hosted GitHub Actions runners are allowed in private", text)
+        self.assertIn("Private GitHub-hosted runs require separate explicit approval", text)
         self.assertIn("exit 1", text)
         self.assertNotIn("usermod -aG docker", text)
         self.assertNotIn("registration-token", text)

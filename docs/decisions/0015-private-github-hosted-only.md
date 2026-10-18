@@ -1,6 +1,8 @@
 # 0015 — GitHub-hosted-only Actions in private repositories
 
-- Status: accepted
+> **Historical v5 policy only — superseded for v6.** The prior ban on private GitHub Actions self-hosted runners below must not be treated as the current standard. See [ADR-0018](0018-private-self-hosted-and-hosted-consent.md): an available, isolated private self-hosted runner is allowed under CI-2; private GitHub-hosted runs require specific owner approval before each execution.
+
+- Status: superseded for v6 by ADR-0018 (historical: accepted in v5)
 - Deciders: repository owner
 - Tracking: issue #141
 - Supersedes: only the private runner-choice portions of ADR-0009 and the current CI-1/2 explanations; older ADR-0004 and ADR-0008 remain historical.

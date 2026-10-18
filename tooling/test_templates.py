@@ -232,6 +232,46 @@ def main():
                 failures += 1
             else:
                 print("ok  T1/static local-only scaffold has no Actions workflows; local governance PASS")
+    # CI-1/CI-2: fully render an isolated private self-hosted profile, including
+    # the trust ADR and nested workflow runner forwarding, and run real governance.
+    with tempfile.TemporaryDirectory() as d:
+        repo = Path(d)
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        selected = manifest("T1", "server", "pull-build", "admin", ["test"], runner="self-hosted")
+        selected["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
+        selected["ci"]["trustModelADR"] = "docs/decisions/0042-isolated-runner.md"
+        (repo / "kavosh.project.json").write_text(json.dumps(selected, indent=2), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(repo)],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if result.returncode:
+            print(f"FAIL private self-hosted scaffold: {result.stdout}{result.stderr}")
+            failures += 1
+        else:
+            adr = repo / "docs/decisions/0042-isolated-runner.md"
+            adr.write_text(
+                "# Runner trust model\n"
+                "isolation: dedicated virtual machine for this repository\n"
+                "untrusted code: fork PRs cannot run on this runner\n"
+                "credential boundary: no production secrets, repo-scoped tokens\n",
+                encoding="utf-8")
+            subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+            (repo / "gov.py").write_text(gov, encoding="utf-8")
+            env = dict(os.environ, REPO="bagdeli/Example", ENFORCE="true", GITHUB_EVENT_PATH="",
+                       KAVOSH_REPORT=str(repo / "report.md"), GITHUB_STEP_SUMMARY="",
+                       PYTHONIOENCODING="utf-8")
+            checked = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env,
+                                     capture_output=True, text=True, encoding="utf-8", errors="replace")
+            report = (repo / "report.md").read_text(encoding="utf-8") if (repo / "report.md").exists() else checked.stderr
+            ci = (repo / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+            kavosh = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
+            if (checked.returncode or any(line.startswith("| ❌") for line in report.splitlines())
+                    or "runs-on: [self-hosted, linux, x64, example]" not in ci
+                    or """runs-on: '["self-hosted","linux","x64","example"]'""" not in kavosh
+                    or "(github.event_name == 'push' && !false)" not in ci):
+                print(f"FAIL private self-hosted end-to-end governance: {report}")
+                failures += 1
+            else:
+                print("ok   private self-hosted scaffold and real governance=PASS")
     # Private GitHub-hosted CI must be opted in per run and bind the dispatch to the current PR head.
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)

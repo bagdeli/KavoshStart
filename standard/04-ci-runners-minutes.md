@@ -6,33 +6,43 @@
 
 Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
 
-## Runner و هزینه (CI-1…3 — ADR-0015)
+## Runner و هزینه (CI-1…3 — ADR-0018 جایگزین تصمیم private در ADR-0015)
 
-| وضعیت ریپو | اجرای GitHub Actions | قید |
+| ریپو و mode | اجرای GitHub Actions | مجوز و مرز |
 |---|---|---|
-| **private** | **فقط GitHub-hosted استاندارد** مانند `ubuntu-latest` | runner خودمیزبان، runner group خودمیزبان، ARC و برچسب‌های سفارشیِ حل‌شونده به self-hosted ممنوع‌اند؛ هر run سهمیه‌دار نیازمند اجازه و `workflow_dispatch` محدود به ref/SHA است |
-| **public** | GitHub-hosted استاندارد، پیش‌فرض و توصیه‌شده | self-hosted فقط با ADR مشخص و جداسازی واقعی؛ اجرای کد fork/نامطمئن بر آن ممنوع است |
-| **T1/static با `ci.runner: none`** | هیچ GitHub Actions jobای تولید/اجرا نمی‌شود | فقط profile محلی با بودجهٔ صفر؛ شواهد موفق `make check` در PR لازم است |
+| **private / self-hosted** | Runner متصل به GitHub و نصب‌شده روی سرور مستقل، اگر موجود و ایزوله است | CI-2 و Runner اختصاصی مخزن؛ **بدون نیاز به اجازهٔ مصرف دقیقه GitHub-hosted** |
+| **private / github-hosted** | **بدون پرسش و مجوز صریح مالک/ادمین برای همان اجرا ممنوع**، حتی از سهمیهٔ رایگان | فقط dispatch دستی محدود به workflow/PR/ref/SHA مصوب |
+| **public / github-hosted استاندارد** | مجاز و طبق شرایط فعلی GitHub از نظر دقیقهٔ استاندارد رایگان | larger runner، storage و سایر خدمات ممکن است هزینهٔ جدا داشته باشند |
+| **public / self-hosted** | با ایزولیشن و trust ADR مجاز | fork PR و کد نامطمئن نباید به runner/credential دسترسی پیدا کنند |
+| **T1/static / `none`** | هیچ Actions workflow/job ندارد | فقط شواهد معتبر local check |
 
-فهرست نام‌های مجاز GitHub-hosted در Governance با [مستندات Runnerهای استاندارد GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) همگام می‌شود. برچسب رسمی جدید نباید به‌اشتباه رد شود، اما الگوی wildcard/prefix جای اثبات انتخاب GitHub-hosted را نمی‌گیرد. کنترل ایستا نیز جای بررسی تنظیمات واقعی GitHub را نمی‌گیرد.
+**تعریف:** Self-hosted Runner روی سرور خود مالک *همچنان* GitHub Actions Runner است، نه GitHub-hosted و نه Worker مستقل خارج از GitHub. در private استفاده از Runner موجود بلامانع است، ولی CI-2 مدل اعتماد، محدودیت دامنهٔ Runner و ایزولیشن را بررسی می‌کند؛ داشتن برچسب یا فایل ADR به‌تنهایی اثبات پیکربندی امن سرور نیست.
 
-این ممنوعیت private یک **سیاست سخت‌گیرانهٔ KavoshStart** است، نه ادعای اینکه GitHub استفاده از self-hosted در private را ممنوع کرده است. GitHub نسبت به خطر persistence و دسترسی کد نامطمئن هشدار می‌دهد؛ hosted نیز ایمنی خودکار کد شخص ثالث، تفکیک Secrets و حفاظت از شبکه را تضمین نمی‌کند.
+برای GitHub-hosted فقط برچسب‌های رسمی دقیق [مستندات GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) مجازند؛ `runs-on` دینامیک یا ناشناخته انتخاب امن را اثبات نمی‌کند. برای Self-hosted از labelهای repo-specific مانند `[self-hosted, linux, x64, example]` و `ci.trustModelADR` استفاده شود؛ Runner مشترک با برچسب مبهم را به اشتباه ایزوله فرض نکنید.
 
-### اجرای private (fail closed)
+### Private self-hosted: اجرای مجاز با جداسازی واقعی
 
-- انتخاب `ci.runner: self-hosted` یا باقی‌ماندن `ci.runnerLabels`، `ci.runners` و `ci.trustModelADR` برای private در schema، scaffold و governance رد می‌شود؛ ADR، label، بودجه یا وجود runner ثبت‌شده استثنا ایجاد نمی‌کند.
-- Workflowهای reusable بیرونی می‌توانند runner مستقلی انتخاب کنند: در private فقط Workflow محلیِ واقعاً موجود (که همراه مخزن ممیزی می‌شود) یا Workflow پین‌شدهٔ KavoshStart مجاز است. سایر reusable workflowهای بیرونی تا ورود منطق آن‌ها به مخزن مصرف‌کننده و ممیزی مستقل fail-closed هستند؛ صرف SHA pin مجوز runner نیست.
-- GitHub-hosted private در حساب دارای سهمیهٔ مشترک تنها پس از **مجوز مستقیم مالک برای همان اجرای مشخص** و با dispatch دستی برای PR باز و head SHA فعلی اجرا می‌شود. کنترل‌های `ci.yml` و workflowهای قابل‌استفادهٔ مجدد باید اعتبار ref/SHA را پیش از checkout/کار اصلی بررسی کنند. `push`، `pull_request`، `schedule` و `workflow_run` نباید job هزینه‌دار private را خودکار اجرا کنند.
-- محیط‌های داخلی/داده‌های Test/Production با GitHub-hosted به‌صورت خودکار قابل دسترسی یا اثبات‌شده نیستند. build/validation محلی و pull-based deployment می‌توانند مستقل باشند، اما **نباید** به‌عنوان اجرای GitHub Actions یا شواهد Test/Production جا زده شوند. هر test/release باید provenance، سطح اعتماد و شواهد واقعی خود را داشته باشد.
-- وجود self-hosted runner ثبت‌شده در GitHub به‌تنهایی اثبات نقض اجرای job نیست؛ خاموش‌کردن دسترسی، حذف ثبت/گروه و بازبینی workflows یک اقدام مدیریتی مالک در repositoryهای مصرف‌کننده است، نه کاری از داخل مخزن عمومی.
+- Runner می‌تواند در `push` و PR قابل‌اعتماد و رویدادهای دیگر استفاده شود؛ قبل از ثبت/اجرا، کنترل untrusted PR، credential boundary، جداسازی host و دسترسی Repo را تعیین کنید. GitHub اجرای کد fork روی Self-hosted عمومی را خطرناک می‌داند؛ حتی در Private، PRهای بدون اعتماد هم ممکن‌اند.
+- Reusable workflowهای بیرونی می‌توانند Runner مستقل انتخاب کنند. در private فقط workflow محلی موجود و ممیزی‌شده یا workflow دقیقاً پین‌شدهٔ KavoshStart مجاز است. Caller روی private self-hosted باید `with.runs-on` متناظر با Runner مجاز را صریحاً مشخص کند؛ پیش‌فرض GitHub-hosted آن workflow مجوز استفاده نیست.
+- KavoshStart نه Runner نصب می‌کند، نه وجود/ایزولیشن آن را از روی manifest اثبات می‌کند و نه اطلاعات Runner خصوصی را در مخزن عمومی ذخیره می‌کند. تأیید تنظیمات واقعی به مالک Repository مصرف‌کننده تعلق دارد.
+
+### Private GitHub-hosted: ممنوع تا اجازهٔ مشخص
+
+- **پیش از هر Run** سؤال مجوز مطرح می‌شود. بدون پاسخ روشن مالک/ادمین برای همان Workflow، ریپو و PR/ref/SHA، اجرای hosted ممنوع است؛ شماره بودجه، باقی‌ماندهٔ سهمیهٔ رایگان، کامنت عامل یا مجوز کلی کار، تأیید محسوب نمی‌شوند.
+- Templateهای `ci.yml`، `kavosh.yml` و release مسیر GitHub-hosted خصوصی را از trigger خودکار `push`/`pull_request`/`schedule`/`workflow_run` جدا می‌کنند و `workflow_dispatch` محدود به SHA فعلی دارند. اعتبارسنجی داخل Job پس از تخصیص ماشین انجام می‌شود؛ بنابراین نمی‌تواند جای **گرفتن مجوز پیش از Dispatch** را بگیرد یا هویت انسان تأییدکننده را خودبه‌خود اثبات کند.
+- GitHub برای Private سهمیهٔ رایگان دارد و فراتر از آن ممکن است هزینه بگیرد؛ سیاست مالک حتی برای دقیقه‌های داخل سهمیه اجازهٔ پیشینی می‌خواهد. Self-hosted دقیقهٔ Actions GitHub را مصرف نمی‌کند، اما سرور/امنیت/نگهداری هزینه دارند.
+
+### مرز شواهد و محیط عملیاتی
+
+GitHub-hosted به‌معنای دسترسی واقعی به Test/Production خصوصی نیست و اجرای Self-hosted نیز مجوز اتوماتیک استقرار یا دسترسی به Secrets نیست. شواهد `required`، `main-guard`، CI و release باید واقعاً از منبع دقیق و اجرای معتبر حاصل شوند؛ یک Self-server مستقل نمی‌تواند خود را GitHub Actions check جا بزند.
 
 ### حالت محلی T1/static
 
 مالک می‌تواند در intake، `ci.runner: "none"` را فقط برای T1/static انتخاب کند. scaffold هیچ workflowی نمی‌سازد و بودجه صفر است. عامل `make setup` و `make check` را محلی اجرا می‌کند و فرمان، کد خروجی، محیط و نتیجه را در PR ثبت می‌کند. خروجی ناموفق یا غایب مانع merge است؛ required check موجود نباید دور زده شود. اعتبارسنجی مرورگر اگر محلی ممکن نبود با SKIP صریح گزارش می‌شود، نه PASS جعلی.
 
-### public self-hosted (استثنا، نه توصیه)
+### public self-hosted (مشروط به مدل اعتماد و حفاظت از PR نامطمئن)
 
-اگر پروژهٔ public واقعاً نیازمند آن بود، ADR باید runner trust model، isolation/containment، boundary کد نامطمئن و credential boundary را با کنترل عملی بیان کند. rootful Docker دسترسی root-equivalent دارد و `--ephemeral` به‌تنهایی ایزولیشن host نیست. ظرفیت با صف/SLO تعیین می‌شود. نصب یا فعال‌سازی runner نیازمند فرایند مجزای مورد تأیید مالک است؛ installer قبلی private بازنشسته است.
+Self-hosted عمومی با CI-2 و کنترل واقعی fork/credential/isolation مجاز است؛ اجرای کد نامطمئن روی Runner پایدار ممنوع است. rootful Docker دسترسی root-equivalent دارد و `--ephemeral` به‌تنهایی ایزولیشن host نیست. ظرفیت براساس صف/SLO است. نصب Runner یک فرایند عملیاتی جداست؛ installer قدیمی بازنشسته است.
 
 دقیقه، storage، cache، Packages و larger runner هزینه‌های مستقل‌اند. مقدار `monthlyMinutesBudget` مجوز خرج‌کردن یا توقف قطعی هزینه نیست؛ policy حساب و بررسی billing معتبر است.
 

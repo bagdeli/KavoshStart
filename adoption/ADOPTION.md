@@ -12,7 +12,7 @@
 | 3 | یکی‌کردن حقیقت: هر شاخه‌ی بلندعمر به `main` ادغام یا بسته؛ پشتیبان bundle قبل از حذف شاخه‌ها | `main` = حقیقت | ✅ برای هر حذف |
 | 4 | پاک‌سازی دانش: حذف فایل‌های وضعیت، کوچک‌کردن AGENTS.md، شکستن اسناد بزرگ به spec/Issue، ADR برای تصمیم‌ها | governance سبز | ✅ |
 | 5 | بازسازی backlog: برچسب type، sub-issue، milestone | health سبز در WK | — |
-| 6 | CI با GitHub-hosted-only برای private و CI-1/2، `make check` و `required`؛ ثبت نیازهای مهاجرت runner جدا از شواهد Test/Production | health سبز و انتخاب runner سازگار | ✅ |
+| 6 | CI با private self-hosted ایزوله یا GitHub-hosted با اجازهٔ صریح همان Run و CI-1/2، `make check` و `required`؛ ثبت نیازهای مهاجرت runner جدا از شواهد Test/Production | health سبز و انتخاب runner سازگار | ✅ |
 | 7 | اثبات سبز بودن همهٔ gateها روی SHA فعلی | پذیرش کامل | ✅ |
 
 پشتیبان قبل از هر حذف:

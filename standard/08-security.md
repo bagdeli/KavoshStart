@@ -29,13 +29,12 @@
 
 ## سیاست runner (CI-1، CI-2)
 
-- در مخازن **private، فقط GitHub-hosted استاندارد** مجاز است؛ self-hosted تحت هیچ ADR یا استثنای محلی مجاز نیست. `ci.runner: none` فقط برای T1/static بدون job است.
-- private hosted مصرف‌کنندهٔ سهمیه، فقط با `workflow_dispatch` صریح مالک برای ref/SHA فعلی اجرا می‌شود؛ محدودیت هزینه جدا از انتخاب runner کنترل می‌شود.
-- در public، GitHub-hosted پیش‌فرض است. self-hosted استثنایی به ADR جداسازی، عدم اجرای fork PR، مرز credential و کنترل واقعی شبکه/host نیاز دارد. `--ephemeral` به‌تنهایی ایزولیشن نیست و rootful Docker دسترسی root-equivalent ایجاد می‌کند.
-- GitHub-hosted به‌تنهایی شناسایی بدافزار وابستگی‌ها، امنیت Secretها یا دسترسی/شواهد محیط خصوصی را تضمین نمی‌کند. آزمون واقعی Test/Production و gate انتشار مستقل‌اند.
+- **private self-hosted** روی سرور مستقل در صورت وجود و ایزولیشن/Trust ADR مجاز است؛ فقط کد مورداعتماد همان repo، با کنترل credential و حذف دسترسی forkهای نامطمئن.
+- **private GitHub-hosted** حتی داخل دقیقه‌های رایگان سهمیه **بدون پرسش و اجازهٔ صریح مالک/ادمین برای هر اجرای مشخص ممنوع** است؛ Dispatch دستی روی PR/ref/SHA فعلی و مطابق scope مجاز می‌شود. Actor یا مقدار بودجه به‌تنهایی اثبات تأیید مستقل انسانی نیست.
+- **public GitHub-hosted استاندارد** رایگان و پیش‌فرض است. Self-hosted عمومی با ADR محدودسازی کد نامطمئن، جداسازی شبکه/host و credential boundary مجاز است. `--ephemeral` به‌تنهایی ایزولیشن نیست و Docker ریشه‌دار دسترسی root-equivalent ایجاد می‌کند.
+- هیچ Runnerی به‌تنهایی ایمنی وابستگی‌ها، Secretها یا اعتبار شواهد Test/Production را ثابت نمی‌کند.
 
-منبع تصمیم: [ADR-0015](../docs/decisions/0015-private-github-hosted-only.md). برای تعهدات مجوز نرم‌افزار/فونت/داده/ایمیج از [سیاست اجزای شخص ثالث](15-third-party-components.md) استفاده کنید.
-
+تصمیم جاری: [ADR-0018](../docs/decisions/0018-private-self-hosted-and-hosted-consent.md). [ADR-0015](../docs/decisions/0015-private-github-hosted-only.md) سابقهٔ سیاست منتشرشدهٔ نسخهٔ ۵ است. حقوق اجزای شخص ثالث: [راهنما](15-third-party-components.md).
 
 ## مرز اطلاعاتی public/private (SEC-5)
 - KavoshStart عمومی فقط استاندارد، template، مثال ساختگی و اطلاعات پروژه‌های public را نگه می‌دارد.
