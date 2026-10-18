@@ -50,7 +50,7 @@
         "private",
         "public"
       ],
-      "description": "Actual repository visibility. Private GitHub Actions jobs use only standard GitHub-hosted runners, with owner-authorized scoped workflow_dispatch for billable runs; self-hosted is forbidden for private. Public defaults to hosted; a public self-hosted exception needs a CI-2 trust-model ADR."
+      "description": "Actual repository visibility. Private repositories may use an available isolated, repository-scoped GitHub Actions self-hosted runner under CI-2. Standard GitHub-hosted Actions in private are prohibited unless the owner/admin explicitly approves each exact proposed run before manual dispatch, even within included free minutes. Public standard GitHub-hosted is allowed under current public-repository terms; isolated public self-hosted requires CI-2. An independent CI worker outside GitHub Actions is a separate execution mechanism."
     },
     "owner": {
       "type": "string"

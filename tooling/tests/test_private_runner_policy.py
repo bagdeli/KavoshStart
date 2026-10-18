@@ -19,6 +19,14 @@ def manifest(visibility="private", runner="github-hosted", tier="T1", runtime="s
 
 
 class PrivateActionsPolicy(unittest.TestCase):
+    def test_CI1_schema_visibility_help_respects_owner_runner_decision(self):
+        """Covers: CI-1 documentation/schema must not reinstate the obsolete private ban."""
+        visibility_help = SCHEMA["properties"]["visibility"]["description"].lower()
+        self.assertIn("private repositories may use", visibility_help)
+        self.assertIn("self-hosted runner", visibility_help)
+        self.assertIn("explicitly approves each exact proposed run", visibility_help)
+        self.assertNotIn("self-hosted is forbidden for private", visibility_help)
+
     def test_CI1_positive_private_hosted_manifest(self):
         """Covers: CI-1 (positive)"""
         m = manifest()
