@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.0.0](https://github.com/bagdeli/KavoshStart/compare/v5.0.0...v6.0.0) (2026-10-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ci:** support isolated private self-hosted runners and per-run hosted consent ([#154](https://github.com/bagdeli/KavoshStart/issues/154))
+
+### Features
+
+* **ci:** support isolated private self-hosted runners and per-run hosted consent ([#154](https://github.com/bagdeli/KavoshStart/issues/154)) ([f415462](https://github.com/bagdeli/KavoshStart/commit/f4154622c3d8f2b16446a69dc653598b17d7ceca))
+
 ## [5.0.0](https://github.com/bagdeli/KavoshStart/compare/v4.0.0...v5.0.0) (2026-10-17)
 
 
