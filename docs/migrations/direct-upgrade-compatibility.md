@@ -23,6 +23,10 @@ This guide does not announce a new release. The target must be an **actually pub
 | **v5.x** | v6 allows appropriately isolated private Self-hosted GitHub Actions again; check `ci.runner`, actual labels/ADR, nested caller selection and explicit private-hosted consent. | Provisioning new runners or enabling private hosted minutes automatically. |
 | **v6.x** | Future **published** source-owned requirement/retirement guidance and flexible real self-hosted labels/owner-only metered consent; read that release's precise notes. | Retroactive invalidation of current pins, global specialist suites, more VMs or a second acceptance ledger. |
 
+## GitHub Free private branches: real protection versus compensating review
+
+If the selected private-repository plan does not provide enforceable GitHub branch protection or required-check rulesets, **do not require buying a paid plan as a universal prerequisite for a source/CI migration**, and do not misreport `main.protected=false` as protected. Keep existing exact-head owner-reviewed squash procedure, least-privilege credentials/local preventive hooks, actual required green checks **before** merge and post-merge `main-guard`/release checks as bounded compensating controls. These are **process/detective controls, not the technical equivalent of GitHub-enforced branch protection**. The human owner records the actual residual risk and whether the specific repository/threat model permits that temporary profile; a high-consequence release/trust boundary may need stronger independent controls, explicit deferral or an authorized plan change. Never manufacture required-check contexts, turn post-merge detection into pre-merge authorization, or spend on an upgrade without the owner's separate consent.
+
 ## Minimal evidence matrix
 
 | Changed boundary | Right-sized proof |
