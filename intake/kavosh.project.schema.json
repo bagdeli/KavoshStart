@@ -339,7 +339,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Exact registered labels of an isolated, repository-scoped GitHub Actions self-hosted runner. Default: [self-hosted, linux, x64, repo-slug]. Explicit ARM/ARM64, Windows/macOS and custom labels are accepted when they start with self-hosted, include the repo-specific slug, match job and pinned reusable callers exactly, and have a consumer-owned CI-2 trust ADR and operational registration/isolation proof. No dynamic expressions, shared runner groups or hosted aliases."
+          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups."
         },
         "runners": {
           "type": "integer",
@@ -356,7 +356,7 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation."
+          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary."
         },
         "requiredWorkflow": {
           "type": "string",

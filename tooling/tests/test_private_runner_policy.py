@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -78,6 +79,28 @@ class PrivateActionsPolicy(unittest.TestCase):
                              for level, rid, _, _ in g.runner_workflow_problems(
                                  {".github/workflows/kavosh.yml": caller}, m)))
 
+    def test_CI2_positive_explicit_custom_scope_label_need_not_spell_repo_slug(self):
+        """Covers: CI-2 (positive); the registered dedicated selector may differ from the repo slug."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"].update(runnerLabels=["self-hosted", "Linux", "X64", "isolated-ci"],
+                       trustModelADR="docs/decisions/0001-runner.md")
+        findings = g.runner_manifest_problems(m)
+        self.assertFalse(any(level == "fail" and "runner labels" in title.lower()
+                             for level, _, title, _ in findings), findings)
+
+    def test_CI2_negative_unapproved_trust_adr_cannot_certify_runner(self):
+        """Covers: CI-2 (negative); a proposed ADR is not owner approval."""
+        base = "runner trust model\nisolation\nuntrusted code\ncredential boundary\ndedicated container"
+        with patch.object(g.Path, "is_file", return_value=True), \
+             patch.object(g.Path, "read_text", return_value="- Status: proposed\n" + base):
+            self.assertIn("awaits owner acceptance", g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+        with patch.object(g.Path, "is_file", return_value=True), \
+             patch.object(g.Path, "read_text", return_value="- Status: accepted\n" + base):
+            self.assertIsNone(g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+
     def test_CI2_negative_unscoped_dynamic_duplicate_or_hosted_like_labels(self):
         """Covers: CI-2 (negative); labels must be scoped, bounded and unambiguous."""
         bad_profiles = (
@@ -86,6 +109,8 @@ class PrivateActionsPolicy(unittest.TestCase):
             ["linux", "ARM64", "example"],
             ["self-hosted", "example"],
             ["self-hosted", "linux", "example", "EXAMPLE"],
+            ["self-hosted", "linux", "x64", "shared"],
+            ["self-hosted", "linux", "x64"],
             ["self-hosted", "linux", "example", "ubuntu-latest"],
             ["self-hosted", "linux", "example", "$" + "{{ matrix.os }}"],
             ["self-hosted", "linux", "example", "bad\nlabel"],

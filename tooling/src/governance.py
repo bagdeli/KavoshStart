@@ -341,6 +341,10 @@ def runner_trust_adr_problem(ref, visibility):
     if not path.is_file():
         return f"ADR does not exist: {ref}"
     body = path.read_text(encoding="utf-8", errors="replace").lower()
+    # An explicitly unapproved trust decision is never certified by its terminology.
+    header = "\n".join(body.splitlines()[:16])
+    if re.search(r"(?m)^\s*(?:-\s*)?status:\s*(?:proposed|draft|pending|unapproved)\b", header):
+        return f"ADR {ref} explicitly awaits owner acceptance; it is not a trusted runner decision"
     missing = [term for term in ("runner trust model", "isolation", "untrusted code", "credential boundary")
                if term not in body]
     strategies = ("rootless", "disposable", "ephemeral", "sandbox", "container", "virtual machine", "dedicated")
@@ -360,18 +364,26 @@ def runner_labels(m):
 
 def runner_label_problem(labels, slug):
     """Validate deterministic routing, not the existence/isolation of a physical runner."""
-    if not slug or not isinstance(labels, list) or not 3 <= len(labels) <= 12:
-        return "select 3-12 explicit self-hosted labels including a repo-specific label"
+    if not slug or not isinstance(labels, list) or not 4 <= len(labels) <= 12:
+        return "select 4-12 explicit labels including OS, architecture and a dedicated custom selector"
     if any(not isinstance(label, str) or
            not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", label) for label in labels):
         return "labels must be bounded literal names (no expressions, groups or YAML syntax)"
     normalized = [label.lower() for label in labels]
-    if normalized[0] != "self-hosted" or slug not in normalized:
-        return f"labels must start with self-hosted and contain repo-specific label {slug!r}"
+    if normalized[0] != "self-hosted":
+        return "self-hosted must be the first label"
     if len(set(normalized)) != len(normalized):
         return "duplicate labels are not allowed"
     if any(re.match(r"(?:ubuntu|windows|macos|xcode)-", label) for label in normalized):
         return "GitHub-hosted runner aliases cannot be used as self-hosted labels"
+    base_labels = {"self-hosted", "linux", "windows", "macos", "x64", "arm", "arm64"}
+    if not any(label in normalized for label in ("linux", "windows", "macos")):
+        return "self-hosted labels need a physical OS selector"
+    if not any(label in normalized for label in ("x64", "arm", "arm64")):
+        return "self-hosted labels need a physical architecture selector"
+    custom = [label for label in normalized if label not in base_labels]
+    if not custom or any(label in {"shared", "default", "generic", "pool", "common"} for label in custom):
+        return "a non-generic, consumer-declared, dedicated custom runner selector is required"
     return None
 
 
