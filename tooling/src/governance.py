@@ -535,7 +535,13 @@ def literal_runner_selector(value):
     """Parse one static runs-on selector (never execute an expression)."""
     if not isinstance(value, str):
         return None
-    raw = value.strip().strip("\"'")
+    raw = value.strip()
+    # A quoted YAML scalar containing bracket text is not a GitHub label array.
+    # Reusable callers intentionally accept quoted JSON via a separate parser.
+    if len(raw) >= 2 and raw[0] in ("'", '"') and raw[-1] == raw[0]:
+        raw = raw[1:-1]
+        if raw.lstrip().startswith(("[", "{")):
+            return None
     if not raw or raw.startswith("$"):
         return None
     try:

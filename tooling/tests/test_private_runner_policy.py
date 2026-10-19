@@ -238,7 +238,8 @@ class PrivateActionsPolicy(unittest.TestCase):
         }
         for bad in ("[self-hosted, linux, x64, example-ci]",
                     "[self-hosted, linux, x64, wrong-release]",
-                    "[ubuntu-latest]"):
+                    "[ubuntu-latest]",
+                    "'[self-hosted, linux, x64, example-release]'"):
             with self.subTest(selector=bad):
                 wf = {".github/workflows/release.yml":
                       "jobs:\n  release:\n    runs-on: " + bad + "\n"}
