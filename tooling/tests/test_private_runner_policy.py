@@ -170,6 +170,38 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertNotIn("owner/admin", start)
         self.assertIn("designated human billing owner", start)
 
+    def test_CI1_positive_case_and_order_independent_self_hosted_match(self):
+        """Covers: CI-1 (positive); GitHub self-hosted labels have case-insensitive set semantics."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "Linux", "X64", "isolated-ci"]
+        wf = {".github/workflows/ci.yml":
+              "jobs:\n  required:\n    runs-on: [self-hosted, isolated-ci, x64, LINUX]\n"}
+        problems = g.runner_workflow_problems(wf, m)
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in problems), problems)
+        caller = ("jobs:\n  governance:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"
+                  "    with:\n      runs-on: '[\"self-hosted\", \"isolated-ci\", \"x64\", \"linux\"]'\n")
+        problems = g.runner_workflow_problems({".github/workflows/kavosh.yml": caller}, m)
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in problems), problems)
+
+    def test_CI1_negative_extra_or_duplicate_self_hosted_workflow_labels(self):
+        """Covers: CI-1 (negative); relaxed order/case must not broaden runner selection."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "isolated-ci"]
+        for labels in ("[self-hosted, linux, x64]", 
+                       "[self-hosted, linux, x64, isolated-ci, extra]",
+                       "[self-hosted, linux, x64, isolated-ci, ISOLATED-CI]"):
+            with self.subTest(labels=labels):
+                wf = {".github/workflows/ci.yml":
+                      "jobs:\n  required:\n    runs-on: " + labels + "\n"}
+                problems = g.runner_workflow_problems(wf, m)
+                self.assertTrue(any(level == "fail" and rid == "CI-1"
+                                    for level, rid, _, _ in problems), problems)
+
     def test_CI1_negative_private_self_hosted_wrong_labels_or_unpinned_remote_runner(self):
         m = manifest(runner="self-hosted")
         m["repo"] = "demo/Example"
