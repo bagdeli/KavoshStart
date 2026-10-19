@@ -148,7 +148,7 @@
 | SEC-2 | actionهای شخص ثالث با SHA کامل (40 کاراکتر) پین می‌شوند. | MUST | All | P |
 | SEC-3 | هر workflow بلوک `permissions:` سطح بالا دارد (حداقل لازم). | MUST | All | P (وجود)، R (حداقلی بودن) |
 | SEC-4 | `.github/dependabot.yml` وجود دارد (حداقل `github-actions`، که ارجاع‌های KavoshStart را هم به‌روز می‌کند). | MUST | All | P |
-| SEC-5 | سطح عمومی KavoshStart و automation عمومی هیچ نام، URL، هدف، audit، plan، finding یا runtime metadata متعلق به پروژه‌ی private را ثبت/گزارش نمی‌کند؛ Layer O عمومی repoهای private را پیش از inspection نادیده می‌گیرد. | MUST | All | O, R |
+| SEC-5 | سطح عمومی KavoshStart (source، فایل و تاریخچه، Issue/PR/Review/Comment، Release و Actions log/artifact) فقط قرارداد عمومی و مثال مصنوعی منتشر می‌کند؛ هویت، هدف، معماری، الزام اختصاصی، وضعیت، تصمیم، audit یا اطلاعات عملیاتی هیچ مصرف‌کنندهٔ خصوصی—even نشانهٔ کوچک و غیرمستقیم—در آن ثبت نمی‌شود. پیش از هر ارسال به GitHub بازبینی انسانی و کنترل متن عمومی لازم است؛ اسکن سبک کد فقط نشانه‌های شناخته‌شده را کشف می‌کند، نه همهٔ افشاها. ناظر عمومی Layer O دادهٔ private را پیش از خواندن/گزارش کنار می‌گذارد و رسیدگی به افشا فقط در کانال خصوصی انجام می‌شود. | MUST | All | A, P, O, R |
 
 ## DEP — استقرار (فقط runtime = server/static)
 | ID | قاعده | سطح | Tier | لایه |

@@ -4,6 +4,10 @@ You are an AI agent asked to create, adopt or maintain a Kavosh project "using K
 Follow this protocol exactly. Rules are referenced by ID (e.g. `BR-1`); their canonical list is
 [`standard/RULES.md`](standard/RULES.md). When this file and a rule disagree, the rule wins — report the conflict.
 
+## Public/private boundary before every upstream write
+
+KavoshStart is public: its files, issues, PR/review/comments, release notes, commits, logs and artifacts must contain **zero private consumer facts or identifying/indirect references**. Never copy the origin of a private project observation into an upstream bug explanation, sample, test fixture, error log or agent prompt. Abstract to a technology-neutral invariant and synthetic versioned example **before creating** any public GitHub object. Consumer-specific root causes, decisions and evidence stay inside the affected private repository or private communication. Locally preflight the exact public text with the checked-in `scripts/public_source_guard.py --stdin` when it helps; this does not replace human semantic review, does not check older history and never proves comprehensive non-disclosure. A public CI failure cannot undo an already submitted public leak. Do not construct a public private-name denylist.
+
 ## Network transfer failure — per-project operator escalation
 
 For a download or upload that fails repeatedly (normally no more than three bounded attempts for transient errors), **stop retrying that endpoint** and report the exact blocker to the owner. Do not silently introduce a relay, proxy, alternate registry, paid service, DNS override, TLS bypass, credential, or global infrastructure task. If the URL was never attempted, do not invent an outage.
