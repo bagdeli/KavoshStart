@@ -46,7 +46,9 @@ make check    # lint + test + build — run before your single push
 ## Code conventions
 - Read the affected data flow and callers, contracts, configs, tests and fixtures before editing. Prefer an existing owner/UI primitive, native/stdlib capability, or suitable already-reviewed dependency (TP-1/2) before writing the smallest **complete, readable** fix.
 - Avoid speculative wrappers, options, config and dependencies. Fix the root cause and affected consumers; do not trim trust validation, data-loss handling, accessibility or required checks to save lines.
-- Keep focused regression evidence for changed non-trivial logic. At handoff state what was verified, what was not checked, and residual risk; shorter code alone is never acceptance.
+- For new/changed material requirements/tests cite purpose, contract owner/source/version, upstream guarantee and smallest missing product/integration behavior. Do not copy a mature dependency's internal tests; do verify real user journeys, permissions, money, RTL and data boundaries where affected.
+- Old criteria and tests can be kept/narrowed/merged/retired in their owning Issue/Spec/PR with evidence, risk and provenance. Update affected checks and acceptance scope together; do not hide a red required check or critical safety obligation.
+- Keep focused regression evidence for changed non-trivial owned logic. At handoff state what was verified, what was not checked, and residual risk.
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
 - Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
@@ -58,7 +60,7 @@ TODO(kavosh): if `ui.kind` is not `none`, use the consumer-owned pinned Design S
 
 ## Definition of Done
 - [ ] Acceptance criteria of the issue met and listed in the PR body
-- [ ] Tests added/updated; `make check` green locally and in CI
+- [ ] Only affected necessary tests added/updated (or existing valid evidence/N/A cited); actual `check` and required CI are green
 - [ ] Docs / ADR / runbook updated if behaviour changed
 - [ ] If `acceptance.mode=continuous`: PR maps affected AC-* IDs (or justified not-applicable); live evidence/approval stays on the canonical GitHub Issue
 - [ ] Persistent server/static environments pass exact release identity + independent health + canonical route via `--verify-environment` (DEP-7/8)
