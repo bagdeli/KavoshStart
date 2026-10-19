@@ -347,9 +347,13 @@ def runner_trust_adr_problem(ref, visibility):
         return f"ADR {ref} explicitly awaits owner acceptance; it is not a trusted runner decision"
     missing = [term for term in ("runner trust model", "isolation", "untrusted code", "credential boundary")
                if term not in body]
-    strategies = ("rootless", "disposable", "ephemeral", "sandbox", "container", "virtual machine", "dedicated")
-    if not any(term in body for term in strategies):
-        missing.append("a concrete containment strategy")
+    # Disposable virtual machines are only one implementation, not a universal CI-2 rule.
+    # A firewall by itself cannot isolate privileged local sockets, files or credentials.
+    host_controls = ("rootless", "disposable", "ephemeral", "sandbox", "container",
+                     "virtual machine", "dedicated", "restricted service account",
+                     "unprivileged service account", "systemd sandbox", "user namespace")
+    if not any(term in body for term in host_controls):
+        missing.append("host/process containment (a firewall alone is insufficient)")
     if visibility == "public" and not any(term in body for term in ("fork", "same-repository", "same repository")):
         missing.append("fork/same-repository PR boundary")
     return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None

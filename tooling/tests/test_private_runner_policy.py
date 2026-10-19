@@ -101,6 +101,28 @@ class PrivateActionsPolicy(unittest.TestCase):
             self.assertIsNone(g.runner_trust_adr_problem(
                 "docs/decisions/0001-runner.md", "private"))
 
+    def test_CI2_positive_bounded_non_vm_host_and_firewall_containment(self):
+        """Covers: CI-2 (positive); accepted host controls need not create disposable VMs."""
+        body = ("- Status: accepted with bounded residual risk by owner\n"
+                "runner trust model: isolation by unprivileged service account and network firewall\n"
+                "untrusted code: no forks, only reviewed same-repository changes\n"
+                "credential boundary: no production/Test secrets or privileged sockets\n"
+                "scope: limited CI jobs; workspace and cache cleanup on each run\n")
+        with patch.object(g.Path, "is_file", return_value=True), patch.object(
+                g.Path, "read_text", return_value=body):
+            self.assertIsNone(g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+
+    def test_CI2_negative_firewall_alone_not_host_isolation(self):
+        """Covers: CI-2 (negative); network isolation does not limit local host access."""
+        body = ("- Status: accepted\n"
+                "runner trust model\nisolation by network firewall only\n"
+                "untrusted code blocked\ncredential boundary documented\n")
+        with patch.object(g.Path, "is_file", return_value=True), patch.object(
+                g.Path, "read_text", return_value=body):
+            self.assertIn("host/process containment", g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+
     def test_CI2_negative_unscoped_dynamic_duplicate_or_hosted_like_labels(self):
         """Covers: CI-2 (negative); labels must be scoped, bounded and unambiguous."""
         bad_profiles = (

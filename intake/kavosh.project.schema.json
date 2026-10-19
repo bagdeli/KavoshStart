@@ -356,7 +356,7 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary."
+          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary. A bounded, owner-accepted risk profile on an existing independent host may combine unprivileged service users, local file/socket isolation and firewall controls; disposable VMs are optional, firewall-only is not host isolation."
         },
         "requiredWorkflow": {
           "type": "string",
