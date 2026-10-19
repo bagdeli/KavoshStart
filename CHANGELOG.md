@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.0.0](https://github.com/bagdeli/KavoshStart/compare/v6.0.0...v7.0.0) (2026-10-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ci:** self-hosted CI trust ADRs and exact runner selectors are governed by the human owner and source-bound, scoped operational evidence. No automatic consumer runner changes.
+
+### Features
+
+* **policy:** source-owned assurance, scoped migration proof and public privacy ([8abd76b](https://github.com/bagdeli/KavoshStart/commit/8abd76b971f57d32a60fb0dee359a8b9855f76ff))
+
+
+### Bug Fixes
+
+* **ci:** bounded runner trust profiles and owner-only metered GitHub consent ([3a392ca](https://github.com/bagdeli/KavoshStart/commit/3a392ca4b1c50e0281b2e28f120a1e21e06e1087)), closes [#156](https://github.com/bagdeli/KavoshStart/issues/156) [#157](https://github.com/bagdeli/KavoshStart/issues/157)
+
 ## [6.0.0](https://github.com/bagdeli/KavoshStart/compare/v5.0.0...v6.0.0) (2026-10-18)
 
 
