@@ -53,6 +53,10 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    dependent implementation; unrelated authorized work may continue. Do not claim architecture completion
    while shaping decisions are unresolved. Required identity/scaffold inputs must be known before scaffolding.
 
+### Evidence ownership before defining tests
+
+At G6/G9 decide whether the proposed requirement is a unique product need, actual consumer integration or an inherited versioned native/upstream guarantee. For **new or materially changed** criteria/test suites note source/version, owning boundary, reason, smallest impacted verification and when needed in the same Issue/Spec; do not create an extra row, global detector or duplicate upstream suite. Revisit old requirements as keep/narrow/merge/retire where their owner/risk/source justify it. A security finding or broken required check is not cleared by retiring its name.
+
 ### Step 2 — Classify
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
@@ -138,6 +142,9 @@ manually (e.g. the Actions access setting). Stop.
 6. Destructive steps (deleting branches, closing issues, rewriting docs) only with explicit owner approval, one phase at a time.
 
 ## §3 UPGRADE
+
+For direct migration from any older stable major, first use [the versioned compatibility matrix](docs/migrations/direct-upgrade-compatibility.md). Only an **actually published exact tag** can be adopted. Do not convert every legacy requirement or mature dependency's internal proof into new acceptance rows, new runners or heavy suites. Preserve accepted evidence only where actual source/version/environment coverage remains valid; reconcile obsolete requirements through their own approved scope, without forging PASS.
+
 1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target and classify every change that affects governance, acceptance, security, release, deploy, CI, agent controls or templates.
 2. Use one dedicated PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart` to the same exact tag (REL-6), apply template changes listed in the changelog, and update all reusable workflow pins together. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
 3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
@@ -146,6 +153,9 @@ manually (e.g. the Actions access setting). Stop.
 6. Design-system package upgrades use a separate PR and exact version. Capture actual rendered/RTL/mobile evidence only for relevant render or interaction changes; do not publish private consumer details in this public standard.
 
 ## §4 WORK on an issue (every day)
+
+For a new or changed material test/requirement, state **why it exists**, which released upstream/native contract already covers it, which product integration gap remains and which focused observation detects that gap. Only run expensive/specialist tests at the relevant risk/lifecycle decision. For duplicated/stale criteria, propose a reviewed change to the existing owning Issue/Spec/PR, not a new test package. Do not bypass existing failed mandatory checks.
+
 0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.
 1. `gh issue view <n>`; read its parent, the project's `AGENTS.md` and the relevant settled architecture decisions from §0. Reopen only decisions affected by this scope. Read additional material only when the issue or those decisions require it.
 2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).

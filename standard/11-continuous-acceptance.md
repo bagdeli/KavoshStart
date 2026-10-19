@@ -176,6 +176,12 @@ Layer H تعداد scope items، open acceptance items، deferred items و مو�
 
 `scope.json` فقط intent نسخه‌دار است. statusهایی مثل `accepted`, `done`, `passed` داخل آن ممنوع‌اند. state واقعی در GitHub Issue/PR/Actions و environment evidence باقی می‌ماند.
 
+### اصل مالکیت evidence و اصلاح Scope
+
+`acceptance/scope.json` یک مجموعهٔ **نتایج محصولِ همین Release** است، نه فهرست همهٔ تست‌های upstream، سؤال‌های intake یا قواعد تاریخی. یک آیتم می‌تواند چند الزام مرتبط را با صاحب اختیار و risk یکسان پوشش دهد. شواهد نسخه‌دارِ native/upstream برای همان قرارداد داخلی معتبرند، اما پذیرشِ رفتار اختصاصی مصرف‌کننده (theme، adapter، مجوز/داده، UX و Test/Production) هنوز به شاهد واقعی خودش نیاز دارد. نیازمند شدن به receipt جدید باید از claim مؤثر ناشی شود، نه شمار ردیف‌ها.
+
+اگر معیار قبلی duplicate، منسوخ یا خارج از scope شناخته شود، تصمیم `keep / narrow / merge / retire` با مرجع source/version و ریسک در Issue/PR/Spec صاحب آن ثبت می‌شود. در یک PR قابل بازبینی، scope/assertions و testهای متأثر هم‌زمان اصلاح و گذشته برای audit حفظ می‌شود. آیتم releaseِ واقعاً لازم یا ریسک high/critical بدون تأیید و evidence معتبر محو نمی‌شود؛ قرمزشدن Required check، نبود ناشر مستقل واقعی یا رخنهٔ امنیتی با تغییر label/گزارش به PASS تبدیل نمی‌شود.
+
 ## migration برای T2 موجود
 
 در upgrade، هدف ساختن tracker دوم یا تبدیل کورکورانهٔ هر requirement داخلی به AC مستقل نیست. acceptance item باید واحدی باشد که مالک بتواند برای release همان نسخه درباره‌اش تصمیم بگیرد. یک item می‌تواند چند requirement ریزتر را پوشش دهد فقط وقتی owner، risk tier و evidence آنها مشترک است و mapping requirement→evidence از بین نمی‌رود.
