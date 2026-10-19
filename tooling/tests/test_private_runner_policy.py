@@ -202,6 +202,81 @@ class PrivateActionsPolicy(unittest.TestCase):
                 self.assertTrue(any(level == "fail" and rid == "CI-1"
                                     for level, rid, _, _ in problems), problems)
 
+    def test_CI1_positive_two_job_selectors_one_manifest(self):
+        """Covers: CI-1 (positive); baseline and release can use different isolated runners."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        regular = ["self-hosted", "linux", "x64", "example-ci"]
+        isolated = ["self-hosted", "linux", "ARM64", "example-release"]
+        m["ci"].update(runnerLabels=regular,
+                       runnerJobLabels={".github/workflows/release.yml#release": isolated})
+        self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
+        self.assertFalse(any(level == "fail" and "Per-job" in name
+                             for level, _, name, _ in g.runner_manifest_problems(m)))
+        direct = {".github/workflows/ci.yml":
+                  "jobs:\n  required:\n    runs-on: [self-hosted, linux, x64, example-ci]\n",
+                  ".github/workflows/release.yml":
+                  "jobs:\n  release:\n    runs-on: [self-hosted, example-release, arm64, linux]\n"}
+        self.assertFalse(any(level == "fail" for level, _, _, _
+                             in g.runner_workflow_problems(direct, m)))
+        m["ci"]["runnerJobLabels"][".github/workflows/release.yml#release"] = [
+            "self-hosted", "linux", "x64", "example-release"]
+        caller = {".github/workflows/release.yml":
+                  "jobs:\n  release:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-release.yml@v7.0.0\n"
+                  "    with:\n      runs-on: '[\"self-hosted\", \"linux\", \"x64\", \"example-release\"]'\n"}
+        self.assertFalse(any(level == "fail" for level, _, _, _
+                             in g.runner_workflow_problems(caller, m)))
+
+    def test_CI1_negative_no_job_can_steal_another_job_runner(self):
+        """Covers: CI-1 (negative); per-job admission is not a global allowlist."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example-ci"]
+        m["ci"]["runnerJobLabels"] = {
+            ".github/workflows/release.yml#release": ["self-hosted", "linux", "x64", "example-release"]
+        }
+        for bad in ("[self-hosted, linux, x64, example-ci]",
+                    "[self-hosted, linux, x64, wrong-release]",
+                    "[ubuntu-latest]"):
+            with self.subTest(selector=bad):
+                wf = {".github/workflows/release.yml":
+                      "jobs:\n  release:\n    runs-on: " + bad + "\n"}
+                self.assertTrue(any(level == "fail" and rid == "CI-1"
+                                    for level, rid, _, _ in g.runner_workflow_problems(wf, m)))
+        wrong_job = {".github/workflows/ci.yml":
+                     "jobs:\n  required:\n    runs-on: [self-hosted, linux, x64, example-release]\n",
+                     ".github/workflows/release.yml":
+                     "jobs:\n  release:\n    runs-on: [self-hosted, linux, x64, example-release]\n"}
+        self.assertTrue(any(level == "fail" and rid == "CI-1"
+                            for level, rid, _, _ in g.runner_workflow_problems(wrong_job, m)))
+        nonexistent = {".github/workflows/release.yml":
+                       "jobs:\n  not-release:\n    runs-on: [self-hosted, linux, x64, example-ci]\n"}
+        self.assertTrue(any(level == "fail" and rid == "CI-1"
+                            for level, rid, _, _ in g.runner_workflow_problems(nonexistent, m)))
+
+    def test_CI2_negative_bad_job_selectors_and_private_hosted_override(self):
+        """Covers: CI-2 (negative); distinct routes must still be literal and scoped."""
+        valid = ["self-hosted", "linux", "x64", "example-release"]
+        for route, labels in (
+            ("release", valid),
+            (".github/workflows/release.yml#release", ["ubuntu-latest"]),
+            (".github/workflows/release.yml#release", ["self-hosted", "linux", "x64", "shared"]),
+            (".github/workflows/release.yml#release", ["self-hosted", "linux", "x64", "example", "EXAMPLE"]),
+        ):
+            with self.subTest(route=route, labels=labels):
+                m = manifest(runner="self-hosted")
+                m["repo"] = "demo/Example"
+                m["ci"]["runnerJobLabels"] = {route: labels}
+                self.assertTrue(any(level == "fail" and rid == "CI-2"
+                                    and "Per-job" in name
+                                    for level, rid, name, _ in g.runner_manifest_problems(m)))
+        m = manifest(runner="github-hosted")
+        m["ci"]["runnerJobLabels"] = {".github/workflows/release.yml#release": valid}
+        self.assertTrue(any(level == "fail" and rid == "CI-1"
+                            for level, rid, _, _ in g.runner_manifest_problems(m)))
+        self.assertTrue(g.validate(m, {"allOf": SCHEMA["allOf"]}))
+
     def test_CI1_negative_private_self_hosted_wrong_labels_or_unpinned_remote_runner(self):
         m = manifest(runner="self-hosted")
         m["repo"] = "demo/Example"
