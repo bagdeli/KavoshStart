@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +57,150 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
         self.assertTrue(any(level == "fail" and rule == "CI-2"
                             for level, rule, _, _ in g.runner_manifest_problems(m)))
+
+
+    def test_CI2_positive_explicit_arm64_custom_repository_labels(self):
+        """Covers: CI-2 (positive); custom physical profiles are not x64-only."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        labels = ["self-hosted", "linux", "ARM64", "example", "gpu"]
+        m["ci"].update(runnerLabels=labels, trustModelADR="docs/decisions/0001-runner.md")
+        findings = g.runner_manifest_problems(m)
+        self.assertFalse(any(level == "fail" and "runner labels" in title.lower()
+                             for level, _, title, _ in findings), findings)
+        wf = {".github/workflows/ci.yml":
+              "jobs:\n  required:\n    runs-on: " + json.dumps(labels) + "\n"}
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in g.runner_workflow_problems(wf, m)))
+        caller = ("jobs:\n  governance:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"
+                  "    with:\n      runs-on: '" + json.dumps(labels) + "'\n")
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in g.runner_workflow_problems(
+                                 {".github/workflows/kavosh.yml": caller}, m)))
+
+    def test_CI2_positive_explicit_custom_scope_label_need_not_spell_repo_slug(self):
+        """Covers: CI-2 (positive); the registered dedicated selector may differ from the repo slug."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"].update(runnerLabels=["self-hosted", "Linux", "X64", "isolated-ci"],
+                       trustModelADR="docs/decisions/0001-runner.md")
+        findings = g.runner_manifest_problems(m)
+        self.assertFalse(any(level == "fail" and "runner labels" in title.lower()
+                             for level, _, title, _ in findings), findings)
+
+    def test_CI2_negative_unapproved_trust_adr_cannot_certify_runner(self):
+        """Covers: CI-2 (negative); a proposed ADR is not owner approval."""
+        base = "runner trust model\nisolation\nuntrusted code\ncredential boundary\ndedicated container"
+        with patch.object(g.Path, "is_file", return_value=True), \
+             patch.object(g.Path, "read_text", return_value="- Status: proposed\n" + base):
+            self.assertIn("awaits owner acceptance", g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+        with patch.object(g.Path, "is_file", return_value=True), \
+             patch.object(g.Path, "read_text", return_value="- Status: accepted\n" + base):
+            self.assertIsNone(g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+
+    def test_CI2_positive_bounded_non_vm_host_and_firewall_containment(self):
+        """Covers: CI-2 (positive); accepted host controls need not create disposable VMs."""
+        body = ("- Status: accepted with bounded residual risk by owner\n"
+                "runner trust model: isolation by unprivileged service account and network firewall\n"
+                "untrusted code: no forks, only reviewed same-repository changes\n"
+                "credential boundary: no production/Test secrets or privileged sockets\n"
+                "scope: limited CI jobs; workspace and cache cleanup on each run\n")
+        with patch.object(g.Path, "is_file", return_value=True), patch.object(
+                g.Path, "read_text", return_value=body):
+            self.assertIsNone(g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+
+    def test_CI2_negative_firewall_alone_not_host_isolation(self):
+        """Covers: CI-2 (negative); network isolation does not limit local host access."""
+        body = ("- Status: accepted\n"
+                "runner trust model\nisolation by network firewall only\n"
+                "untrusted code blocked\ncredential boundary documented\n")
+        with patch.object(g.Path, "is_file", return_value=True), patch.object(
+                g.Path, "read_text", return_value=body):
+            self.assertIn("host/process containment", g.runner_trust_adr_problem(
+                "docs/decisions/0001-runner.md", "private"))
+
+    def test_CI2_negative_unscoped_dynamic_duplicate_or_hosted_like_labels(self):
+        """Covers: CI-2 (negative); labels must be scoped, bounded and unambiguous."""
+        bad_profiles = (
+            [],
+            ["self-hosted", "linux", "wrong"],
+            ["linux", "ARM64", "example"],
+            ["self-hosted", "example"],
+            ["self-hosted", "linux", "example", "EXAMPLE"],
+            ["self-hosted", "linux", "x64", "shared"],
+            ["self-hosted", "linux", "x64"],
+            ["self-hosted", "linux", "example", "ubuntu-latest"],
+            ["self-hosted", "linux", "example", "$" + "{{ matrix.os }}"],
+            ["self-hosted", "linux", "example", "bad\nlabel"],
+            ["self-hosted", "linux", "example", 3],
+        )
+        for labels in bad_profiles:
+            with self.subTest(labels=labels):
+                m = manifest(runner="self-hosted")
+                m["repo"] = "demo/Example"
+                m["ci"]["runnerLabels"] = labels
+                findings = g.runner_manifest_problems(m)
+                self.assertTrue(any(level == "fail" and rid == "CI-2"
+                                    and "runner labels" in title.lower()
+                                    for level, rid, title, _ in findings), findings)
+
+    def test_CI1_negative_public_self_hosted_dynamic_selector(self):
+        """Covers: CI-1 (negative); public self-hosted also requires literal routing."""
+        m = manifest(visibility="public", runner="self-hosted")
+        m["repo"] = "demo/Example"
+        findings = g.runner_workflow_problems(
+            {".github/workflows/ci.yml":
+             "jobs:\n  required:\n    runs-on: $" + "{{ matrix.labels }}\n"}, m)
+        self.assertTrue(any(level == "fail" and rid == "CI-1"
+                            for level, rid, _, _ in findings), findings)
+
+    def test_CI3_positive_owner_only_metered_approval_contract(self):
+        """Covers: CI-3 (positive); owner-only prior permission is explicit."""
+        visibility = SCHEMA["properties"]["visibility"]["description"].lower()
+        runner = SCHEMA["properties"]["ci"]["properties"]["runner"]["description"].lower()
+        self.assertIn("designated human billing owner", visibility)
+        self.assertIn("designated human billing owner", runner)
+        self.assertNotIn("owner/admin", visibility + runner)
+        self.assertIn("ADR-0019", (ROOT / "standard" / "04-ci-runners-minutes.md").read_text(encoding="utf-8"))
+        start = (ROOT / "START.md").read_text(encoding="utf-8")
+        self.assertNotIn("owner/admin", start)
+        self.assertIn("designated human billing owner", start)
+
+    def test_CI1_positive_case_and_order_independent_self_hosted_match(self):
+        """Covers: CI-1 (positive); GitHub self-hosted labels have case-insensitive set semantics."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "Linux", "X64", "isolated-ci"]
+        wf = {".github/workflows/ci.yml":
+              "jobs:\n  required:\n    runs-on: [self-hosted, isolated-ci, x64, LINUX]\n"}
+        problems = g.runner_workflow_problems(wf, m)
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in problems), problems)
+        caller = ("jobs:\n  governance:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"
+                  "    with:\n      runs-on: '[\"self-hosted\", \"isolated-ci\", \"x64\", \"linux\"]'\n")
+        problems = g.runner_workflow_problems({".github/workflows/kavosh.yml": caller}, m)
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in problems), problems)
+
+    def test_CI1_negative_extra_or_duplicate_self_hosted_workflow_labels(self):
+        """Covers: CI-1 (negative); relaxed order/case must not broaden runner selection."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "isolated-ci"]
+        for labels in ("[self-hosted, linux, x64]", 
+                       "[self-hosted, linux, x64, isolated-ci, extra]",
+                       "[self-hosted, linux, x64, isolated-ci, ISOLATED-CI]"):
+            with self.subTest(labels=labels):
+                wf = {".github/workflows/ci.yml":
+                      "jobs:\n  required:\n    runs-on: " + labels + "\n"}
+                problems = g.runner_workflow_problems(wf, m)
+                self.assertTrue(any(level == "fail" and rid == "CI-1"
+                                    for level, rid, _, _ in problems), problems)
 
     def test_CI1_negative_private_self_hosted_wrong_labels_or_unpinned_remote_runner(self):
         m = manifest(runner="self-hosted")

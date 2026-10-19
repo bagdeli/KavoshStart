@@ -50,7 +50,7 @@ make check    # lint + test + build — run before your single push
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
 - Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
-- Private GitHub Actions may run on an available **self-hosted runner on an isolated server** with repository-scoped labels and a CI-2 trust ADR. Private GitHub-hosted jobs (including free allowance) are forbidden before a specific owner/admin answer and approval for that exact workflow/PR/ref/SHA, then manual dispatch only. Public standard GitHub-hosted minutes are free; protect all self-hosted from untrusted fork code. T1/static 'none' has no Actions.
+- Private GitHub Actions may run on an available **self-hosted runner on an isolated server** with repository-scoped labels and a CI-2 trust ADR. Private GitHub-hosted jobs (including free allowance) are forbidden before explicit prior approval directly from the designated human billing owner (not another admin or an agent) for that exact workflow/PR/ref/SHA, then manual dispatch only. Other metered/paid GitHub features in private repositories require the same person's specifically scoped approval before use. Public standard GitHub-hosted minutes are free; protect all self-hosted from untrusted fork code and separate CI/release/deploy credential domains. T1/static 'none' has no Actions.
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI

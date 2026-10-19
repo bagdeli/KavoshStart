@@ -341,19 +341,67 @@ def runner_trust_adr_problem(ref, visibility):
     if not path.is_file():
         return f"ADR does not exist: {ref}"
     body = path.read_text(encoding="utf-8", errors="replace").lower()
+    # An explicitly unapproved trust decision is never certified by its terminology.
+    header = "\n".join(body.splitlines()[:16])
+    if re.search(r"(?m)^\s*(?:-\s*)?status:\s*(?:proposed|draft|pending|unapproved)\b", header):
+        return f"ADR {ref} explicitly awaits owner acceptance; it is not a trusted runner decision"
     missing = [term for term in ("runner trust model", "isolation", "untrusted code", "credential boundary")
                if term not in body]
-    strategies = ("rootless", "disposable", "ephemeral", "sandbox", "container", "virtual machine", "dedicated")
-    if not any(term in body for term in strategies):
-        missing.append("a concrete containment strategy")
+    # Disposable virtual machines are only one implementation, not a universal CI-2 rule.
+    # A firewall by itself cannot isolate privileged local sockets, files or credentials.
+    host_controls = ("rootless", "disposable", "ephemeral", "sandbox", "container",
+                     "virtual machine", "dedicated", "restricted service account",
+                     "unprivileged service account", "systemd sandbox", "user namespace")
+    if not any(term in body for term in host_controls):
+        missing.append("host/process containment (a firewall alone is insufficient)")
     if visibility == "public" and not any(term in body for term in ("fork", "same-repository", "same repository")):
         missing.append("fork/same-repository PR boundary")
     return f"ADR {ref} is missing: {', '.join(missing)}" if missing else None
 
 
 def runner_labels(m):
+    """Use actual manifest labels, otherwise retain the safe legacy default."""
     slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
-    return m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
+    ci = m.get("ci", {})
+    return ci["runnerLabels"] if "runnerLabels" in ci else ["self-hosted", "linux", "x64", slug]
+
+
+def runner_label_problem(labels, slug):
+    """Validate deterministic routing, not the existence/isolation of a physical runner."""
+    if not slug or not isinstance(labels, list) or not 4 <= len(labels) <= 12:
+        return "select 4-12 explicit labels including OS, architecture and a dedicated custom selector"
+    if any(not isinstance(label, str) or
+           not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", label) for label in labels):
+        return "labels must be bounded literal names (no expressions, groups or YAML syntax)"
+    normalized = [label.lower() for label in labels]
+    if normalized[0] != "self-hosted":
+        return "self-hosted must be the first label"
+    if len(set(normalized)) != len(normalized):
+        return "duplicate labels are not allowed"
+    if any(re.match(r"(?:ubuntu|windows|macos|xcode)-", label) for label in normalized):
+        return "GitHub-hosted runner aliases cannot be used as self-hosted labels"
+    base_labels = {"self-hosted", "linux", "windows", "macos", "x64", "arm", "arm64"}
+    if not any(label in normalized for label in ("linux", "windows", "macos")):
+        return "self-hosted labels need a physical OS selector"
+    if not any(label in normalized for label in ("x64", "arm", "arm64")):
+        return "self-hosted labels need a physical architecture selector"
+    custom = [label for label in normalized if label not in base_labels]
+    if not custom or any(label in {"shared", "default", "generic", "pool", "common"} for label in custom):
+        return "a non-generic, consumer-declared, dedicated custom runner selector is required"
+    return None
+
+
+def runner_labels_match(selected, declared):
+    """Runner labels are case-insensitive sets in GitHub; no missing/extra/duplicate routing."""
+    if not isinstance(selected, list) or not isinstance(declared, list):
+        return False
+    if len(selected) != len(declared) or not all(isinstance(x, str) for x in selected + declared):
+        return False
+    normalized = [label.lower() for label in selected]
+    expected = [label.lower() for label in declared]
+    return (bool(normalized) and normalized[0] == "self-hosted"
+            and len(set(normalized)) == len(normalized)
+            and set(normalized) == set(expected))
 
 
 def runner_manifest_problems(m):
@@ -385,11 +433,13 @@ def runner_manifest_problems(m):
                     problem or m["ci"]["trustModelADR"]))
         labels = runner_labels(m)
         slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
-        expected = ["self-hosted", "linux", "x64", slug]
-        if not slug or labels != expected:
-            out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
+        label_problem = runner_label_problem(labels, slug)
+        if label_problem:
+            out.append(("fail", "CI-2", "Self-hosted runner labels are scoped and explicit",
+                        f"{label_problem}; got {labels!r}"))
         else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
+            out.append(("ok", "CI-2", "Self-hosted runner profile",
+                        f"labels exactly {labels}; physical registration/isolation requires owner verification"))
     return out
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
@@ -468,7 +518,7 @@ def runner_workflow_problems(workflows, m):
         for value in runs_on_values(text):
             value = value.strip("\"'")
             if not value or value.startswith("$"):
-                if vis == "private":
+                if vis == "private" or runner == "self-hosted":
                     bad.append(f"{f}: dynamic/empty runs-on cannot prove the selected runner mode")
                 continue
             if value.startswith("[") and value.endswith("]"):
@@ -482,7 +532,7 @@ def runner_workflow_problems(workflows, m):
             is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
             if runner == "github-hosted" and not is_standard:
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
-            elif runner == "self-hosted" and labels != runner_labels(m):
+            elif runner == "self-hosted" and not runner_labels_match(labels, runner_labels(m)):
                 bad.append(f"{f}: {value} (must match the manifest's isolated self-hosted labels)")
     if vis == "private":
         # A remotely called workflow selects its own job runners, even if the
@@ -524,8 +574,8 @@ def runner_workflow_problems(workflows, m):
                                 if len(runner_inputs) == 1 else None)
                 except (ValueError, TypeError):
                     selected = None
-                if selected != runner_labels(m):
-                    bad.append(f"{file_name}: standard reusable workflow must receive exact self-hosted runner labels")
+                if not runner_labels_match(selected, runner_labels(m)):
+                    bad.append(f"{file_name}: standard reusable workflow must receive the exact declared self-hosted label set")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")

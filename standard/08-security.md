@@ -30,11 +30,12 @@
 ## سیاست runner (CI-1، CI-2)
 
 - **private self-hosted** روی سرور مستقل در صورت وجود و ایزولیشن/Trust ADR مجاز است؛ فقط کد مورداعتماد همان repo، با کنترل credential و حذف دسترسی forkهای نامطمئن.
-- **private GitHub-hosted** حتی داخل دقیقه‌های رایگان سهمیه **بدون پرسش و اجازهٔ صریح مالک/ادمین برای هر اجرای مشخص ممنوع** است؛ Dispatch دستی روی PR/ref/SHA فعلی و مطابق scope مجاز می‌شود. Actor یا مقدار بودجه به‌تنهایی اثبات تأیید مستقل انسانی نیست.
+- **private GitHub-hosted** حتی داخل دقیقه‌های رایگان سهمیه **بدون اجازهٔ قبلی، صریح و موردی شخص مالک اختیار مالی (صاحب این سیاست) ممنوع** است؛ Dispatch دستی روی PR/ref/SHA فعلی و مطابق scope مجاز می‌شود. GitHub Admin دیگر، عامل، Actor یا بودجه اثبات مجوز انسانی نیست؛ دیگر امکانات پولی/سهمیه‌ای GitHub در private نیز همین حکم را دارند.
 - **public GitHub-hosted استاندارد** رایگان و پیش‌فرض است. Self-hosted عمومی با ADR محدودسازی کد نامطمئن، جداسازی شبکه/host و credential boundary مجاز است. `--ephemeral` به‌تنهایی ایزولیشن نیست و Docker ریشه‌دار دسترسی root-equivalent ایجاد می‌کند.
-- هیچ Runnerی به‌تنهایی ایمنی وابستگی‌ها، Secretها یا اعتبار شواهد Test/Production را ثابت نمی‌کند.
+- جداسازی با سرور موجود و حساب اجرای محدود، ACL فایل/socket، فایروال و بدون دسترسی ممتاز ممکن است کافی باشد؛ VM/JIT/دو اجرای یک‌بارمصرف الزام عمومی CI-2 نیست. اما firewall تنها دسترسی محلی و Docker socket را محدود نمی‌کند. مالک باید ریسک باقی‌ماندهٔ دامنهٔ واقعی را بپذیرد؛ صحت کنترل با مشاهدهٔ عملیاتی ثابت می‌شود، نه برچسب یا صرف متن ADR.
+- هیچ Runnerی به‌تنهایی ایمنی وابستگی‌ها، Secretها یا اعتبار شواهد Test/Production را ثابت نمی‌کند. labelهای واقعی ARM64/custom صرفاً مسیریابی‌اند؛ کد نامطمئن، CI کم‌مجوز، release/deploy ممتاز و Secretهای Production باید مرز اعتماد جدا داشته باشند، بدون افزایش خودکار Runner، زیرساخت یا permissions.
 
-تصمیم جاری: [ADR-0018](../docs/decisions/0018-private-self-hosted-and-hosted-consent.md). [ADR-0015](../docs/decisions/0015-private-github-hosted-only.md) سابقهٔ سیاست منتشرشدهٔ نسخهٔ ۵ است. حقوق اجزای شخص ثالث: [راهنما](15-third-party-components.md).
+تصمیم Runner: [ADR-0018](../docs/decisions/0018-private-self-hosted-and-hosted-consent.md)؛ صاحب اختیار مالی: [ADR-0019](../docs/decisions/0019-owner-only-github-metered-consent.md). [ADR-0015](../docs/decisions/0015-private-github-hosted-only.md) سابقهٔ سیاست منتشرشدهٔ نسخهٔ ۵ است. حقوق اجزای شخص ثالث: [راهنما](15-third-party-components.md).
 
 ## مرز اطلاعاتی public/private (SEC-5)
 - KavoshStart عمومی فقط استاندارد، template، مثال ساختگی و اطلاعات پروژه‌های public را نگه می‌دارد.

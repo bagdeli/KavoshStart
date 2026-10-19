@@ -304,9 +304,9 @@ class Manifest(unittest.TestCase):
     def test_CI2_positive_runner_capacity_is_not_fixed_by_tier(self):
         self.assertEqual(fails_for("CI-2"), [])
 
-    def test_CI2_negative_public_runner_labels_are_repo_scoped(self):
+    def test_CI2_negative_public_runner_generic_unscoped_selector(self):
         m = dict(EXAMPLE, visibility="public", ci={"runner": "self-hosted", "monthlyMinutesBudget": 0,
-                             "runnerLabels": ["self-hosted", "linux", "x64", "another-repo"],
+                             "runnerLabels": ["self-hosted", "linux", "x64", "shared"],
                              "trustModelADR": "docs/decisions/0002-runner.md"})
         def setup(d):
             path=d / m["ci"]["trustModelADR"]

@@ -50,7 +50,7 @@
         "private",
         "public"
       ],
-      "description": "Actual repository visibility. Private repositories may use an available isolated, repository-scoped GitHub Actions self-hosted runner under CI-2. Standard GitHub-hosted Actions in private are prohibited unless the owner/admin explicitly approves each exact proposed run before manual dispatch, even within included free minutes. Public standard GitHub-hosted is allowed under current public-repository terms; isolated public self-hosted requires CI-2. An independent CI worker outside GitHub Actions is a separate execution mechanism."
+      "description": "Actual repository visibility. Private repositories may use an available isolated, repository-scoped GitHub Actions self-hosted runner under CI-2. Standard GitHub-hosted Actions in private are prohibited unless the designated human billing owner (the user, not another administrator or agent) explicitly approves each exact proposed run before manual dispatch, even within included free minutes. Public standard GitHub-hosted is allowed under current public-repository terms; isolated public self-hosted requires CI-2. An independent CI worker outside GitHub Actions is a separate execution mechanism. Other metered/billable GitHub services in private repositories require this person's specific prior approval (ADR-0019)."
     },
     "owner": {
       "type": "string"
@@ -331,7 +331,7 @@
             "github-hosted",
             "none"
           ],
-          "description": "Private GitHub Actions: self-hosted on an authorized isolated server may run automatically when available; standard GitHub-hosted is prohibited without one explicit owner/admin authorization for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."
+          "description": "Private GitHub Actions: self-hosted on an authorized isolated server may run automatically when available; standard GitHub-hosted is prohibited without one prior explicit authorization by the designated human billing owner for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."
         },
         "runnerLabels": {
           "type": "array",
@@ -339,7 +339,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Exact repo-specific self-hosted labels [self-hosted, linux, x64, repo-slug] for public or private; do not select unapproved runner groups or dynamic labels."
+          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first."
         },
         "runners": {
           "type": "integer",
@@ -351,12 +351,12 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 2000,
-          "description": "Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution."
+          "description": "Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution. In private it never substitutes for the designated human billing owner's prior metered-use authorization (ADR-0019)."
         },
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval."
+          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary. A bounded, owner-accepted risk profile on an existing independent host may combine unprivileged service users, local file/socket isolation and firewall controls; disposable VMs are optional, firewall-only is not host isolation."
         },
         "requiredWorkflow": {
           "type": "string",
@@ -574,7 +574,7 @@
                 "monthlyMinutesBudget": {},
                 "requiredWorkflow": {}
               },
-              "description": "Private GitHub-hosted or no-Actions modes cannot declare self-hosted runner metadata; GitHub-hosted requires explicit owner authorization before each run."
+              "description": "Private GitHub-hosted or no-Actions modes cannot declare self-hosted runner metadata; GitHub-hosted requires explicit designated human billing owner's consent before each exact run."
             },
             "description": "Private self-hosted is allowed with CI-2 trust verification; hosted remains consent-gated."
           }

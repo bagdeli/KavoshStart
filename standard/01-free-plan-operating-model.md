@@ -4,6 +4,8 @@
 
 KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/isolation، checks، exact-source، release/deploy gates و evidence. هزینه، quota، plan و انتخاب تجاری runner یک **Portfolio/Account Policy overlay** است و نباید invariant کیفیت نرم‌افزار شود. این سند وضعیت فعلی GitHub را برای تصمیم عملی توضیح می‌دهد، اما تغییر billing نباید معنای Ruleهای مهندسی را عوض کند.
 
+**مالکیت مالیِ private (ADR-0019):** GitHub-hosted حتی در سهمیهٔ رایگان و هر خدمت GitHub که هزینه، سهمیه یا اعتبار مصرف می‌کند فقط با اجازهٔ مشخص و پیشینی همان شخص انسانیِ صاحب این سیاست مجاز است. هیچ Admin دیگر، عامل، credential یا budget نمی‌تواند این اجازه را صادر کند. Self-hosted ایزوله روی سرور موجود، بدون مصرف دقیقهٔ Hosted، طبق CI-2 مجاز است.
+
 ## چه چیزی روی ریپوی private در پلن Free وجود ندارد
 | قابلیت | وضعیت | پیامد |
 |---|---|---|

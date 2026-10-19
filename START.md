@@ -59,9 +59,11 @@ Never skip a step. Never invent an answer the owner has not given — ask.
 2. Explain the runner and cost boundary: in private, an existing
    **self-hosted runner on an isolated server** registered in GitHub Actions may
    be chosen with a CI-2 trust ADR and repository-scoped runner labels.
-   Private **GitHub-hosted** runs require **explicit authorization** from the
-   owner/admin for each exact workflow/PR/ref/head SHA *after asking*, even
-   while included free minutes remain. No reply means no hosted dispatch.
+   Private **GitHub-hosted** runs require **explicit prior authorization** from the
+   designated human billing owner (the person who issued the policy; not another admin or agent)
+   for each exact workflow/PR/ref/head SHA, even within included free minutes.
+   No reply means no hosted dispatch; other metered GitHub features in private also require
+   the same person's scoped prior consent (ADR-0019).
    Public standard GitHub-hosted minutes are free under current GitHub rules;
    larger runners and storage have separate terms. T1/static may select 'none'.
    Before selecting any material third-party component, apply `standard/15-third-party-components.md`.
@@ -98,7 +100,7 @@ Never skip a step. Never invent an answer the owner has not given — ask.
    **self-hosted runner on an isolated server** with a CI-2 trust ADR.
    Reject untrusted fork/PR code and contain runner secrets and credentials.
    For private GitHub-hosted usage, **explicit authorization** must first be
-   requested and received from the owner/admin for this exact run. Only after
+   requested and received from the designated human billing owner for this exact run. Only after
    approval, manually dispatch 'ci' and 'kavosh' for the current PR/head SHA;
    stale heads fail closed. A budget field or generic permission to work is
    not a one-run spending approval. Public standard GitHub-hosted is free for
