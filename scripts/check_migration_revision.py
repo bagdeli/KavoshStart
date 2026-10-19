@@ -3,7 +3,9 @@
 
 Read authoritative source head(s) from the checked-out migration tool and
 optionally compare an observed applied current revision; never run upgrade.
-Only operator-reviewed native commands are meaningful evidence. No shell is used.
+Only operator-reviewed Alembic heads/current commands are admitted; no shell is used.
+# Native env.py may execute arbitrary application code: an approved read-only
+# command is not an isolated security sandbox or proof of safe DB credentials.
 Never print command stdout/stderr (may contain private infrastructure details).
 """
 from __future__ import annotations
@@ -32,17 +34,32 @@ def parse_single_revision(output: str) -> str:
     return match[1]
 
 
-def argv(raw: str) -> list[str]:
+def argv(raw: str, purpose: str = "heads") -> list[str]:
+    """Only recognized native Alembic read commands, never arbitrary executables."""
     try:
         value = json.loads(raw)
     except (TypeError, ValueError) as exc:
         raise ValueError("command must be a JSON argument list") from exc
-    if (not isinstance(value, list) or not 1 <= len(value) <= 32
+    if (not isinstance(value, list) or not 2 <= len(value) <= 6
             or any(not isinstance(x, str) or not x or len(x) > 256 or "\0" in x
                    for x in value)):
         raise ValueError("invalid command argument list")
-    # No subprocess shell is used; operator still must choose a trustworthy
-    # native command instead of e.g. echo of a preselected expected revision.
+    from pathlib import Path
+    executable = Path(value[0]).name.lower()
+    if executable == "alembic":
+        arguments = value[1:]
+    elif executable in {"python", "python3", "python.exe", "python3.exe"} and value[1:3] == ["-m", "alembic"]:
+        arguments = value[3:]
+    else:
+        raise ValueError("only native Alembic read commands are admitted")
+    if len(arguments) == 3 and arguments[0] == "-c":
+        path = Path(arguments[1])
+        if (path.is_absolute() or ".." in path.parts or
+                not path.name.endswith(".ini")):
+            raise ValueError("Alembic configuration must be a local relative .ini")
+        arguments = arguments[2:]
+    if arguments != [purpose]:
+        raise ValueError("command is not the permitted read-only revision operation")
     return value
 
 
@@ -61,13 +78,13 @@ def observed_revision(command: list[str], seconds: int = 20) -> str:
 
 def main(args: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Read-only one-head migration source/current check")
-    parser.add_argument("--source-command", required=True, help="JSON argv for native source heads command")
-    parser.add_argument("--applied-command", help="JSON argv for read-only applied revision command")
+    parser.add_argument("--source-command", required=True, help="JSON argv for Alembic heads only")
+    parser.add_argument("--applied-command", help="JSON argv for Alembic current only")
     opts = parser.parse_args(args)
     try:
-        expected = observed_revision(argv(opts.source_command))
+        expected = observed_revision(argv(opts.source_command, "heads"))
         if opts.applied_command:
-            observed = observed_revision(argv(opts.applied_command))
+            observed = observed_revision(argv(opts.applied_command, "current"))
             if expected != observed:
                 raise ValueError("source head and applied revision differ")
     except ValueError as exc:

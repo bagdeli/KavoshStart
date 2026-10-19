@@ -35,10 +35,14 @@ class MigrationRevisionCheck(unittest.TestCase):
                 self.assertNotIn("abc123", error.getvalue())
 
     def test_negative_commands_are_arg_arrays_not_untrusted_shell_text(self):
-        for raw in ("", "alembic heads", '["alembic",null]', "[]", '[""]'):
+        for raw in ("", "alembic heads", '["alembic",null]', "[]", '[""]',
+                    '["bash","-c","echo abc123"]', '["alembic","upgrade","head"]',
+                    '["alembic","stamp","head"]', '["alembic","-c","../secret.ini","heads"]'):
             with self.subTest(raw=raw):
                 with self.assertRaises(ValueError):
                     m.argv(raw)
+        self.assertEqual(m.argv('["alembic","heads"]', "heads"), ["alembic", "heads"])
+        self.assertEqual(m.argv('["alembic","current"]', "current"), ["alembic", "current"])
 
     def test_negative_nonexecuted_or_bad_command_is_not_pass(self):
         with mock.patch.object(m.subprocess, "run", side_effect=FileNotFoundError):
