@@ -94,6 +94,10 @@ sudo env DEPLOY_ACTOR="$USER" bash -c 'set -a; . /etc/kavosh/{{SLUG}}/deploy.env
 - **No-op drift check failed**: do not rebuild blindly. Compare `current`, the exact target tag/SHA, local endpoints and canonical proxy routing. A stale alternative Compose/image is an environment defect.
 - **Rollback failed**: inspect `/opt/kavosh/{{SLUG}}/releases` and follow the incident runbook; do not repoint `current` to an unverified working tree.
 
+## Revision-source consistency when a database migration exists
+
+The expected revision must come directly from the actual checked-out migration graph, not a handwritten expected version. An optional read-only preflight is `python3 <KavoshStart>/scripts/check_migration_revision.py --source-command '["alembic", "heads"]'` for consumers using Alembic. It requires **exactly one valid source head**; malformed/empty or multiple heads, command errors and timeouts block the claimed proof. After an authorized migration, add `--applied-command '["alembic", "current"]'` and require exact equality. A command not run is NOT RUN, never PASS. This helper admits only reviewed Alembic `heads` and `current` read operations (not `upgrade`, `stamp` or arbitrary shell commands). Alembic may still load product `env.py`; it is NOT a sandbox and cannot prove DB credentials or script side effects are safe. It is not auto-installed and cannot replace real rollback/restore/security evidence. Another migration engine needs its own reviewed native adapter, not a fake constant output.
+
 ## Expand / contract (DEP-5/6)
 
 A release may only add compatible schema or stop using old schema in the same compatibility window. Before migration, continuous backup/PITR and recent restore evidence must pass; high-risk/destructive migration additionally requires a fresh snapshot. Database restore stays manual.

@@ -14,4 +14,7 @@ elif git diff --cached -U0 | grep -Eiq "(api[_-]?key|secret|password|passwd|toke
   echo "KavoshStart SEC-1: possible secret in staged changes (install gitleaks for accurate scanning)" >&2
   exit 1
 fi
+if [ -f scripts/public_source_guard.py ]; then
+  python3 scripts/public_source_guard.py --staged || exit 1
+fi
 exit 0

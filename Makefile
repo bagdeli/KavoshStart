@@ -4,6 +4,7 @@ setup:
 	@python3 --version
 
 lint:
+	python3 scripts/public_source_guard.py
 	python3 tooling/rule_registry.py --check
 	python3 tooling/sync_pins.py --check
 	python3 tooling/build_workflows.py --check

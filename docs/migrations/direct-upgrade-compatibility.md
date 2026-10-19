@@ -1,0 +1,40 @@
+# Direct upgrade compatibility for KavoshStart v1–v6
+
+This guide does not announce a new release. The target must be an **actually published exact stable** `vX.Y.Z` tag. Older pinned consumers remain unchanged until their own authorized PR. Direct major upgrades are possible without installing each intermediate version, but all applicable **breaking contracts** must be reviewed.
+
+## One bounded consumer-owned migration PR
+
+1. Read the real default branch's `kavosh.project.json`, `AGENTS.md`, CI/release callers, required check names, accepted ADRs and runtime. If no manifest exists on main, use **ADOPT**, not UPGRADE. A Draft or Issue is not live adoption.
+2. Compare the existing tag with the published target using `CHANGELOG.md`, versioned schema and major migration guides. List affected contracts, source/runner trust, exact pins, custom tool adapters, provider ownership and relevant release/acceptance outcomes. Do **not** restart all historical requirements.
+3. Confirm real runner labels and accepted CI-2 trust model on the existing host: repository/workload scoping, restricted account, file/socket/credential separation, network boundary, untrusted-code policy. Existing correctly controlled self-hosted is allowed. No two disposable VMs, JIT registration or new server is a blanket requirement. A firewall alone is not local host isolation.
+4. Change the manifest tag, **all pinned reusable workflow references** and only the affected consumer-owned template/configuration/command adapters together. Preserve least privilege, exact jobs/contexts, required `enforce:true`, release identity and no unauthorized private-hosted fallback. `scaffold.py --adopt` prepares reviewable `*.kavosh-new` files, never silently overrides.
+5. For T2 use `acceptance.mode=continuous`; missing `assurance` means strict `attested`, whereas `risk-based` is an explicit versioned option for qualified low/medium CI-only items. High/critical or specialist evidence still needs real independent source-bound proof. Keep actual release outcomes, not one AC for every upstream library or legacy requirement; reuse valid equivalent evidence, or `keep/narrow/merge/retire` a stale criterion through its owning Issue/Spec/PR with preserved history and actual owner decision.
+6. Verify **changed** manifest/schema/caller/runner/acceptance contracts plus existing semantic check/required CI on exact source. Additional specialist, performance, UI and destructive tests only when their changed risk/integration/release boundary warrants it. Static green cannot prove physical runner isolation, customer Production or a human consent decision.
+7. High-risk merge requires its own owner authorization for exact current head and normal green gates. Consumer release/Production are separate actions. In **private** GitHub, paid or metered service use including included GitHub-hosted minutes needs prior explicit **designated human billing owner** authorization for the exact action; another admin, AI or remaining quota never approves it.
+
+## Starting-version review
+
+| Existing pin | Material forward changes to reconcile | Do not automatically require |
+| --- | --- | --- |
+| **v1.x** | v2 change risk/approval/command contract replaces universal PR-size gates; v2.1 capabilities and rule registry; then later major contracts. | New tests per historical requirement, a replacement of still-functional product architecture. |
+| **v2.x** | v3 continuous T2 source-bound receipt/decision integrity, v2.1 capability profiles, then v4–v6. | Fake attestors/receipts or re-certifying every upstream internal method. |
+| **v3.x** | v4 optional `acceptance.assurance=risk-based`, strict default `attested`, real source-bound UI review; then v5–v6. | Silent waiver of high/critical specialist evidence or claiming screenshots as independent human approval. |
+| **v4.x** | **Direct v4→v7 after the v7 tag actually exists:** reconcile v5's provider-neutral exact `ui.designSystem`/legitimate `ui.exceptionADR`, v6's restored private self-hosted/real labels/ADR and owner-scoped private-hosted consent, and v7's source-owned quality/privacy/optional migration preflight. Apply the combined schema and **all reusable caller tag pins atomically in one owner-reviewed consumer PR**. | Do not operationally install v5 or v6 first, replace a valid runner, dispatch any private hosted job, grant access, reopen old acceptance rows or authorize release merely to pass an intermediate version. |
+| **v5.x** | v6 allows appropriately isolated private Self-hosted GitHub Actions again; check `ci.runner`, actual labels/ADR, nested caller selection and explicit private-hosted consent. | Provisioning new runners or enabling private hosted minutes automatically. |
+| **v6.x** | Future **published** source-owned requirement/retirement guidance and flexible real self-hosted labels/owner-only metered consent; read that release's precise notes. | Retroactive invalidation of current pins, global specialist suites, more VMs or a second acceptance ledger. |
+
+## GitHub Free private branches: real protection versus compensating review
+
+If the selected private-repository plan does not provide enforceable GitHub branch protection or required-check rulesets, **do not require buying a paid plan as a universal prerequisite for a source/CI migration**, and do not misreport `main.protected=false` as protected. Keep existing exact-head owner-reviewed squash procedure, least-privilege credentials/local preventive hooks, actual required green checks **before** merge and post-merge `main-guard`/release checks as bounded compensating controls. These are **process/detective controls, not the technical equivalent of GitHub-enforced branch protection**. The human owner records the actual residual risk and whether the specific repository/threat model permits that temporary profile; a high-consequence release/trust boundary may need stronger independent controls, explicit deferral or an authorized plan change. Never manufacture required-check contexts, turn post-merge detection into pre-merge authorization, or spend on an upgrade without the owner's separate consent.
+
+## Minimal evidence matrix
+
+| Changed boundary | Right-sized proof |
+| --- | --- |
+| Documentation/agent instructions | Current approved contract/source and targeted doc/agent checks, not runtime revalidation. |
+| Manifest, CI adapter, runner | Schema/governance, exact pinned caller/job/runs-on, actual runner configuration and bounded operational check **when trust changes**. |
+| Upstream package/design-system | Exact version, compatibility and real consumer integration; not upstream's entire suite again. |
+| User journey, role/tenant/financial behavior | Focused observed behavior and negative authorization/data checks at affected boundary. |
+| Migration/release/environment | Compare a **single actual migration head from candidate source** to the applied revision after real migration where applicable; multiple source heads, malformed/empty output or mismatch is a blocker. Use native tooling and the optional stdlib helper; this is not universal on no-DB projects. Require real source-bound rollback, artifact and environment identity where affected; no inferred Production access. |
+
+**Stop rules:** Do not fabricate PASS, remove an effective safety obligation without scoped owner decision, bypass an actually red required check, auto-upgrade another repository, publish a planned tag, grant secrets, create new infrastructure or dispatch paid private GitHub capacity. Historical [v5](v5-provider-neutral-and-hosted-only.md) and [v6](v6-private-runner-choice.md) migrations are provenance and context; the latest accepted rules require the future **published tag**.

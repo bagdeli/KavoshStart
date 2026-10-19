@@ -31,6 +31,8 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 
 ## Rules for changing KavoshStart
 - Trace affected callers, tests and fixtures and prefer the smallest complete fix; reuse existing code/platform features without weakening security, validation, CI, licensing or approval gates.
+- **Public boundary SEC-5:** before writing any GitHub Issue/PR/comment/commit/release/log or code in this PUBLIC repository, check its text, URL and provenance for private consumer identity, architecture, incidents, requirements, infrastructure and indirect identifying details. Use wholly synthetic examples only; never paste private repository evidence or names, including in tests, deny lists or review comments. `scripts/public_source_guard.py` catches only obvious patterns and cannot certify semantic confidentiality.
+- Before adding a material requirement, test or gate, cite its purpose, owner/source/version, why valid upstream/old proof does not suffice and the smallest unique product/integration check. Existing requirements can be responsibly narrowed/retired through their owning Issue/Spec/PR with provenance and risk; never create a duplicate vendor suite, a new global workflow, or a fake PASS to shortcut a failing required check.
 - A rule change touches, in the same PR: `standard/RULES.md`, the explaining doc, the template, and the check that enforces it.
 - Every MUST names its enforcement layer (A/P/M/G/H/S/O/R). R-only MUSTs are listed as human-enforced in RULES.md.
 - Never edit `.github/workflows/kavosh-*.yml` by hand — edit `tooling/` and rebuild. Self-check fails on drift.

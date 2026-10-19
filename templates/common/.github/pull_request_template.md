@@ -9,7 +9,7 @@ Capabilities: <!-- e.g. docs, public-api, ui, data, migration, security, deploy,
 Rationale: <!-- Why this level; line/file count is not a risk classifier. -->
 
 ## How verified
-<!-- Semantic check command, focused tests, generated-change review method, screenshots/other evidence when required. -->
+<!-- Semantic check and affected tests, generated-change review, relevant rendered evidence only. For new/retired material requirements/tests cite the authoritative source/version/owner and unique integration risk or upstream-equivalent proof in the same Issue/Spec/PR. No extra receipt per inherited row. -->
 
 ## Acceptance mapping
 <!-- For acceptance.mode=continuous: list AC-* IDs affected by this PR, or:
@@ -31,7 +31,7 @@ Co-Authored-By: <Agent> <noreply@example.com>
 ## Checklist
 - [ ] Change risk and affected capabilities are declared
 - [ ] Change is coherent/reviewable; any generated or broad mechanical diff documents its generator and verification
-- [ ] Searched for an existing owner before adding tables/services/routes/components
+- [ ] Searched for existing ownership before new code; material test/requirement changes have a scoped rationale when applicable
 - [ ] API + UI consumer + tests changed together (if an API changed)
 - [ ] Third-party changes reviewed for risk, licence/NOTICE and distribution/network obligations (TP-1/TP-2; N/A with reason if none)
 - [ ] Docs / ADR / runbook updated (if behaviour changed)

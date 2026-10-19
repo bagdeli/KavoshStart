@@ -132,6 +132,24 @@ preview یا proof می‌تواند با Compose/project name، DB/uploads و p
 
 ## دیتابیس (DEP-5/6)
 
+### تشخیص مستقیم Head مهاجرت از سورس (اختیاری برای پروژهٔ دارای Migration)
+
+برای یک محصول واقعاً دارای پایگاه داده، **نسخهٔ موردانتظار باید از Migration graph همان checkout/commit کاندید استخراج شود**؛ متغیر محیطیِ دستی، نام Tag برنامه یا یک متنِ PASS‌شده جای source-head نیست. `scripts/check_migration_revision.py` یک الگوی سبک و اختیاری با Python stdlib است: فرمان read-onlyِ native migration tool در checkout را اجرا و نتیجهٔ دقیق یک Head را می‌خواند. خروجی خالی/نامعتبر، چند Head مستقل، اجرای ناموفق، Timeout یا خروجی خارج از قرارداد => FAIL. مقایسه با نسخهٔ واقعاً اعمال‌شده در DB فقط وقتی فرمان read-onlyِ `current` مشخص و اجرا شده باشد، و پس از migration یا در admission محیط، معتبر است؛ اختلاف => FAIL. **اجرا نشدن/skip شدن هر کدام، اثبات موفقیت آن نیست.**
+
+برای Alembic، از ابزار خود Framework (`alembic heads` و `alembic current`) در همان محیط dependency/کانفیگ کاندید استفاده شود؛ این helper جای اعتبارسنجی صحت migration، تست rollback، backup/restore یا مجوز اجرای DB نیست. مثال بدون اثرگذاری روی پایگاه داده:
+
+```bash
+python3 <KavoshStart>/scripts/check_migration_revision.py \
+  --source-command '["alembic", "heads"]'
+# After an actual authorized migration, verify read-only current == source:
+python3 <KavoshStart>/scripts/check_migration_revision.py \
+  --source-command '["alembic", "heads"]' \
+  --applied-command '["alembic", "current"]'
+```
+
+برای جلوگیری از سوءاستفاده از آرگومان‌های فرمان، helper تنها `alembic heads` و `alembic current` (و تنظیمات محلیِ محدود) را می‌پذیرد؛ اجرای `upgrade`، `stamp` و shell را رد می‌کند. بااین‌حال اجرای `alembic current` می‌تواند `env.py` محصول را وارد کند؛ ابزار sandbox امنیتی نیست و محیط و credentialها باید مستقل بررسی شوند. این گزینه برای ابزارهای مهاجرت دیگر فقط با adapter رسمی و قابل بازبینی همان پروژه مناسب است؛ نه اینکه خروجی `echo PASS` یا فایل دست‌نویس را «اثبات سورس» بدانیم. داشتن چند Head ممکن است در بعضی پروژه‌ها عمداً پذیرفته شده باشد؛ در چنین معماری‌ای کنترل تک-Head **قابل اعمال نیست** و باید به‌جای ادعای PASS، قرارداد اختصاصی graph/merge migration با تست واقعی تعریف شود. نصب ابزار مهاجرت، اتصال به DB و اجرای migration به‌صورت خودکار توسط KavoshStart انجام نمی‌شود.
+
+
 - migrationهای T2 production expand/contract هستند.
 - قبل از migration، continuous recovery/PITR و restore rehearsal تازه fail-closed بررسی می‌شوند.
 - high-risk/destructive rewrite snapshot تازه لازم دارد.
