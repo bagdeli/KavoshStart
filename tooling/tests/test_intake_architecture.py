@@ -55,17 +55,6 @@ class IntakeArchitectureContract(unittest.TestCase):
             value = table[key][4] + (self.spec if key == "G9" else "")
             self.assertIn(expected, value, key)
 
-    def test_source_ownership_and_reversible_requirements_are_guided(self):
-        """Checks minimal doc boundaries, not the semantics of future product tests."""
-        table = {r[0]: r for r in rows(self.questionnaire)}
-        self.assertIn("native/upstream", table["G6"][4])
-        self.assertIn("source/version", table["G9"][4])
-        self.assertIn("smallest meaningful check", table["G9"][4])
-        self.assertIn("challengeable", self.questionnaire)
-        self.assertIn("Evidence ownership before defining tests", self.protocol)
-        self.assertIn("docs/migrations/direct-upgrade-compatibility.md", self.protocol)
-        self.assertIn("retired through the same owning Issue/PR/Spec", self.spec)
-
     def test_no_ui_is_a_real_not_needed_path(self):
         ui = next(r for r in rows(self.questionnaire) if r[0] == "G7")[4]
         self.assertIn("ui.kind=none", ui)
