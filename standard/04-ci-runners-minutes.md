@@ -11,26 +11,28 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 | ریپو و mode | اجرای GitHub Actions | مجوز و مرز |
 |---|---|---|
 | **private / self-hosted** | Runner متصل به GitHub و نصب‌شده روی سرور مستقل، اگر موجود و ایزوله است | CI-2 و Runner اختصاصی مخزن؛ **بدون نیاز به اجازهٔ مصرف دقیقه GitHub-hosted** |
-| **private / github-hosted** | **بدون پرسش و مجوز صریح مالک/ادمین برای همان اجرا ممنوع**، حتی از سهمیهٔ رایگان | فقط dispatch دستی محدود به workflow/PR/ref/SHA مصوب |
+| **private / github-hosted** | **بدون اجازهٔ قبلی و صریح شخص مالکِ اختیار مالی (صاحب این سیاست) برای همان اجرا ممنوع**، حتی از سهمیهٔ رایگان | فقط dispatch دستی محدود به workflow/PR/ref/SHA مصوب |
 | **public / github-hosted استاندارد** | مجاز و طبق شرایط فعلی GitHub از نظر دقیقهٔ استاندارد رایگان | larger runner، storage و سایر خدمات ممکن است هزینهٔ جدا داشته باشند |
 | **public / self-hosted** | با ایزولیشن و trust ADR مجاز | fork PR و کد نامطمئن نباید به runner/credential دسترسی پیدا کنند |
 | **T1/static / `none`** | هیچ Actions workflow/job ندارد | فقط شواهد معتبر local check |
 
 **تعریف:** Self-hosted Runner روی سرور خود مالک *همچنان* GitHub Actions Runner است، نه GitHub-hosted و نه Worker مستقل خارج از GitHub. در private استفاده از Runner موجود بلامانع است، ولی CI-2 مدل اعتماد، محدودیت دامنهٔ Runner و ایزولیشن را بررسی می‌کند؛ داشتن برچسب یا فایل ADR به‌تنهایی اثبات پیکربندی امن سرور نیست.
 
-برای GitHub-hosted فقط برچسب‌های رسمی دقیق [مستندات GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) مجازند؛ `runs-on` دینامیک یا ناشناخته انتخاب امن را اثبات نمی‌کند. برای Self-hosted از labelهای repo-specific مانند `[self-hosted, linux, x64, example]` و `ci.trustModelADR` استفاده شود؛ Runner مشترک با برچسب مبهم را به اشتباه ایزوله فرض نکنید.
+برای GitHub-hosted فقط برچسب‌های رسمی دقیق [مستندات GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) مجازند؛ `runs-on` دینامیک یا ناشناخته انتخاب امن را اثبات نمی‌کند. برای Self-hosted، `[self-hosted, linux, x64, repo-slug]` فقط ترکیب پیش‌فرض است. `ci.runnerLabels` می‌تواند برچسب‌های **واقعی ثبت‌شده** مانند `[self-hosted, linux, ARM64, repo-slug, gpu]` را انتخاب کند. مجموعه و ترتیب باید در مانیفست، `runs-on` و callerهای reusable دقیقاً منطبق باشند. `self-hosted` و یک label اختصاصی repo لازم‌اند؛ selector دینامیک، group مشترک یا برچسب hosted معتبر نیست. مالک مصرف‌کننده ثبت واقعی Runner، scope مخزن و ایزولیشن را به‌صورت عملیاتی (جدا از مانیفست و ADR) بررسی می‌کند.
 
 ### Private self-hosted: اجرای مجاز با جداسازی واقعی
 
 - Runner می‌تواند در `push` و PR قابل‌اعتماد و رویدادهای دیگر استفاده شود؛ قبل از ثبت/اجرا، کنترل untrusted PR، credential boundary، جداسازی host و دسترسی Repo را تعیین کنید. GitHub اجرای کد fork روی Self-hosted عمومی را خطرناک می‌داند؛ حتی در Private، PRهای بدون اعتماد هم ممکن‌اند.
 - Reusable workflowهای بیرونی می‌توانند Runner مستقل انتخاب کنند. در private فقط workflow محلی موجود و ممیزی‌شده یا workflow دقیقاً پین‌شدهٔ KavoshStart مجاز است. Caller روی private self-hosted باید `with.runs-on` متناظر با Runner مجاز را صریحاً مشخص کند؛ پیش‌فرض GitHub-hosted آن workflow مجوز استفاده نیست.
 - KavoshStart نه Runner نصب می‌کند، نه وجود/ایزولیشن آن را از روی manifest اثبات می‌کند و نه اطلاعات Runner خصوصی را در مخزن عمومی ذخیره می‌کند. تأیید تنظیمات واقعی به مالک Repository مصرف‌کننده تعلق دارد.
+- **مرز اعتماد:** اجرای PR/کد نامطمئن، CI کم‌مجوز، release، استقرار و secrets/production حوزه‌های متفاوت‌اند. label یا Runner مشترک دسترسی به همهٔ آن‌ها را مجاز نمی‌کند؛ ابتدا با trigger/permission/secret boundary و ایزولیشن موجود جداسازی کنید، نه ماشین یا مجوز جدید به‌طور پیش‌فرض.
 
 ### Private GitHub-hosted: ممنوع تا اجازهٔ مشخص
 
-- **پیش از هر Run** سؤال مجوز مطرح می‌شود. بدون پاسخ روشن مالک/ادمین برای همان Workflow، ریپو و PR/ref/SHA، اجرای hosted ممنوع است؛ شماره بودجه، باقی‌ماندهٔ سهمیهٔ رایگان، کامنت عامل یا مجوز کلی کار، تأیید محسوب نمی‌شوند.
+- **پیش از هر Run** سؤال مجوز مطرح می‌شود. بدون پاسخ صریح و مستقیم **همان شخص مالکِ اختیار مالی** برای همان Workflow، ریپو و PR/ref/SHA، اجرای hosted ممنوع است؛ GitHub Admin دیگر، عامل حتی با credential مالک، بودجه، سهمیهٔ رایگان، dispatch یا مجوز کلی کار تأیید نیستند.
 - Templateهای `ci.yml`، `kavosh.yml` و release مسیر GitHub-hosted خصوصی را از trigger خودکار `push`/`pull_request`/`schedule`/`workflow_run` جدا می‌کنند و `workflow_dispatch` محدود به SHA فعلی دارند. اعتبارسنجی داخل Job پس از تخصیص ماشین انجام می‌شود؛ بنابراین نمی‌تواند جای **گرفتن مجوز پیش از Dispatch** را بگیرد یا هویت انسان تأییدکننده را خودبه‌خود اثبات کند.
 - GitHub برای Private سهمیهٔ رایگان دارد و فراتر از آن ممکن است هزینه بگیرد؛ سیاست مالک حتی برای دقیقه‌های داخل سهمیه اجازهٔ پیشینی می‌خواهد. Self-hosted دقیقهٔ Actions GitHub را مصرف نمی‌کند، اما سرور/امنیت/نگهداری هزینه دارند.
+- **دیگر امکانات پولی/سهمیه‌ای GitHub در private** شامل larger runner، ذخیره‌سازی Artifact/Cache/Packages و اعتبار سرویس‌های AI (در صورت شمول) فقط پس از تأیید شخص مالک اختیار مالی برای خدمت، repo، اقدام، سقف و مدت مشخص مجازند. مجوز یک مصرف به دیگری تعمیم نمی‌یابد. تأیید باید **قبل از تخصیص/خرید/اجرا** باشد؛ `GITHUB_ACTOR` یا کنترل بعد از شروع CI اثبات اجازهٔ انسانی نیست. [ADR-0019](../docs/decisions/0019-owner-only-github-metered-consent.md) دامنهٔ اختیار را نسبت به عبارت تاریخی «owner/admin» در ADR-0018 محدود می‌کند.
 
 ### مرز شواهد و محیط عملیاتی
 
@@ -55,7 +57,7 @@ Self-hosted عمومی با CI-2 و کنترل واقعی fork/credential/isolat
 6. `timeout-minutes` برای هر job (پیش‌فرض 360 دقیقه است!).
 
 ## اجرای زودهنگام و workflowهای هر پروژه
-روی Draft، CI سنگین خودکار اجرا نمی‌شود. در public، افزودن `ci:full` اجرای زودهنگام را درخواست می‌کند؛ روی private GitHub-hosted، `workflow_dispatch` باید PR number و head SHA دقیق را بگیرد و برای suite سنگین ورودی `ci-full` هم صریحاً فعال شود. این عمل توسط صاحب ریپو انجام می‌شود و فقط همان run را مجاز می‌کند؛ SHA قدیمی یا PR بسته/تغییریافته fail-closed می‌شود.
+روی Draft، CI سنگین خودکار اجرا نمی‌شود. در public، افزودن `ci:full` اجرای زودهنگام را درخواست می‌کند؛ روی private GitHub-hosted، `workflow_dispatch` باید PR number و head SHA دقیق را بگیرد و برای suite سنگین ورودی `ci-full` هم صریحاً فعال شود. این عمل فقط پس از مجوز مستقیم مالک اختیار مالی انجام می‌شود و فقط همان run را مجاز می‌کند؛ SHA قدیمی یا PR بسته/تغییریافته fail-closed می‌شود.
 
 | فایل | رویداد | Tier |
 |---|---|---|

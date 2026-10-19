@@ -352,8 +352,27 @@ def runner_trust_adr_problem(ref, visibility):
 
 
 def runner_labels(m):
+    """Use actual manifest labels, otherwise retain the safe legacy default."""
     slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
-    return m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
+    ci = m.get("ci", {})
+    return ci["runnerLabels"] if "runnerLabels" in ci else ["self-hosted", "linux", "x64", slug]
+
+
+def runner_label_problem(labels, slug):
+    """Validate deterministic routing, not the existence/isolation of a physical runner."""
+    if not slug or not isinstance(labels, list) or not 3 <= len(labels) <= 12:
+        return "select 3-12 explicit self-hosted labels including a repo-specific label"
+    if any(not isinstance(label, str) or
+           not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", label) for label in labels):
+        return "labels must be bounded literal names (no expressions, groups or YAML syntax)"
+    normalized = [label.lower() for label in labels]
+    if normalized[0] != "self-hosted" or slug not in normalized:
+        return f"labels must start with self-hosted and contain repo-specific label {slug!r}"
+    if len(set(normalized)) != len(normalized):
+        return "duplicate labels are not allowed"
+    if any(re.match(r"(?:ubuntu|windows|macos|xcode)-", label) for label in normalized):
+        return "GitHub-hosted runner aliases cannot be used as self-hosted labels"
+    return None
 
 
 def runner_manifest_problems(m):
@@ -385,11 +404,13 @@ def runner_manifest_problems(m):
                     problem or m["ci"]["trustModelADR"]))
         labels = runner_labels(m)
         slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
-        expected = ["self-hosted", "linux", "x64", slug]
-        if not slug or labels != expected:
-            out.append(("fail", "CI-2", "Self-hosted labels are repo-specific", f"expected exactly {expected}; got {labels}"))
+        label_problem = runner_label_problem(labels, slug)
+        if label_problem:
+            out.append(("fail", "CI-2", "Self-hosted runner labels are scoped and explicit",
+                        f"{label_problem}; got {labels!r}"))
         else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile", f"labels exactly {expected}"))
+            out.append(("ok", "CI-2", "Self-hosted runner profile",
+                        f"labels exactly {labels}; physical registration/isolation requires owner verification"))
     return out
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
@@ -468,7 +489,7 @@ def runner_workflow_problems(workflows, m):
         for value in runs_on_values(text):
             value = value.strip("\"'")
             if not value or value.startswith("$"):
-                if vis == "private":
+                if vis == "private" or runner == "self-hosted":
                     bad.append(f"{f}: dynamic/empty runs-on cannot prove the selected runner mode")
                 continue
             if value.startswith("[") and value.endswith("]"):

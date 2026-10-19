@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: JSON labels for selected runner; private self-hosted needs CI-2 trust ADR, private GitHub-hosted needs one-run owner approval.
+        description: JSON labels for selected runner; private self-hosted needs CI-2 trust ADR, private GitHub-hosted needs prior run-scoped consent from the designated human billing owner (not admin/agent).
         type: string
         default: '["ubuntu-latest"]'
       enforce:
@@ -80,7 +80,7 @@ jobs:
                    "repository": pr["base"]["repo"]}
           path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "kavosh-event.json"
           path.write_text(json.dumps(event), encoding="utf-8")
-          print(f"one-run authorization: @{os.environ['GITHUB_ACTOR']} for PR #{pr['number']} @ {pr['head']['sha']}")
+          print(f"dispatch scope validated (NOT proof of billing owner consent): actor @{os.environ['GITHUB_ACTOR']}, PR #{pr['number']} @ {pr['head']['sha']}")
           PY
           echo "GITHUB_EVENT_PATH=$RUNNER_TEMP/kavosh-event.json" >> "$GITHUB_ENV"
       - name: Check KavoshStart rules

@@ -57,6 +57,69 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertTrue(any(level == "fail" and rule == "CI-2"
                             for level, rule, _, _ in g.runner_manifest_problems(m)))
 
+
+    def test_CI2_positive_explicit_arm64_custom_repository_labels(self):
+        """Covers: CI-2 (positive); custom physical profiles are not x64-only."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        labels = ["self-hosted", "linux", "ARM64", "example", "gpu"]
+        m["ci"].update(runnerLabels=labels, trustModelADR="docs/decisions/0001-runner.md")
+        findings = g.runner_manifest_problems(m)
+        self.assertFalse(any(level == "fail" and "runner labels" in title.lower()
+                             for level, _, title, _ in findings), findings)
+        wf = {".github/workflows/ci.yml":
+              "jobs:\n  required:\n    runs-on: " + json.dumps(labels) + "\n"}
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in g.runner_workflow_problems(wf, m)))
+        caller = ("jobs:\n  governance:\n"
+                  "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"
+                  "    with:\n      runs-on: '" + json.dumps(labels) + "'\n")
+        self.assertFalse(any(level == "fail" and rid == "CI-1"
+                             for level, rid, _, _ in g.runner_workflow_problems(
+                                 {".github/workflows/kavosh.yml": caller}, m)))
+
+    def test_CI2_negative_unscoped_dynamic_duplicate_or_hosted_like_labels(self):
+        """Covers: CI-2 (negative); labels must be scoped, bounded and unambiguous."""
+        bad_profiles = (
+            [],
+            ["self-hosted", "linux", "wrong"],
+            ["linux", "ARM64", "example"],
+            ["self-hosted", "example"],
+            ["self-hosted", "linux", "example", "EXAMPLE"],
+            ["self-hosted", "linux", "example", "ubuntu-latest"],
+            ["self-hosted", "linux", "example", "$" + "{{ matrix.os }}"],
+            ["self-hosted", "linux", "example", "bad\nlabel"],
+            ["self-hosted", "linux", "example", 3],
+        )
+        for labels in bad_profiles:
+            with self.subTest(labels=labels):
+                m = manifest(runner="self-hosted")
+                m["repo"] = "demo/Example"
+                m["ci"]["runnerLabels"] = labels
+                findings = g.runner_manifest_problems(m)
+                self.assertTrue(any(level == "fail" and rid == "CI-2"
+                                    and "runner labels" in title.lower()
+                                    for level, rid, title, _ in findings), findings)
+
+    def test_CI1_negative_public_self_hosted_dynamic_selector(self):
+        """Covers: CI-1 (negative); public self-hosted also requires literal routing."""
+        m = manifest(visibility="public", runner="self-hosted")
+        m["repo"] = "demo/Example"
+        findings = g.runner_workflow_problems(
+            {".github/workflows/ci.yml":
+             "jobs:\n  required:\n    runs-on: $" + "{{ matrix.labels }}\n"}, m)
+        self.assertTrue(any(level == "fail" and rid == "CI-1"
+                            for level, rid, _, _ in findings), findings)
+
+    def test_CI3_positive_owner_only_metered_approval_contract(self):
+        """Covers: CI-3 (positive); owner-only prior permission is explicit."""
+        visibility = SCHEMA["properties"]["visibility"]["description"].lower()
+        runner = SCHEMA["properties"]["ci"]["properties"]["runner"]["description"].lower()
+        self.assertIn("designated human billing owner", visibility)
+        self.assertIn("designated human billing owner", runner)
+        self.assertNotIn("owner/admin", visibility + runner)
+        self.assertIn("ADR-0019", (ROOT / "standard" / "04-ci-runners-minutes.md").read_text(encoding="utf-8"))
+
     def test_CI1_negative_private_self_hosted_wrong_labels_or_unpinned_remote_runner(self):
         m = manifest(runner="self-hosted")
         m["repo"] = "demo/Example"
