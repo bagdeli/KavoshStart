@@ -339,7 +339,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first."
+          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first. Default for all workflow jobs unless one exact job declares an optional ci.runnerJobLabels override."
         },
         "runners": {
           "type": "integer",
@@ -362,6 +362,20 @@
           "type": "string",
           "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$",
           "description": "Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."
+        },
+        "runnerJobLabels": {
+          "type": "object",
+          "description": "Optional per-job explicit self-hosted labels. Keys use '.github/workflows/<file>.yml#<job-id>'; each value is a complete static self-hosted selector for that exact job only. Unlisted jobs retain ci.runnerLabels. Does not provision runners, authorize privileged jobs, or permit private hosted minutes.",
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 12,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
         }
       }
     },

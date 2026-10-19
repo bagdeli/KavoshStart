@@ -409,8 +409,11 @@ def runner_manifest_problems(m):
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
     if vis not in ("public", "private"):
         return [("fail", "CI-1", "Known repository visibility", f"got {vis}")]
+    if runner != "self-hosted" and "runnerJobLabels" in m.get("ci", {}):
+        return [("fail", "CI-1", "Job-specific self-hosted labels require self-hosted mode",
+                 "runnerJobLabels cannot authorize a hosted or local-only runner")]
     if vis == "private" and runner != "self-hosted":
-        extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"})
+        extra = sorted(set(m.get("ci", {})) & {"runnerLabels", "runnerJobLabels", "runners", "trustModelADR"})
         if extra:
             return [("fail", "CI-1", "Hosted/local-only CI must not contain self-hosted runner settings",
                      "select self-hosted explicitly with a trust ADR or remove: " + ", ".join(extra))]
@@ -440,6 +443,18 @@ def runner_manifest_problems(m):
         else:
             out.append(("ok", "CI-2", "Self-hosted runner profile",
                         f"labels exactly {labels}; physical registration/isolation requires owner verification"))
+        overrides = m.get("ci", {}).get("runnerJobLabels", {})
+        if not isinstance(overrides, dict):
+            out.append(("fail", "CI-2", "Per-job selectors are a mapping", "runnerJobLabels must be an object"))
+        else:
+            for route, alternate in overrides.items():
+                valid_route = isinstance(route, str) and re.fullmatch(
+                    r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml#[A-Za-z0-9_-]+", route)
+                why = runner_label_problem(alternate, slug)
+                if not valid_route or why:
+                    out.append(("fail", "CI-2", "Per-job runner selector", 
+                                "requires a literal .github/workflows/file.yml#job path and safe complete labels"
+                                + (f"; {why}" if why else "")))
     return out
 
 RUNS_ON_RE = re.compile(r"^[ \t]*runs-on:[ \t]*(.*)$", re.M)  # [ \t], not \s: must not run into the next line
@@ -450,7 +465,7 @@ def runs_on_values(text):
     return [v.split("#", 1)[0].strip() for v in RUNS_ON_RE.findall(text)]
 
 
-JOB_LINE_RE = re.compile(r"^  ([A-Za-z0-9_-]+):[ \\t]*(?:#.*)?$")
+JOB_LINE_RE = re.compile(r"""^  (?:(["'])([A-Za-z0-9_-]+)\1|([A-Za-z0-9_-]+)):[ \t]*(?:#.*)?$""")
 
 
 def jobs_without_timeout(text):
@@ -485,12 +500,87 @@ def jobs_without_timeout(text):
         match = JOB_LINE_RE.match(line)
         if match:
             finish()
-            current = match.group(1)
+            current = match.group(2) or match.group(3)
             block = []
         elif current is not None:
             block.append(line)
     finish()
     return missing
+
+
+def workflow_job_blocks(text):
+    """Parse actual jobs, rejecting ambiguous mappings without external YAML tooling.
+
+    None means unsafe/unsupported syntax: never quietly omit a runnable job.
+    """
+    lines = text.splitlines()
+    headers = [i for i, line in enumerate(lines)
+               if re.fullmatch(r"jobs:[ \t]*(?:#.*)?", line)]
+    if len(headers) != 1:
+        return None
+    blocks, seen, current, body = {}, set(), None, []
+    for line in lines[headers[0] + 1:]:
+        if line and not line[0].isspace() and not line.lstrip().startswith("#"):
+            break
+        match = JOB_LINE_RE.match(line)
+        if match:
+            job_id = match.group(2) or match.group(3)
+            # GitHub job identifiers are unique irrespective of casing.
+            if job_id.casefold() in seen:
+                return None
+            seen.add(job_id.casefold())
+            if current is not None:
+                blocks[current] = "\n".join(body)
+            current, body = job_id, []
+        elif re.match(r"^  [^ \t#].*:[ \t]*(?:#.*)?$", line):
+            # A valid runnable job we cannot associate with an approved
+            # per-job selector is a failure, not a skipped validation.
+            return None
+        elif current is not None:
+            body.append(line)
+    if current is not None:
+        blocks[current] = "\n".join(body)
+    return blocks
+
+
+def literal_runner_selector(value):
+    """Parse one static runs-on selector (never execute an expression)."""
+    if not isinstance(value, str):
+        return None
+    raw = value.strip()
+    # A quoted YAML scalar containing bracket text is not a GitHub label array.
+    # Reusable callers intentionally accept quoted JSON via a separate parser.
+    if len(raw) >= 2 and raw[0] in ("'", '"') and raw[-1] == raw[0]:
+        raw = raw[1:-1]
+        if raw.lstrip().startswith(("[", "{")):
+            return None
+    if not raw or raw.startswith("$"):
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError):
+        parsed = ([part.strip().strip("\"'") for part in raw[1:-1].split(",")]
+                  if raw.startswith("[") and raw.endswith("]") else [raw])
+    return parsed if isinstance(parsed, list) and all(isinstance(x, str) and x for x in parsed) else None
+
+
+def reusable_runner_selector(job):
+    """Read the explicit literal JSON array in a standard caller's with.runs-on."""
+    found, in_with = [], False
+    for line in job.splitlines():
+        if line.startswith("    with:"):
+            in_with = True
+        elif re.match(r"^    [A-Za-z0-9_-]+:", line):
+            in_with = False
+        elif in_with and line.startswith("      runs-on:"):
+            found.append(line.partition(":")[2].split("#", 1)[0].strip())
+    if len(found) != 1:
+        return None
+    try:
+        value = json.loads(found[0].strip("\"'"))
+    except (ValueError, TypeError):
+        return None
+    return value if isinstance(value, list) else None
 
 
 def is_hosted(value):
@@ -514,26 +604,33 @@ def runner_workflow_problems(workflows, m):
               "windows-11-vs2026-arm", "macos-latest", "macos-14", "macos-15",
               "macos-15-intel", "macos-26", "macos-26-intel", "xcode-27"}
     bad = []
+    overrides = m.get("ci", {}).get("runnerJobLabels", {})
+    overrides = overrides if isinstance(overrides, dict) else {}
+    checked_routes = set()
+    parsed_workflows = {}
     for f, text in workflows.items():
-        for value in runs_on_values(text):
-            value = value.strip("\"'")
-            if not value or value.startswith("$"):
-                if vis == "private" or runner == "self-hosted":
-                    bad.append(f"{f}: dynamic/empty runs-on cannot prove the selected runner mode")
-                continue
-            if value.startswith("[") and value.endswith("]"):
-                labels = [label.strip().strip("\"'") for label in value[1:-1].split(",") if label.strip()]
-            else:
-                try:
-                    labels = json.loads(value)
-                except (ValueError, TypeError):
-                    labels = [value]
-            labels = labels if isinstance(labels, list) else [value]
-            is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
-            if runner == "github-hosted" and not is_standard:
-                bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
-            elif runner == "self-hosted" and not runner_labels_match(labels, runner_labels(m)):
-                bad.append(f"{f}: {value} (must match the manifest's isolated self-hosted labels)")
+        blocks = workflow_job_blocks(text)
+        if blocks is None:
+            bad.append(f"{f}: missing, duplicate or unrecognized jobs mapping")
+            continue
+        parsed_workflows[f] = blocks
+        for job_id, job in blocks.items():
+            route = f"{f}#{job_id}"
+            expected = overrides.get(route, runner_labels(m))
+            local = re.findall(r"(?m)^    runs-on:[ \t]*(.*)$", job)
+            if local:
+                if route in overrides:
+                    checked_routes.add(route)
+                if len(local) != 1:
+                    bad.append(f"{route}: duplicate or ambiguous runs-on declaration")
+                    continue
+                labels = literal_runner_selector(local[0].split("#", 1)[0])
+                if runner == "github-hosted":
+                    if not labels or not all(x in hosted for x in labels):
+                        if vis == "private" or labels is not None:
+                            bad.append(f"{route}: hosted runner selection is not verified")
+                elif runner == "self-hosted" and not runner_labels_match(labels, expected):
+                    bad.append(f"{route}: runner labels differ from the job's declared self-hosted selector")
     if vis == "private":
         # A remotely called workflow selects its own job runners, even if the
         # caller has no runs-on key. Reject unknown remotely hosted code: we
@@ -549,33 +646,24 @@ def runner_workflow_problems(workflows, m):
                 elif not (target.startswith("bagdeli/KavoshStart/.github/workflows/")
                           and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
                     bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
-    if vis == "private" and runner == "self-hosted":
-        # A reusable workflow picks its own job runner. The standard defaults
-        # to GitHub-hosted, so require the exact approved self-hosted labels
-        # in the job's *with* inputs rather than trusting any other YAML key.
-        for file_name, source in workflows.items():
-            jobs = re.split(r"(?m)^  [A-Za-z0-9_-]+:[ \t]*(?:#.*)?$", source)[1:]
-            for job in jobs:
+    if runner == "self-hosted":
+        # Versioned standard reusable workflow jobs select their own runners,
+        # so validate their caller input against this job's explicit selector.
+        for file_name, blocks in parsed_workflows.items():
+            for job_id, job in blocks.items():
                 called = re.search(r"(?m)^    uses:[ \t]*(\S+)", job)
                 if not called or not called.group(1).startswith(
                         "bagdeli/KavoshStart/.github/workflows/"):
                     continue
-                in_with = False
-                runner_inputs = []
-                for line in job.splitlines():
-                    if line.startswith("    with:"):
-                        in_with = True
-                    elif re.match(r"^    [A-Za-z0-9_-]+:", line):
-                        in_with = False
-                    elif in_with and line.startswith("      runs-on:"):
-                        runner_inputs.append(line.partition(":")[2].split("#", 1)[0].strip())
-                try:
-                    selected = (json.loads(runner_inputs[0].strip("\"'"))
-                                if len(runner_inputs) == 1 else None)
-                except (ValueError, TypeError):
-                    selected = None
-                if not runner_labels_match(selected, runner_labels(m)):
-                    bad.append(f"{file_name}: standard reusable workflow must receive the exact declared self-hosted label set")
+                route = f"{file_name}#{job_id}"
+                if route in overrides:
+                    checked_routes.add(route)
+                selected = reusable_runner_selector(job)
+                expected = overrides.get(route, runner_labels(m))
+                if not runner_labels_match(selected, expected):
+                    bad.append(f"{route}: standard reusable workflow must receive the exact declared self-hosted labels")
+        for route in sorted(set(overrides) - checked_routes):
+            bad.append("per-job runner override has no matching executable job or standard reusable caller")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")

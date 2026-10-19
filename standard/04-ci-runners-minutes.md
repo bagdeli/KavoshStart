@@ -20,6 +20,28 @@ Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate lo
 
 برای GitHub-hosted فقط برچسب‌های رسمی دقیق [مستندات GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) مجازند؛ `runs-on` دینامیک یا ناشناخته انتخاب امن را اثبات نمی‌کند. برای Self-hosted، `[self-hosted, linux, x64, repo-slug]` فقط ترکیب پیش‌فرض است. `ci.runnerLabels` می‌تواند برچسب‌های **واقعی ثبت‌شده** مانند `[self-hosted, linux, ARM64, repo-slug, gpu]` را انتخاب کند. مجموعهٔ مؤثر برچسب‌ها باید بدون حذف یا اضافه‌شدن در مانیفست، `runs-on` و callerهای reusable یکسان باشد. GitHub labelها را بدون حساسیت به حروف مقایسه می‌کند و ترتیب سایر برچسب‌ها معنا ندارد؛ در آرایهٔ Workflow برچسب `self-hosted` را ابتدا نگه دارید. `self-hosted`، OS، معماری و یک label سفارشی و اختصاصیِ scope مخزن لازم‌اند؛ نام label اختصاصی ممکن است با slug مخزن تفاوت داشته باشد. مطابق CI-2، Trust ADR باید **پذیرفته شده** باشد، نه پیشنهادی/معوق. selector دینامیک، group مشترک یا برچسب hosted معتبر نیست. مالک مصرف‌کننده ثبت واقعی Runner، scope مخزن و ایزولیشن را عملیاتی و مستقل از مانیفست و ADR بررسی می‌کند.
 
+### انتخاب مستقل و اختیاری Runner برای هر Job
+
+اجبار همهٔ Workflowها به یک `runs-on` مشترک الزام GitHub نیست. `ci.runnerLabels` **پیش‌فرض قبلی** می‌ماند تا پروژه‌های موجود بی‌تغییر کار کنند. تنها برای Job دارای دلیل واقعیِ اعتماد/سخت‌افزار، `ci.runnerJobLabels` با کلید مسیر Workflow و شناسهٔ Job انتخابِ صریح دیگری را ممکن می‌کند؛ سرور یا Runner جدیدی به‌صورت پیش‌فرض لازم نیست.
+
+نمونهٔ کاملاً ساختگی از قسمت `ci`:
+
+```json
+{
+  "runner": "self-hosted",
+  "runnerLabels": ["self-hosted", "linux", "x64", "example-ci"],
+  "runnerJobLabels": {
+    ".github/workflows/release.yml#release": ["self-hosted", "linux", "x64", "example-release"]
+  },
+  "trustModelADR": "docs/decisions/0001-runner.md",
+  "monthlyMinutesBudget": 0
+}
+```
+
+فقط `runs-on` واقعی همان Job یا `with.runs-on` Caller رسمیِ نسخه‌دار باید با selector تعیین‌شده مطابق باشد. استفادهٔ Job دیگری از آن selector، انتخاب نامعلوم، برچسب ناقص/اضافی/تکراری، Hosted fallback، بیان پویا و route به Job ناموجود رد می‌شوند. وجود یک Runner در GitHub و ایزولیشن واقعی آن را صرفاً از روی متن مانیفست نتیجه نمی‌گیریم.
+
+**محدودهٔ اعتماد:** در Trust ADR خودِ مصرف‌کننده باید دسترسی، مجوز، Secret و ورودی کد هر Job مشخص شود. انتخاب برچسب به معنای مجوز اجرای PR نامطمئن روی Runner ممتاز نیست؛ مسئول کنترل این مرز عامل/مالک و دسترسی واقعی Runner است. این ویژگی Runner، Workflow، VM، اختیارات GitHub یا هزینهٔ جدید تولید نمی‌کند.
+
 ### کنترل متناسب با ریسک و هزینه — بدون الزام جهانی VM
 
 CI-2 یک **هدف امنیتی** است، نه الزام ساخت VM، JIT runner یا دو چرخهٔ یک‌بارمصرف برای هر پروژه. برای کارهای CI با کد قابل اعتماد و دامنهٔ محدود، Runner موجود روی سرور مستقل می‌تواند کافی باشد: برچسب و دسترسی همان مخزن، حساب اجرای غیر root بدون sudo گسترده، جداسازی workspace/فایل/socketهای ممتاز، نبود Secret تولید و دادهٔ حساس Test، firewall با حداقل ingress/egress، توکن کم‌مجوز و پاک‌سازی workspace/cache. یک بار هنگام پذیرش یا تغییر مؤثر، تنظیمات واقعی و یک آزمون منفیِ هدفمندِ بدون تخریب بررسی شود، نه هر PR و نه چندین VM اجباری.
