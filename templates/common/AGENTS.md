@@ -56,7 +56,7 @@ make check    # lint + test + build — run before your single push
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI
-TODO(kavosh): if `ui.kind` is not `none`, use the consumer-owned pinned Design System {{DESIGN_SYSTEM}} and follow that package's integration, RTL, accessibility and licence contracts. Do not copy components into unrelated modules or publish private package names in KavoshStart. Otherwise delete this section.
+TODO(kavosh): if `ui.kind` is not `none`, consume the exact pinned Design System {{DESIGN_SYSTEM}} through its **actually selected and released consumer profile** (framework-specific or framework-neutral). Verify changed product integration, locale/RTL, accessibility and licensing without rerunning the provider's whole internal test suite. Help Center is optional unless explicitly selected. Do not copy upstream components or publish private provider/consumer identifiers in public KavoshStart. Otherwise delete this section.
 
 ## Definition of Done
 - [ ] Acceptance criteria of the issue met and listed in the PR body
