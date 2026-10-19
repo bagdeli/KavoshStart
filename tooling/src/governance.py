@@ -602,7 +602,7 @@ def runner_workflow_problems(workflows, m):
                     continue
                 labels = literal_runner_selector(local[0].split("#", 1)[0])
                 if runner == "github-hosted":
-                    if labels is None or not all(x in hosted for x in labels):
+                    if not labels or not all(x in hosted for x in labels):
                         if vis == "private" or labels is not None:
                             bad.append(f"{route}: hosted runner selection is not verified")
                 elif runner == "self-hosted" and not runner_labels_match(labels, expected):
@@ -622,7 +622,7 @@ def runner_workflow_problems(workflows, m):
                 elif not (target.startswith("bagdeli/KavoshStart/.github/workflows/")
                           and re.fullmatch(r"[^@]+@v[0-9]+[.][0-9]+[.][0-9]+", target)):
                     bad.append(f"{file_name}: unverified external reusable workflow (runner selection unknown)")
-    if vis == "private" and runner == "self-hosted":
+    if runner == "self-hosted":
         # Versioned standard reusable workflow jobs select their own runners,
         # so validate their caller input against this job's explicit selector.
         for file_name, source in workflows.items():
