@@ -144,6 +144,9 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertIn("designated human billing owner", runner)
         self.assertNotIn("owner/admin", visibility + runner)
         self.assertIn("ADR-0019", (ROOT / "standard" / "04-ci-runners-minutes.md").read_text(encoding="utf-8"))
+        start = (ROOT / "START.md").read_text(encoding="utf-8")
+        self.assertNotIn("owner/admin", start)
+        self.assertIn("designated human billing owner", start)
 
     def test_CI1_negative_private_self_hosted_wrong_labels_or_unpinned_remote_runner(self):
         m = manifest(runner="self-hosted")
