@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.1.0](https://github.com/bagdeli/KavoshStart/compare/v7.0.0...v7.1.0) (2026-10-19)
+
+
+### Features
+
+* **ci:** support opt-in per-job self-hosted runner profiles ([8d25dd7](https://github.com/bagdeli/KavoshStart/commit/8d25dd788c0850a7acf1313176dc181ff8340260))
+
 ## [7.0.0](https://github.com/bagdeli/KavoshStart/compare/v6.0.0...v7.0.0) (2026-10-19)
 
 
