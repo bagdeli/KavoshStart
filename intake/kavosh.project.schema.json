@@ -339,7 +339,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups."
+          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first."
         },
         "runners": {
           "type": "integer",

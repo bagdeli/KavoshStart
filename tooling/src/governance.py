@@ -391,6 +391,19 @@ def runner_label_problem(labels, slug):
     return None
 
 
+def runner_labels_match(selected, declared):
+    """Runner labels are case-insensitive sets in GitHub; no missing/extra/duplicate routing."""
+    if not isinstance(selected, list) or not isinstance(declared, list):
+        return False
+    if len(selected) != len(declared) or not all(isinstance(x, str) for x in selected + declared):
+        return False
+    normalized = [label.lower() for label in selected]
+    expected = [label.lower() for label in declared]
+    return (bool(normalized) and normalized[0] == "self-hosted"
+            and len(set(normalized)) == len(normalized)
+            and set(normalized) == set(expected))
+
+
 def runner_manifest_problems(m):
     """CI-1/2: a selected self-hosted runner needs isolation; private hosted is per-run gated."""
     vis, runner = m.get("visibility"), m.get("ci", {}).get("runner")
@@ -519,7 +532,7 @@ def runner_workflow_problems(workflows, m):
             is_standard = bool(labels) and all(isinstance(x, str) and x in hosted for x in labels)
             if runner == "github-hosted" and not is_standard:
                 bad.append(f"{f}: {value} (manifest selects GitHub-hosted)")
-            elif runner == "self-hosted" and labels != runner_labels(m):
+            elif runner == "self-hosted" and not runner_labels_match(labels, runner_labels(m)):
                 bad.append(f"{f}: {value} (must match the manifest's isolated self-hosted labels)")
     if vis == "private":
         # A remotely called workflow selects its own job runners, even if the
@@ -561,8 +574,8 @@ def runner_workflow_problems(workflows, m):
                                 if len(runner_inputs) == 1 else None)
                 except (ValueError, TypeError):
                     selected = None
-                if selected != runner_labels(m):
-                    bad.append(f"{file_name}: standard reusable workflow must receive exact self-hosted runner labels")
+                if not runner_labels_match(selected, runner_labels(m)):
+                    bad.append(f"{file_name}: standard reusable workflow must receive the exact declared self-hosted label set")
     out = [("fail" if bad else "ok", "CI-1", "Workflow runners match the manifest", ", ".join(bad) or f"{vis} → {runner}")]
     if vis == "private" and runner == "github-hosted":
         required = (".github/workflows/ci.yml", ".github/workflows/kavosh.yml", ".github/workflows/release.yml")
