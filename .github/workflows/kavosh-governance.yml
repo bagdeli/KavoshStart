@@ -559,7 +559,7 @@ jobs:
               return [v.split("#", 1)[0].strip() for v in RUNS_ON_RE.findall(text)]
 
 
-          JOB_LINE_RE = re.compile(r"^  ([A-Za-z0-9_-]+):[ \\t]*(?:#.*)?$")
+          JOB_LINE_RE = re.compile(r"""^  (?:(["'])([A-Za-z0-9_-]+)\1|([A-Za-z0-9_-]+)):[ \t]*(?:#.*)?$""")
 
 
           def jobs_without_timeout(text):
@@ -594,7 +594,7 @@ jobs:
                   match = JOB_LINE_RE.match(line)
                   if match:
                       finish()
-                      current = match.group(1)
+                      current = match.group(2) or match.group(3)
                       block = []
                   elif current is not None:
                       block.append(line)
@@ -603,21 +603,33 @@ jobs:
 
 
           def workflow_job_blocks(text):
-              """Only real two-space job blocks; skip workflow-call inputs and comments."""
+              """Parse actual jobs, rejecting ambiguous mappings without external YAML tooling.
+
+              None means unsafe/unsupported syntax: never quietly omit a runnable job.
+              """
               lines = text.splitlines()
-              start = next((i for i, line in enumerate(lines)
-                            if re.fullmatch(r"jobs:[ \t]*(?:#.*)?", line)), None)
-              if start is None:
-                  return {}
-              blocks, current, body = {}, None, []
-              for line in lines[start + 1:]:
+              headers = [i for i, line in enumerate(lines)
+                         if re.fullmatch(r"jobs:[ \t]*(?:#.*)?", line)]
+              if len(headers) != 1:
+                  return None
+              blocks, seen, current, body = {}, set(), None, []
+              for line in lines[headers[0] + 1:]:
                   if line and not line[0].isspace() and not line.lstrip().startswith("#"):
                       break
                   match = JOB_LINE_RE.match(line)
                   if match:
+                      job_id = match.group(2) or match.group(3)
+                      # GitHub job identifiers are unique irrespective of casing.
+                      if job_id.casefold() in seen:
+                          return None
+                      seen.add(job_id.casefold())
                       if current is not None:
                           blocks[current] = "\n".join(body)
-                      current, body = match.group(1), []
+                      current, body = job_id, []
+                  elif re.match(r"^  [^ \t#].*:[ \t]*(?:#.*)?$", line):
+                      # A valid runnable job we cannot associate with an approved
+                      # per-job selector is a failure, not a skipped validation.
+                      return None
                   elif current is not None:
                       body.append(line)
               if current is not None:
@@ -689,8 +701,14 @@ jobs:
               overrides = m.get("ci", {}).get("runnerJobLabels", {})
               overrides = overrides if isinstance(overrides, dict) else {}
               checked_routes = set()
+              parsed_workflows = {}
               for f, text in workflows.items():
-                  for job_id, job in workflow_job_blocks(text).items():
+                  blocks = workflow_job_blocks(text)
+                  if blocks is None:
+                      bad.append(f"{f}: missing, duplicate or unrecognized jobs mapping")
+                      continue
+                  parsed_workflows[f] = blocks
+                  for job_id, job in blocks.items():
                       route = f"{f}#{job_id}"
                       expected = overrides.get(route, runner_labels(m))
                       local = re.findall(r"(?m)^    runs-on:[ \t]*(.*)$", job)
@@ -725,8 +743,8 @@ jobs:
               if runner == "self-hosted":
                   # Versioned standard reusable workflow jobs select their own runners,
                   # so validate their caller input against this job's explicit selector.
-                  for file_name, source in workflows.items():
-                      for job_id, job in workflow_job_blocks(source).items():
+                  for file_name, blocks in parsed_workflows.items():
+                      for job_id, job in blocks.items():
                           called = re.search(r"(?m)^    uses:[ \t]*(\S+)", job)
                           if not called or not called.group(1).startswith(
                                   "bagdeli/KavoshStart/.github/workflows/"):

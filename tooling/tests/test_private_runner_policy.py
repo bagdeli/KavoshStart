@@ -256,6 +256,43 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertTrue(any(level == "fail" and rid == "CI-1"
                             for level, rid, _, _ in g.runner_workflow_problems(nonexistent, m)))
 
+    def test_CI1_positive_quoted_yaml_job_ids_route_like_plain_ids(self):
+        """Covers: CI-1 (positive); valid YAML quoting does not invalidate a scoped job."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example-ci"]
+        m["ci"]["runnerJobLabels"] = {
+            ".github/workflows/release.yml#release": ["self-hosted", "linux", "x64", "example-release"]
+        }
+        for declaration in ('  "release":', "  'release':"):
+            wf = {".github/workflows/release.yml":
+                  "jobs:\n" + declaration +
+                  "\n    runs-on: [self-hosted, linux, x64, example-release]\n"}
+            with self.subTest(declaration=declaration):
+                self.assertFalse(any(level == "fail" and rule == "CI-1"
+                                     for level, rule, _, _ in g.runner_workflow_problems(wf, m)))
+
+    def test_CI1_negative_duplicate_or_unrecognized_job_mappings(self):
+        """Covers: CI-1 (negative); a hidden or duplicate job must not evade runner inspection."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example-ci"]
+        definitions = (
+            "jobs:\n  release:\n    runs-on: [self-hosted, linux, x64, example-ci]\n"
+            "  release:\n    runs-on: ubuntu-latest\n",
+            "jobs:\n  release:\n    runs-on: [self-hosted, linux, x64, example-ci]\n"
+            "  RELEASE:\n    runs-on: ubuntu-latest\n",
+            "jobs:\n  'not a job id':\n    runs-on: ubuntu-latest\n",
+            "jobs:\n  release:\n    runs-on: [self-hosted, linux, x64, example-ci]\n"
+            "jobs:\n  unexpected:\n    runs-on: ubuntu-latest\n",
+        )
+        for body in definitions:
+            with self.subTest(body_len=len(body)):
+                wf = {".github/workflows/release.yml": body}
+                result = g.runner_workflow_problems(wf, m)
+                self.assertTrue(any(level == "fail" and rule == "CI-1"
+                                    for level, rule, _, _ in result), result)
+
     def test_CI2_negative_bad_job_selectors_and_private_hosted_override(self):
         """Covers: CI-2 (negative); distinct routes must still be literal and scoped."""
         valid = ["self-hosted", "linux", "x64", "example-release"]
