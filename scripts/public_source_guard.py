@@ -21,7 +21,8 @@ PUBLIC_NAME = "KavoshStart"
 FICTIONAL_NAMES = frozenset({"Example", "Demo", "ExampleConsumer", "PrivateDemo"})
 REPO_REF = re.compile(r"(?i)\bbagdeli/(?:[a-z0-9_.-]+)")
 BRANDED_NAME = re.compile(r"\bKavosh(?!Start\b)[A-Z][A-Za-z0-9]*\b")
-INTERNAL_HOST = re.compile(r"(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:internal|lan|corp|local)\b")
+# .local is a legitimate mDNS/test label, not by itself evidence of disclosure.
+INTERNAL_HOST = re.compile(r"(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:internal|lan|corp)\b")
 
 
 def categories(text: str, private_literals: tuple[str, ...] = ()) -> set[str]:
