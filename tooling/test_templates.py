@@ -123,6 +123,28 @@ def main():
             kav = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
             want_pkg = "true" if combo[1] in ("none", "desktop") else "false"
             problems = []
+            if yaml is not None:
+                parsed = yaml.safe_load(kav)
+                # YAML 1.1 parsers may interpret the unquoted key "on" as True.
+                events = (parsed.get("on", parsed.get(True)) or {})
+                actions = ((events.get("pull_request") or {}).get("types") or [])
+                grants = parsed.get("permissions") or {}
+                jobs = parsed.get("jobs") or {}
+                if "edited" not in actions or "labeled" in actions:
+                    problems.append("CI-3/CR-1: governance must check edited metadata, not arbitrary PR labels")
+                if grants.get("issues") == "write" or grants.get("pull-requests") == "write":
+                    problems.append("SEC-3: public control caller cannot grant broad workflow-level write access")
+                needed = {
+                    "kavosh": ("pull-requests", "issues"),
+                    "main-guard": ("issues", "pull-requests"),
+                    "health": ("issues", "pull-requests"),
+                }
+                for job_id, (write_scope, other_scope) in needed.items():
+                    permissions = (jobs.get(job_id) or {}).get("permissions") or {}
+                    if (permissions.get(write_scope) != "write"
+                            or permissions.get(other_scope) == "write"
+                            or permissions.get("contents") != "read"):
+                        problems.append(f"SEC-3: {job_id} must have only its required scoped write grant")
             if f"kavosh-release.yml@{pin}" not in rel or f"package: {want_pkg}" not in rel:
                 problems.append("REL-4/5 release.yml")
             if kav.count(f"@{pin}") != 3 or "@v1\n" in kav + rel:
