@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.1.1](https://github.com/bagdeli/KavoshStart/compare/v7.1.0...v7.1.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **governance:** preserve read-only UI-2 Actions receipt access ([#171](https://github.com/bagdeli/KavoshStart/issues/171)) ([9a23fa0](https://github.com/bagdeli/KavoshStart/commit/9a23fa093b05e8894d491ae6d3f6893fae9dfcfe))
+
 ## [7.1.0](https://github.com/bagdeli/KavoshStart/compare/v7.0.0...v7.1.0) (2026-10-19)
 
 
