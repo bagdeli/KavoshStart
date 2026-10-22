@@ -19,8 +19,19 @@ ROW = re.compile(
     r"^\|\s*([A-Z]+-\d+)\s*\|(.*)\|\s*(MUST|SHOULD|MAY)\s*\|([^|]*)\|([^|]*)\|\s*$"
 )
 RULE_ID = re.compile(r"[A-Z]+-\d+")
-# First version planned for the new TP rules; the prior-rule baseline remains historically unchanged.
-NEW_RULE_INTRODUCED = {"TP-1": "v5.0.0", "TP-2": "v5.0.0"}
+# Explicit introduction metadata for versioned new rules; older baseline remains historically unchanged.
+# Planned next minor version is reviewed at release time; change before merge if compatibility requires a major.
+NEW_RULE_INTRODUCED = {
+    "TP-1": "v5.0.0", "TP-2": "v5.0.0",
+    "BASE-1": "v7.2.0",
+    "BASE-2": "v7.2.0",
+    "BASE-3": "v7.2.0",
+    "TRN-1": "v7.2.0",
+    "TRN-2": "v7.2.0",
+    "TRN-3": "v7.2.0",
+    "TRN-4": "v7.2.0",
+    "TRN-5": "v7.2.0",
+}
 MACHINE_LAYERS = {"A", "P", "M", "G", "H", "S", "O", "E"}
 COVERAGE_LAYERS = {"P", "M", "G", "H", "O", "E"}
 
