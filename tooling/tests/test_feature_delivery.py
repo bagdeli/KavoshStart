@@ -98,7 +98,9 @@ class FeatureDeliveryStructureTest(unittest.TestCase):
         start = (ROOT / "START.md").read_text(encoding="utf-8")
         for rid in ["BASE-1", "BASE-2", "BASE-3", "TRN-1", "TRN-2", "TRN-3", "TRN-4", "TRN-5"]:
             self.assertIn(f"| {rid} |", rules)
-            self.assertIn(rid, guide.split("\n", 4)[2])
+            self.assertIn(rid.split("-")[0] + "-1", guide)
+        self.assertIn("BASE-1…3", guide)
+        self.assertIn("TRN-1…5", guide)
         self.assertIn("B4 — Accepted Initial Base", guide)
         self.assertIn("B4 initial release", base)
         self.assertIn("Proposed release-unit treatment", feature)
