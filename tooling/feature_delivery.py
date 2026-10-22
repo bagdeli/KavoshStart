@@ -71,7 +71,7 @@ def plan_waves(document: object) -> list[list[str]]:
                 raise FeaturePlanError(f"feature appears in multiple units: {fid}")
             assigned_features.add(fid)
         mode = unit["mode"]
-        if mode not in MODES:
+        if not isinstance(mode, str) or mode not in MODES:
             raise FeaturePlanError(f"{uid}: mode must be independent or atomic")
         if mode == "independent" and len(features) != 1:
             raise FeaturePlanError(f"{uid}: multiple features require one atomic unit")
