@@ -60,6 +60,12 @@ class FeatureDeliveryStructureTest(unittest.TestCase):
         with self.assertRaisesRegex(FeaturePlanError, "atomic unit"):
             plan_waves(item)
 
+    def test_negative_malformed_mode_fails_with_controlled_error(self):
+        item = example()
+        item["units"][0]["mode"] = ["independent"]
+        with self.assertRaisesRegex(FeaturePlanError, "mode must be"):
+            plan_waves(item)
+
     def test_negative_duplicate_feature_owner_rejected(self):
         item = example()
         item["units"][1]["featureIds"] = ["F-100"]
