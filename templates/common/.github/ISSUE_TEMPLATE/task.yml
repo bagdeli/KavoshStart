@@ -1,5 +1,5 @@
 name: Task
-description: One PR-sized unit of work (≤ 1 day, within the PR size limit). The default unit for AI agents.
+description: One coherent, reviewable task under an accepted Feature or Base plan; never split only to meet an arbitrary PR-size limit.
 title: "task: "
 labels: ["type:task"]
 body:

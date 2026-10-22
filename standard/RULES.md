@@ -34,6 +34,22 @@
 | CAP-1 | هر پروژه‌ای که این نسخه یا جدیدتر را می‌پذیرد یک آرایهٔ غیرخالی و بدون تکرار `capabilities` از catalog رسمی دارد. Capability فناوری/فریم‌ورک نیست؛ یک سطح applicability/evidence مانند `package`، `browser-ui`، `persistent-data` یا `infrastructure` است. | MUST | All | P |
 | CAP-2 | capabilityهای قابل‌اثبات از facts مانیفست باید اعلام شده باشند: library→`package`، runtime server→`server`، UI web/admin→`browser-ui`، runtime desktop→`desktop`، database→`persistent-data`+`migration`، deploy release-artifact→`release-artifact`، financial/regulated integration→`regulated`، WordPress/WooCommerce→`cms-wordpress`. capabilityهای صریحی مانند `control-plane` یا `infrastructure` فقط وقتی واقعاً در scope پروژه‌اند اضافه می‌شوند؛ capability هیچ Tier/Runtime fact را override نمی‌کند. | MUST | All | P |
 
+## BASE — حداقل محصولِ قابل‌اجرا پیش از گسترش قابلیت‌ها
+| ID | قاعده | سطح | Tier | لایه |
+|---|---|---|---|---|
+| BASE-1 | پیش از شروع توسعهٔ قابلیت‌های غیرزیربنایی، پروژه Base Contract دارد: کوچک‌ترین مسیر واقعی و امن نصب/اجرا تا یک خروجی قابل مشاهده، owner، مرزها، قراردادها، شواهد و recovery؛ Base به معنی پیاده‌سازی تمام قابلیت‌های Product Backlog نیست. | MUST | T1, T2 | R |
+| BASE-2 | Base فقط با عبور جداگانه از طراحیِ مصوب، پیاده‌سازی/CI، آزمون واقعی متناسب با Runtime و ریسک، پذیرش مستقل بر منبع دقیق و Candidate/Release اولیهٔ معتبر تکمیل می‌شود؛ Pilot، Preview، CI سبز یا source تنها ادعای Production یا Base پذیرفته‌شده نیست. | MUST | T1, T2 | R |
+| BASE-3 | توسعهٔ اجراییِ ویژگی وابسته به Base ناقص، تا پذیرش Base در کانال موردنظر نگه داشته می‌شود؛ تحلیل، طراحی، اصلاح امنیتی، کار مستقل و آماده‌سازی بدون activation می‌تواند با مالک و Gate خود پیش رود. انتظار برای یک وابستگی، توقف جهانیِ کار یا حذف Scope نیست. | MUST | T1, T2 | R |
+
+## TRN — طرح توسعهٔ قابلیت و بستهٔ انتشار
+| ID | قاعده | سطح | Tier | لایه |
+|---|---|---|---|---|
+| TRN-1 | هر Feature پیش از اجرای مؤثر یک Issue canonical و Spec/Plan متناسب دارد: رفتار مشاهده‌پذیر، قرارداد و owner، تصمیم reuse/extend/build، اولویت، وابستگی‌ها، ریسک، تست/شواهد، مسیر rollback/Help و Definition of Done. Planned/Designed/Implemented/Tested/Accepted/Released/Deployed یکی نیستند. | MUST | T1, T2 | R |
+| TRN-2 | پیش از تعیین Release Unit، وابستگی Featureها بررسی می‌شود: پیش‌نیازِ مستقل ابتدا جدا پذیرفته و سپس مصرف می‌شود؛ اجزای واقعاً جدانشدنی با پذیرش اتمیک در یک Unit منتشر می‌شوند؛ قابلیت‌های مستقل بدون وابستگیِ مصنوعی جدا هستند. چرخهٔ وابستگی باید با تصمیم معماری حل شود، نه با تقدم یا پذیرش جعلی. | MUST | T1, T2 | R |
+| TRN-3 | Release Unit مرز رفتارِ قابل استفاده و پذیرش‌شده است، نه Milestone یا تعداد PR. هر Unit پیش از Freeze مالک/Issue، Scope، وابستگی پذیرفته‌شده، سازگاری، وزن نسبی، Gate/شواهد و Rollback روشن دارد. Issueهای Milestone لزوماً هم‌زمان Release نمی‌شوند؛ تغییرها با PRهای منسجم قابل تفکیک‌اند. | MUST | T1, T2 | R |
+| TRN-4 | هر تغییر کد نسخهٔ منتشرشدهٔ جداگانه ایجاد نمی‌کند. اصلاح Candidate با Scope منجمد فقط هنگام انتشار Candidate تازه `rc.N+1` می‌گیرد؛ بعد از اولین Stable، PATCH برای اصلاح سازگار، MINOR برای قابلیت سازگار و MAJOR برای قرارداد ناسازگار است. قبل از 1.0.0 قرارداد سازگاری و برنامهٔ مهاجرت طبق SemVer/ADR صریح است؛ tag و Release immutable و تابع REL/ACC می‌مانند. | MUST | T1, T2 | R |
+| TRN-5 | قابلیت مصوب حذف یا «Done» نمی‌شود چون هنوز Milestone/Decision/Device/Evidence ندارد؛ owner و تصمیم نگهداشت، تقدم، همراه‌انتشار، تعویق محدود یا حذفِ صریح با مرجع محصول در Issue/ADR واقعی ثبت می‌شود. فقدانِ تاریخ یا محیط آزمون، نمرهٔ پیشرفت و پذیرش ساختگی نمی‌سازد. | MUST | T1, T2 | R |
+
 ## CR — ریسک تغییر و شواهد
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
@@ -173,5 +189,5 @@
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)
 این‌ها ماشینی بررسی نمی‌شوند؛ مالک هنگام بازبینی PR مسئول آن‌هاست و نقضشان «کشف خودکار» ندارد:
 WK-3 · WK-5 · CR-3 (تصمیم انسانی high/critical) · FLOW-1 · FLOW-2 · PR-6 (بخش high/critical؛ لایه‌ی A فقط عامل را محدود می‌کند) · PR-7 (تصمیم ادغام؛ لایه‌ی M پس از وقوع کشف می‌کند) ·
-REL-2 · CI-2 (بازبینی استثنای public self-hosted) · TP-1 · TP-2 · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · FLOW-3 · UI-2 · UI-3.
+BASE-1..3 · TRN-1..5 · REL-2 · CI-2 (بازبینی استثنای public self-hosted) · TP-1 · TP-2 · CI-4 · CI-5 · CI-6 (بخش CI) · CI-8 · AI-6 · DOC-2 · DEP-1 · FLOW-3 · UI-2 · UI-3.
 هر وقت برای یکی از این‌ها check ارزان پیدا شد، لایه‌ی ماشینی اضافه و از این فهرست حذف می‌شود (ADR-0002).

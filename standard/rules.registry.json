@@ -311,6 +311,222 @@
       }
     },
     {
+      "id": "BASE-1",
+      "statement": "پیش از شروع توسعهٔ قابلیت‌های غیرزیربنایی، پروژه Base Contract دارد: کوچک‌ترین مسیر واقعی و امن نصب/اجرا تا یک خروجی قابل مشاهده، owner، مرزها، قراردادها، شواهد و recovery؛ Base به معنی پیاده‌سازی تمام قابلیت‌های Product Backlog نیست.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "BASE-2",
+      "statement": "Base فقط با عبور جداگانه از طراحیِ مصوب، پیاده‌سازی/CI، آزمون واقعی متناسب با Runtime و ریسک، پذیرش مستقل بر منبع دقیق و Candidate/Release اولیهٔ معتبر تکمیل می‌شود؛ Pilot، Preview، CI سبز یا source تنها ادعای Production یا Base پذیرفته‌شده نیست.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "BASE-3",
+      "statement": "توسعهٔ اجراییِ ویژگی وابسته به Base ناقص، تا پذیرش Base در کانال موردنظر نگه داشته می‌شود؛ تحلیل، طراحی، اصلاح امنیتی، کار مستقل و آماده‌سازی بدون activation می‌تواند با مالک و Gate خود پیش رود. انتظار برای یک وابستگی، توقف جهانیِ کار یا حذف Scope نیست.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TRN-1",
+      "statement": "هر Feature پیش از اجرای مؤثر یک Issue canonical و Spec/Plan متناسب دارد: رفتار مشاهده‌پذیر، قرارداد و owner، تصمیم reuse/extend/build، اولویت، وابستگی‌ها، ریسک، تست/شواهد، مسیر rollback/Help و Definition of Done. Planned/Designed/Implemented/Tested/Accepted/Released/Deployed یکی نیستند.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TRN-2",
+      "statement": "پیش از تعیین Release Unit، وابستگی Featureها بررسی می‌شود: پیش‌نیازِ مستقل ابتدا جدا پذیرفته و سپس مصرف می‌شود؛ اجزای واقعاً جدانشدنی با پذیرش اتمیک در یک Unit منتشر می‌شوند؛ قابلیت‌های مستقل بدون وابستگیِ مصنوعی جدا هستند. چرخهٔ وابستگی باید با تصمیم معماری حل شود، نه با تقدم یا پذیرش جعلی.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TRN-3",
+      "statement": "Release Unit مرز رفتارِ قابل استفاده و پذیرش‌شده است، نه Milestone یا تعداد PR. هر Unit پیش از Freeze مالک/Issue، Scope، وابستگی پذیرفته‌شده، سازگاری، وزن نسبی، Gate/شواهد و Rollback روشن دارد. Issueهای Milestone لزوماً هم‌زمان Release نمی‌شوند؛ تغییرها با PRهای منسجم قابل تفکیک‌اند.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TRN-4",
+      "statement": "هر تغییر کد نسخهٔ منتشرشدهٔ جداگانه ایجاد نمی‌کند. اصلاح Candidate با Scope منجمد فقط هنگام انتشار Candidate تازه `rc.N+1` می‌گیرد؛ بعد از اولین Stable، PATCH برای اصلاح سازگار، MINOR برای قابلیت سازگار و MAJOR برای قرارداد ناسازگار است. قبل از 1.0.0 قرارداد سازگاری و برنامهٔ مهاجرت طبق SemVer/ADR صریح است؛ tag و Release immutable و تابع REL/ACC می‌مانند.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
+      "id": "TRN-5",
+      "statement": "قابلیت مصوب حذف یا «Done» نمی‌شود چون هنوز Milestone/Decision/Device/Evidence ندارد؛ owner و تصمیم نگهداشت، تقدم، همراه‌انتشار، تعویق محدود یا حذفِ صریح با مرجع محصول در Issue/ADR واقعی ثبت می‌شود. فقدانِ تاریخ یا محیط آزمون، نمرهٔ پیشرفت و پذیرش ساختگی نمی‌سازد.",
+      "level": "MUST",
+      "tier": "T1, T2",
+      "enforcement": {
+        "raw": "R",
+        "layers": [
+          "R"
+        ],
+        "delegatedVia": [],
+        "machineEnforced": false,
+        "humanReview": true
+      },
+      "lifecycle": {
+        "owner": "KavoshStart",
+        "status": "active",
+        "source": "standard/RULES.md",
+        "introducedAtOrBefore": "v7.2.0",
+        "deprecatedIn": null,
+        "replacement": null
+      },
+      "coverage": {
+        "positiveNegativeRequired": false,
+        "contract": null
+      }
+    },
+    {
       "id": "CR-1",
       "statement": "هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند.",
       "level": "MUST",
