@@ -1,0 +1,48 @@
+name: Feature
+description: One coherent capability outcome and its dependency-aware delivery plan (not an automatic PR or release)
+title: "feat: "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Observable outcome and source requirements
+      description: Describe one usable behavior, its contract owner and canonical requirement IDs.
+    validations:
+      required: true
+  - type: textarea
+    id: dependency
+    attributes:
+      label: Base and feature dependencies
+      description: Link the accepted Base Gate and any predecessor Feature/Release Unit. Explain each hard, optional or atomic dependency; unknown decisions remain blockers only for affected work.
+    validations:
+      required: true
+  - type: dropdown
+    id: release_unit
+    attributes:
+      label: Proposed release-unit treatment
+      options:
+        - Independent — candidate when separately accepted
+        - Prerequisite-first — after an already usable dependency
+        - Atomic with other features — one acceptance and promotion
+        - Decision pending — not implementation Ready
+    validations:
+      required: true
+  - type: textarea
+    id: spec_plan
+    attributes:
+      label: Development plan and reuse decision
+      description: For substantive work, link specs/<issue>-<slug>/spec.md and plan.md. Record reuse/extend/build, bounded slices, one writer, risk/evidence, rollback and support.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance and release boundary
+      description: Real positive/negative cases, expected environment/artifact identity, independent reviewer and explicit inclusions/exclusions. A merged PR or passing CI alone is not acceptance.
+      value: |
+        - [ ] Reproducible user/admin/operator journey
+        - [ ] Required risk-proportional negative and recovery evidence
+        - [ ] Independent scope and release-unit acceptance
+    validations:
+      required: true
