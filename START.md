@@ -122,13 +122,15 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
    `kavosh-deploy-<slug> --verify-environment` to emit `ENVIRONMENT_CONFORMANCE=PASS` before representing that host
    as canonical Test/Production. Temporary runner/Compose previews stay non-canonical and isolated.
 
-### Step 5 — Backlog
-1. Create milestone `v0.1.0` (first usable release).
+### Step 5 — Backlog and Base-first release planning
+1. Use `standard/16-base-first-feature-delivery.md` (BASE-1…3, TRN-1…5): agree a minimal usable **Base** first, with one end-to-end/consumer path, runtime-specific security boundaries, operations/recovery and B0–B4 acceptance. For T2, fill the stable `docs/architecture/base-contract.md` from the scaffold. B0/B1 are design scope; B2 is implemented code; B3 is tested/independently verified candidate; B4 is an approved, immutable initial release on the stated channel. None implies Production.
+2. Create a first usable Base milestone and choose its **real SemVer candidate** from the project's approved baseline and release strategy (a fresh project may start at `v0.1.0`; an existing project retains its already-published lineage).
 2. Create issues with the repository's issue forms: epics (T2), features (T1/T2), tasks. Every issue gets a
    `type:*` label (`WK-1`), acceptance criteria, and — for tasks — "Where to look".
 3. If `acceptance.mode=continuous`, populate `acceptance/scope.json` for the first release from the approved scope: stable AC-* IDs, canonical GitHub issue, owner, risk and required evidence. The file declares scope only; never write live accepted/done status into it.
 4. Use coherent, independently reviewable capability deliveries (`WK-6`, `PR-3`), not one PR per source requirement or intake answer. Plan criteria, assertions and risk-sized evidence with the implementation; reconcile them at capability closure. Shared evidence may cover multiple criteria only with actual traceability. Explicit not-needed decisions create no feature/test/receipt work.
-5. Post the backlog summary to the owner (issue links only; do not write live backlog/status into a file — `SRC-1`).
+5. Give every Feature a canonical issue, Spec/plan where required, accepted prerequisite or atomic release-unit grouping, and a runnable acceptance path. Independent features must not be bundled solely to share a milestone; a dependent Feature cannot claim completion before its required Base/prerequisites. Use the optional offline graph preflight only for structural validation; it cannot supply evidence or decisions.
+6. Post the backlog summary to the owner (issue links only; do not write live backlog/status into a file — `SRC-1`).
 
 ### Step 6 — Hand over
 Report: repository URL, tier/runtime/capabilities, budget, the first 3 tasks you recommend, anything the owner must do
@@ -140,6 +142,9 @@ manually (e.g. the Actions access setting). Stop.
 1. Run `bash scripts/audit-repo.sh bagdeli/<repo>` (read-only). Summarise findings against `standard/RULES.md`.
 2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed architecture decisions. Do not restart the project or re-approve unchanged choices. Examples from another product do not authorize work on that product.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
+   For Base-first adoption, identify the **earliest B0–B4 checkpoint lacking current proof** from the existing
+   project Issue/PR/Release/environment. Preserve accepted architecture and current feature scope; do not re-create
+   a Base already independently accepted for the declared channel.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
    `*.kavosh-new` next to them for you to merge in a PR.
 5. Governance remains `enforce: true`. If the audit finds legacy failures, fix or document their scope; `enforce: false` is not a green-check shortcut.
@@ -154,6 +159,9 @@ For direct migration from any older stable major, first use [the versioned compa
 3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
 4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and migrate release-scoped assertions, source-bound receipts and real admitted producers using `templates/tier/T2/acceptance/README.md`. Identify missing prerequisites before claiming the upgrade complete. Existing requirement ledgers remain supporting traceability; do not turn every row into a new acceptance Issue or mark historical code accepted without evidence.
 5. Run the repository audit/governance and `make check`; resolve new violations or explicitly disposition genuine external blockers. Do not bundle unrelated product features into the upgrade PR.
+   If this pinned release introduces BASE/TRN guidance, record the approved migration in an existing project Issue:
+   resolve the next missing B checkpoint and keep consumer feature/release decisions private. Do not claim the
+   public standard has verified any consumer Base.
 6. Design-system package upgrades use a separate PR and exact version. Capture actual rendered/RTL/mobile evidence only for relevant render or interaction changes; do not publish private consumer details in this public standard.
 
 ## §4 WORK on an issue (every day)
@@ -162,6 +170,9 @@ For a new or changed material test/requirement, state **why it exists**, which r
 
 0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.
 1. `gh issue view <n>`; read its parent, the project's `AGENTS.md` and the relevant settled architecture decisions from §0. Reopen only decisions affected by this scope. Read additional material only when the issue or those decisions require it.
+   For ordinary Feature work, verify Base B4 was actually accepted for the intended channel, then identify the
+   Feature's explicit prerequisite, atomic or independent release-unit decision and Spec/Plan. Continue independent
+   fixes or bounded research when another unit is blocked, without bypassing its Gate or removing its approved scope.
 2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).
 3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template. Draft stacks may be deep;
    health warns until the Ready stack is normalized.
