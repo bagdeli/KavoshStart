@@ -465,81 +465,66 @@ def runs_on_values(text):
     return [v.split("#", 1)[0].strip() for v in RUNS_ON_RE.findall(text)]
 
 
-JOB_LINE_RE = re.compile(r"""^  (?:(["'])([A-Za-z0-9_-]+)\1|([A-Za-z0-9_-]+)):[ \t]*(?:#.*)?$""")
+JOB_LINE_RE = re.compile(r"""^  (?:(["'])([A-Za-z0-9_-]+)\1|([A-Za-z0-9_-]+)):[ \t]*(?:&([A-Za-z0-9_.-]+)|\*([A-Za-z0-9_.-]+))?[ \t]*(?:#.*)?$""")
 
 
 def jobs_without_timeout(text):
-    """Return local job ids that declare runs-on but omit timeout-minutes.
-
-    Reusable-workflow caller jobs use job-level uses and no runs-on. Ignore
-    workflow_call input names and nested with.runs-on values outside job scope.
-    """
-    lines = text.splitlines()
-    try:
-        start = next(i for i, line in enumerate(lines)
-                     if re.fullmatch(r"jobs:[ \\t]*(?:#.*)?", line))
-    except StopIteration:
-        return []
-
-    missing = []
-    current = None
-    block = []
-
-    def finish():
-        if current is None:
-            return
-        body = "\n".join(block)
-        local = bool(re.search(r"^    runs-on:[ \\t]*", body, re.M))
-        bounded = bool(re.search(r"^    timeout-minutes:[ \\t]*", body, re.M))
-        if local and not bounded:
-            missing.append(current)
-
-    for line in lines[start + 1:]:
-        if line and not line[0].isspace() and not line.lstrip().startswith("#"):
-            break
-        match = JOB_LINE_RE.match(line)
-        if match:
-            finish()
-            current = match.group(2) or match.group(3)
-            block = []
-        elif current is not None:
-            block.append(line)
-    finish()
-    return missing
+    """Executable jobs require local timeouts; aliases inherit the same job body."""
+    blocks = workflow_job_blocks(text)
+    if blocks is None:
+        return []  # CI-1 rejects unreadable jobs; no acceptance claim is made
+    return [job_id for job_id, body in blocks.items()
+            if re.search(r"(?m)^    runs-on:[ \t]*", body)
+            and not re.search(r"(?m)^    timeout-minutes:[ \t]*", body)]
 
 
 def workflow_job_blocks(text):
-    """Parse actual jobs, rejecting ambiguous mappings without external YAML tooling.
+    """Resolve bounded, previously declared whole-job YAML aliases without a YAML dependency.
 
-    None means unsafe/unsupported syntax: never quietly omit a runnable job.
+    None means the job mapping is ambiguous; never silently omit an unverified job.
     """
     lines = text.splitlines()
     headers = [i for i, line in enumerate(lines)
                if re.fullmatch(r"jobs:[ \t]*(?:#.*)?", line)]
     if len(headers) != 1:
         return None
-    blocks, seen, current, body = {}, set(), None, []
+    blocks, seen, anchors, current, pending_anchor, body = {}, set(), {}, None, None, []
+    alias_no_body = False
+
+    def finish():
+        if current is not None:
+            resolved = "\n".join(body)
+            blocks[current] = resolved
+            if pending_anchor:
+                anchors[pending_anchor] = resolved
+
     for line in lines[headers[0] + 1:]:
         if line and not line[0].isspace() and not line.lstrip().startswith("#"):
             break
         match = JOB_LINE_RE.match(line)
         if match:
             job_id = match.group(2) or match.group(3)
-            # GitHub job identifiers are unique irrespective of casing.
             if job_id.casefold() in seen:
                 return None
             seen.add(job_id.casefold())
-            if current is not None:
-                blocks[current] = "\n".join(body)
-            current, body = job_id, []
+            finish()
+            anchor, alias = match.group(4), match.group(5)
+            if anchor and anchor in anchors:
+                return None
+            if alias:
+                if alias not in anchors:
+                    return None
+                blocks[job_id] = anchors[alias]
+                current, pending_anchor, body, alias_no_body = None, None, [], True
+            else:
+                current, pending_anchor, body, alias_no_body = job_id, anchor, [], False
         elif re.match(r"^  [^ \t#].*:[ \t]*(?:#.*)?$", line):
-            # A valid runnable job we cannot associate with an approved
-            # per-job selector is a failure, not a skipped validation.
             return None
+        elif alias_no_body and line.strip() and not line.lstrip().startswith("#"):
+            return None  # a complete alias may not have a second mapping body
         elif current is not None:
             body.append(line)
-    if current is not None:
-        blocks[current] = "\n".join(body)
+    finish()
     return blocks
 
 

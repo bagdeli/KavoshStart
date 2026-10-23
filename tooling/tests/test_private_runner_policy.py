@@ -293,6 +293,61 @@ class PrivateActionsPolicy(unittest.TestCase):
                 self.assertTrue(any(level == "fail" and rule == "CI-1"
                                     for level, rule, _, _ in result), result)
 
+    def test_CI1_positive_whole_job_anchor_and_alias_share_verified_runner(self):
+        """Covers: CI-1 (positive); GitHub native whole-job reuse is valid."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example-ci"]
+        wf = {".github/workflows/ci.yml":
+              "jobs:\n"
+              "  build: &base_job\n"
+              "    runs-on: [self-hosted, linux, x64, example-ci]\n"
+              "    timeout-minutes: 10\n"
+              "  test: *base_job\n"}
+        self.assertFalse(any(level == "fail" and rule == "CI-1"
+                             for level, rule, _, _ in g.runner_workflow_problems(wf, m)))
+        self.assertEqual(g.jobs_without_timeout(wf[".github/workflows/ci.yml"]), [])
+        unbounded = wf[".github/workflows/ci.yml"].replace("    timeout-minutes: 10\n", "")
+        self.assertEqual(g.jobs_without_timeout(unbounded), ["build", "test"])
+
+    def test_CI1_negative_whole_job_alias_cannot_cross_trust_scopes(self):
+        """Covers: CI-1 (negative); aliasing privileged job must not widen CI scope."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example-ci"]
+        m["ci"]["runnerJobLabels"] = {
+            ".github/workflows/release.yml#release":
+                ["self-hosted", "linux", "x64", "example-release"]
+        }
+        wf = {".github/workflows/release.yml":
+              "jobs:\n"
+              "  release: &privileged\n"
+              "    runs-on: [self-hosted, linux, x64, example-release]\n"
+              "  ordinary: *privileged\n"}
+        findings = g.runner_workflow_problems(wf, m)
+        self.assertTrue(any(level == "fail" and rule == "CI-1"
+                            for level, rule, _, _ in findings), findings)
+
+    def test_CI1_negative_unsupported_job_alias_is_never_approved(self):
+        """Covers: CI-1 (negative); missing/duplicate/cross-context aliases fail closed."""
+        m = manifest(runner="self-hosted")
+        m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example-ci"]
+        cases = (
+            "jobs:\n  test: *missing\n",
+            "jobs:\n  one: &repeat\n    runs-on: [self-hosted, linux, x64, example-ci]\n"
+            "  two: &repeat\n    runs-on: [self-hosted, linux, x64, example-ci]\n",
+            "jobs:\n  one: &base\n    runs-on: [self-hosted, linux, x64, example-ci]\n"
+            "  two: *base\n    runs-on: [self-hosted, linux, x64, example-ci]\n",
+            "jobs:\n  one: &base\n    runs-on: [self-hosted, linux, x64, example-ci]\n"
+            "  two: &other\n    runs-on: *base\n",
+        )
+        for body in cases:
+            with self.subTest(length=len(body)):
+                findings = g.runner_workflow_problems({".github/workflows/ci.yml": body}, m)
+                self.assertTrue(any(level == "fail" and rule == "CI-1"
+                                    for level, rule, _, _ in findings), findings)
+
     def test_CI2_negative_bad_job_selectors_and_private_hosted_override(self):
         """Covers: CI-2 (negative); distinct routes must still be literal and scoped."""
         valid = ["self-hosted", "linux", "x64", "example-release"]
