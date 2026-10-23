@@ -100,6 +100,20 @@ Evidence باید از ماهیت تغییر بیاید، نه از یک checkli
 
 **Timing:** PR → fast impacted A and applicable B; integrated candidate → cross-component/e2e on representative routes and security baseline; initial release → required gates for that version; post-functional-release → scheduled deep/manual penetration or operational pilot when applicable. High-risk public-facing auth/payment/sensitive-data attack surfaces need focused verification before public exposure. Full manual penetration testing must not be a universal development or initial-release gate.
 
+### مثال عملی اختیاری: یک تغییر، سه ادعای متفاوت
+
+فرض کنید یک سرویس کاملاً **فرضی** از commit `S` یک artifact تغییرناپذیر با شناسهٔ `A` می‌سازد. این سه پرسش مستقل‌اند؛ جدول زیر صرفاً راهنمای استفاده از قواعد موجود است، **نه checklist یا gate عمومی تازه**:
+
+| ادعا | شاهد مرتبط و مرز مسئولیت |
+|---|---|
+| **Source CI** | `required` و آزمون‌های واقعاً مرتبط روی سورس `S` موفق‌اند؛ این فقط build/behavior همان سورس را اثبات می‌کند. |
+| **آمادگی محیط** (فقط runtime پایدار) | محیط مجاز، هویت artifact `A` و health/مسیر canonical را واقعاً در همان محیط بررسی کرده است (DEP-7/8)؛ سبزبودن CI یا preview موقت کافی نیست. |
+| **پذیرش انتشار** | شواهد متناسب با scope همان نسخه، تصمیم معتبر صاحب اختیار و gate واقعی انتشار بررسی شده‌اند (ACC/REL). پذیرش به‌صورت خودکار از دو ردیف قبل نتیجه نمی‌شود. |
+
+**حالت خطا:** CI سورس `S` سبز است، ولی محیط Test هنوز artifact `A` را اجرا نمی‌کند یا health آن fail است. Source CI همچنان **PASS** است؛ وضعیت محیط **NOT_READY** می‌ماند. اگر acceptance این نسخه به همین محیط وابسته باشد، آن تصمیم هنوز **PENDING** است؛ صدور tag/artifact، پذیرش Test و ورود Production الزاماً یک رویداد نیستند. نخست مشکلِ همان مرز را رفع و همان شاهد را تازه‌سازی کنید، نه اینکه همهٔ Unit testها را دوباره اجرا کنید یا رسید موازی بسازید. تغییر مؤثر سورس/artifact به بازسنجی شواهد متاثر نیاز دارد.
+
+**مورد بدون runtime:** برای کتابخانهٔ نسخه‌دار با `runtime:none`، پذیرش محیط پایداری از نوع DEP-7 **NOT_APPLICABLE** است، نه PASS ساختگی و نه الزام به ساخت سرور. هویت آرشیو، نصب مصرف‌کننده و تصمیم انتشار، اگر برای همان package/release لازم باشند، جدا بررسی می‌شوند. تصمیم `keep / narrow / merge / retire` دربارهٔ شواهد تکراری در همان Issue/Spec/PR صاحب رفتار ثبت می‌شود.
+
 **No gate inflation:** a defect gets a focused regression on the affected behavior. Before adding a global MUST, the owner must approve its cross-project applicability, measurable safety value, lifecycle timing and operational cost. An agent cannot create a mandatory project-wide security test simply because it suggested one. Capability completion, test output and acceptance remain distinct; the same genuine observation may support multiple criteria without one receipt per row.
 
 The legacy **v3 attested ACC-3 contract remains the default**; an explicit future-release `acceptance.assurance=risk-based` permits native source-bound required-CI proof **only** for low/medium CI-only items. High/critical, deferrals and specialist evidence retain independent source-bound receipts and decisions. Neither mode turns a missing test into PASS. This is a breaking control-plane release choice, never a silent upgrade.
