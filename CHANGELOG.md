@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.1.3](https://github.com/bagdeli/KavoshStart/compare/v7.1.2...v7.1.3) (2026-10-23)
+
+
+### Documentation
+
+* **standard:** clarify CI, environment and release evidence ([#181](https://github.com/bagdeli/KavoshStart/issues/181)) ([5fbd07f](https://github.com/bagdeli/KavoshStart/commit/5fbd07f4933e793ff8e13d2cc60f35048c633d28))
+
 ## [7.1.2](https://github.com/bagdeli/KavoshStart/compare/v7.1.1...v7.1.2) (2026-10-23)
 
 
