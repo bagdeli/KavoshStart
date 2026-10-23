@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.1.2](https://github.com/bagdeli/KavoshStart/compare/v7.1.1...v7.1.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **integrity:** reconcile scoped CI, runner aliases and authoring contracts ([#178](https://github.com/bagdeli/KavoshStart/issues/178)) ([dd3ef1a](https://github.com/bagdeli/KavoshStart/commit/dd3ef1a8b2cfb17261b32f2dd511571fb2d94c7e))
+
 ## [7.1.1](https://github.com/bagdeli/KavoshStart/compare/v7.1.0...v7.1.1) (2026-10-22)
 
 
