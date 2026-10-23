@@ -1,6 +1,6 @@
 # 0020 — Source-owned requirements, proportionate verification, reversible test obligations
 
-- Status: proposed for owner-reviewed high-risk policy PR
+- Status: accepted (incorporated in the released KavoshStart standard)
 - Tracking: issue #159
 - Rules: existing CR-3, CR-4; intake G6/G9, TP-1/TP-2, ACC acceptance
 - Scope: future new/changed product requirements/tests and review of inherited historical obligations
@@ -25,4 +25,4 @@ This is an existing CR-3/CR-4 human-review/source-ownership clarification. The e
 
 ## Migration
 
-Use the versioned direct-upgrade guide published with the future accepted policy; until then do not pin a planned release or silently upgrade private consumers.
+Use the published [direct-upgrade compatibility guide](../migrations/direct-upgrade-compatibility.md). Consumers adopt an existing exact release tag only through their own explicitly authorized migration; do not silently upgrade another repository.

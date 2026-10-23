@@ -4,7 +4,7 @@ name: kavosh
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, edited, labeled]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   push:
     branches: [main]
   schedule:
@@ -34,15 +34,19 @@ concurrency:
   group: kavosh-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Top-level grants are read-only. Jobs receive only their required write scope.
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
   checks: read
   actions: read
 
 jobs:
   kavosh:
+    permissions:
+      contents: read
+      pull-requests: write  # Sticky PR governance report only.
+      checks: read
+      actions: read
     if: >-
       (github.event_name == 'pull_request' && !{{PRIVATE_HOSTED}} &&
        (!{{SELF_HOSTED}} || github.event.pull_request.head.repo.full_name == github.repository)) ||
@@ -55,6 +59,12 @@ jobs:
       authorization-head: ${{ inputs.expected-head || github.event.pull_request.head.sha }}
       comment: true
   main-guard:
+    permissions:
+      contents: read
+      issues: write  # Reports actual main violations only.
+      pull-requests: read
+      checks: read
+      actions: read
     if: >-
       (github.event_name == 'push' && !{{PRIVATE_HOSTED}}) ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'main-guard')
@@ -63,6 +73,12 @@ jobs:
       runs-on: '{{RUNS_ON_JSON}}'
       authorization-sha: ${{ inputs.expected-sha }}
   health:
+    permissions:
+      contents: read
+      issues: write  # Updates the existing health Issue.
+      pull-requests: read
+      checks: read
+      actions: read
     if: >-
       (github.event_name == 'schedule' && !{{PRIVATE_HOSTED}}) ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'health')

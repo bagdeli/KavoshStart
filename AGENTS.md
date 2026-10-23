@@ -36,8 +36,8 @@ python3 tooling/test_templates.py   # scaffold every tier×runtime and run gover
 - A rule change touches, in the same PR: `standard/RULES.md`, the explaining doc, the template, and the check that enforces it.
 - Every MUST names its enforcement layer (A/P/M/G/H/S/O/R). R-only MUSTs are listed as human-enforced in RULES.md.
 - Never edit `.github/workflows/kavosh-*.yml` by hand — edit `tooling/` and rebuild. Self-check fails on drift.
-- Reusable workflow inputs and job names are the public API (`@v1`). Breaking them = major version.
-- Workflow logic uses python3 stdlib + gh only; third-party actions are pinned by SHA.
+- Reusable workflow inputs and job names are a versioned public API. Consumers pin exact published versions (`@vX.Y.Z`); breaking changes require a reviewed major release and migration.
+- Reusable workflow logic uses Python 3 stdlib and authenticated GitHub REST APIs; third-party actions are pinned by exact SHA.
 - Every job of a reusable workflow uses `runs-on: ${{ fromJSON(inputs.runs-on) }}` (CI-1: callers choose by visibility).
 - Templates must pass `tooling/test_templates.py`. Placeholders: `{{NAME}}` style, defined in `scripts/scaffold.py`.
 - Persian for explanations (`standard/`, `README.md`), English for anything agents execute (`START.md`, templates, ADRs).

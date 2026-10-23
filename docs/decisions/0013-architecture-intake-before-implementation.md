@@ -1,6 +1,6 @@
 # ADR-0013 — Architecture choices before dependent implementation
 
-- Status: Proposed
+- Status: accepted (incorporated in the released KavoshStart standard)
 - Scope: agent intake and project/spec templates; no release/receipt-policy change
 
 ## Context
@@ -23,7 +23,7 @@ Existing unittest discovery checks questionnaire/template/protocol consistency a
 
 ## Compatibility
 
-No workflow API, rule ID, manifest schema, receipt format or existing source approval changes. Existing consumers reuse decisions and fill only gaps when this protocol is explicitly adopted; it does not retroactively invalidate their releases. Canonical RULES.md still wins on conflict. This PR does not authorize merge, publication or rollout.
+No workflow API, rule ID, manifest schema, receipt format or existing source approval changes. Existing consumers reuse decisions and fill only gaps when this protocol is explicitly adopted; it does not retroactively invalidate their releases. Canonical RULES.md still wins on conflict. This accepted generic protocol does not authorize consumer changes, automatic upgrades, deployment or publication of a consumer release.
 
 ## Network incidents and proportional QA (owner-approved follow-up)
 

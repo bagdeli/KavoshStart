@@ -24,8 +24,8 @@ on:
         type: boolean
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'ci:full' && '-label-noop' || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full') }}
 
 permissions:
   contents: read
@@ -33,11 +33,13 @@ permissions:
 
 jobs:
   required:
-    name: required
+    # An ignored label must not overwrite the real required check with skipped.
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'ci:full' && 'ci-label-noop' || 'required' }}
     if: >-
       (github.event_name == 'push' && !{{PRIVATE_HOSTED}}) ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && !{{PRIVATE_HOSTED}} &&
+       (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
        (!github.event.pull_request.draft || (github.event.action == 'labeled' && github.event.label.name == 'ci:full')) &&
        (!{{SELF_HOSTED}} || github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: {{RUNS_ON_YAML}}   # CI-1 (from kavosh.project.json)
@@ -76,7 +78,7 @@ jobs:
                   and pr.get("head", {}).get("sha") == os.environ["GITHUB_SHA"])
           if not good:
               sys.exit("private hosted authorization invalid: PR is closed or head SHA changed")
-          print(f"one-run authorization: @{os.environ['GITHUB_ACTOR']} for PR #{pr['number']} @ {pr['head']['sha']}")
+          print(f"scope validated for PR #{pr['number']} @ {pr['head']['sha']}; NOT proof of prior human consent")
           PY
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
