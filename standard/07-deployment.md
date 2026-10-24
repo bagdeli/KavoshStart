@@ -56,6 +56,8 @@ main → gated release → vX.Y.Z[-rc.N]    project-scoped systemd timer
 - branch، working tree، label موقت و `v0.0.0` جایگزین release نیستند.
 - نبود RC رسمی به معنی اجازهٔ deploy مستقیم `main` نیست.
 
+در پروژه‌ای که manifest تگ RC کلید `release.testStaging` دارد، adapter استاندارد سرور آن RC را روی `CHANNEL=production` پیش از تغییر pin یا runtime رد می‌کند (REL-7). `--verify-environment` نیز چنین نصب Production را نمی‌پذیرد. dry-run فقط policy موجود در mirror محلی را بررسی می‌کند و در نبود آن نتیجه را بررسی‌نشده گزارش می‌دهد. نبودن این کلید، رفتار RC قبلی را حفظ می‌کند؛ تغییر adapter و فعال‌سازی این قرارداد باید در rollout همان پروژه بازبینی شوند.
+
 ## identity و health دو قرارداد جدا هستند (DEP-3/4/8)
 
 `VERSION_URL` فقط هویت runtime را ثابت می‌کند و باید exact version + SHA مورد انتظار را برگرداند.

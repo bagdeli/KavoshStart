@@ -16,6 +16,12 @@ Promotion Complete    = release/deploy/environment gates
 
 هیچ مرحله‌ای مرحلهٔ بعد را خودکار فرض نمی‌کند.
 
+## استیج Test برای RC
+
+`release.testStaging` یک opt-in نسخه‌دار برای rehearsal روی Test است؛ هویت dispatch مالک، scope، CI موفق روی SHA دقیق و receiptهای test/security/migration را با REL-7 می‌سنجد. در صورت نیاز، producer با `mode=actions-external` برای CI همچنان باید App مستقل، workflow/run/attempt/job، منبع و chronology واقعی را تأیید و `externalEvidenceDigest` تغییرناپذیر صادر کند؛ verifier هیچ Actions artifact API یا URL دلخواهی را نمی‌خواند. خود App باید شواهد اصلیِ تحت مالکیت پروژه را بررسی و readback را تأیید کند. این مدرک فقط برای staging است: UI و approval مستقل نهایی همچنان pending می‌مانند و ACC-3 برای انتشار نهایی تغییر نمی‌کند.
+
+این مسیر اولیه فقط برای `acceptance.mode=continuous`، `release.strategy=release-please` و runtime سروری با Test و `deploy.method=pull-build` یا `pull-image` پشتیبانی می‌شود؛ profileهای دیگر `NOT_SUPPORTED` هستند و adapter سفارشی را پوشش‌داده فرض نکنید.
+
 ## فعال‌سازی
 
 برای هر T2 که این نسخه یا جدیدتر KavoshStart را می‌پذیرد:

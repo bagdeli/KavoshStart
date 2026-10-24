@@ -1,4 +1,5 @@
 """Offline tests for deployment/environment rules in templates/runtime/server/deploy/kavosh-deploy.sh."""
+import json
 import os
 import shutil
 import stat
@@ -28,23 +29,34 @@ def make_executable(path, text):
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
 
 
-def admitted_environment(root, wrong_sha=False, health_fails=False):
+def admitted_environment(root, wrong_sha=False, health_fails=False, tag="v1.2.3", manifest=None,
+                        current_link=True):
     """Create a filesystem-only standard Test host plus fake curl/systemctl for --verify-environment."""
-    tag = "v1.2.3"
     base = root / "base"
+    base.mkdir(parents=True)
     repo = base / "repo.git"
-    repo.mkdir(parents=True)
-    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    source = root / "source"
+    source.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=source, check=True)
+    if manifest is not None:
+        if isinstance(manifest, str):
+            (source / "kavosh.project.json").write_text(manifest, encoding="utf-8")
+        else:
+            (source / "kavosh.project.json").write_text(json.dumps(manifest), encoding="utf-8")
     subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
-                    "commit", "-q", "--allow-empty", "-m", "x"], cwd=repo, check=True)
-    subprocess.run(["git", "tag", tag], cwd=repo, check=True)
-    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True,
+                    "add", "-A"], cwd=source, check=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-q", "--allow-empty", "-m", "x"], cwd=source, check=True)
+    subprocess.run(["git", "tag", tag], cwd=source, check=True)
+    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=source, check=True,
                          capture_output=True, text=True).stdout.strip()
+    subprocess.run(["git", "clone", "--bare", "-q", str(source), str(repo)], check=True)
 
     (base / "releases" / tag).mkdir(parents=True)
     (base / "shared").mkdir()
     (base / "shared" / ".env").write_text("SYNTHETIC=1\n", encoding="utf-8")
-    (base / "current").symlink_to(Path("releases") / tag)
+    if current_link:
+        (base / "current").symlink_to(Path("releases") / tag)
 
     state = root / "state"
     state.mkdir()
@@ -84,11 +96,13 @@ esac
         "BASE": str(base),
         "CHANNEL": "test",
         "DEPLOY_METHOD": "pull-build",
-        "REPO_URL": "https://example.invalid/repo.git",
+        "REPO_URL": str(repo),
         "VERSION_URL": "http://127.0.0.1:18080/version",
         "HEALTH_URL": "http://127.0.0.1:18080/health",
         "PUBLIC_BASE_URL": "https://test.example.invalid",
         "STATE_DIR": str(state),
+        "LOG_FILE": str(root / "deploy.log"),
+        "LOCK_FILE": str(root / "deploy.lock"),
         "DEPLOY_BIN": str(deploy_bin),
         "UNIT_DIR": str(unit_dir),
         "SYSTEMCTL": str(fake_systemctl),
@@ -261,6 +275,99 @@ class ScriptContract(unittest.TestCase):
             result = subprocess.run([BASH, str(SCRIPT), "--pin", "v1.2.3", "--dry-run"],
                                     env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 2)
+
+    def test_REL7_production_rejects_opted_in_rc_before_environment_pass(self):
+        rc_tag = "v1.2.4-rc.1"
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(
+                Path(d), tag=rc_tag, manifest={"release": {"testStaging": False}},
+                current_link=False,
+            )
+            env["CHANNEL"] = "production"
+            Path(env["STATE_DIR"], "pin").write_text(rc_tag + "\n", encoding="utf-8")
+            result = subprocess.run([BASH, str(SCRIPT), "--verify-environment"], env=env,
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Production rejects release candidate", result.stderr)
+            self.assertNotIn("ENVIRONMENT_CONFORMANCE=PASS", result.stdout)
+
+    def test_REL7_production_pin_rejection_leaves_existing_pin_unchanged(self):
+        rc_tag = "v1.2.4-rc.1"
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(
+                Path(d), tag=rc_tag, manifest={"release": {"testStaging": None}},
+                current_link=False,
+            )
+            env["CHANNEL"] = "production"
+            pin = Path(env["STATE_DIR"], "pin")
+            pin.write_text("v1.2.3\n", encoding="utf-8")
+            fake_bin = Path(d) / "bin"
+            fake_bin.mkdir()
+            make_executable(fake_bin / "flock", "#!/usr/bin/env bash\nexit 0\n")
+            env["PATH"] = str(fake_bin) + os.pathsep + env.get("PATH", "")
+            result = subprocess.run([BASH, str(SCRIPT), "--pin", rc_tag], env=env,
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Production rejects release candidate", result.stderr)
+            self.assertEqual(pin.read_text(encoding="utf-8"), "v1.2.3\n")
+
+    def test_REL7_production_malformed_rc_manifest_is_not_supported(self):
+        rc_tag = "v1.2.4-rc.1"
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(Path(d), tag=rc_tag, manifest="{", current_link=False)
+            env["CHANNEL"] = "production"
+            Path(env["STATE_DIR"], "pin").write_text(rc_tag + "\n", encoding="utf-8")
+            result = subprocess.run([BASH, str(SCRIPT), "--verify-environment"], env=env,
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("NOT_SUPPORTED", result.stderr)
+
+    def test_REL7_dry_run_checks_local_rc_and_marks_unavailable_policy_incomplete(self):
+        rc_tag = "v1.2.4-rc.1"
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(
+                Path(d), tag=rc_tag, manifest={"release": {"testStaging": True}},
+                current_link=False,
+            )
+            env["CHANNEL"] = "production"
+            pin = Path(env["STATE_DIR"], "pin")
+            pin.write_text("v1.2.3\n", encoding="utf-8")
+            result = subprocess.run([BASH, str(SCRIPT), "--pin", rc_tag, "--dry-run"], env=env,
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Production rejects release candidate", result.stderr)
+            self.assertEqual(pin.read_text(encoding="utf-8"), "v1.2.3\n")
+
+            env["BASE"] = str(Path(d) / "unavailable")
+            result = subprocess.run([BASH, str(SCRIPT), "--pin", rc_tag, "--dry-run"], env=env,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("validation incomplete", result.stdout)
+            self.assertNotIn("would pin production", result.stdout)
+            self.assertFalse(Path(env["BASE"]).exists())
+
+    def test_REL7_test_accepts_opted_in_rc_and_legacy_production_rc(self):
+        rc_tag = "v1.2.4-rc.1"
+        staging = {"release": {"testStaging": "malformed-but-present"}}
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(Path(d), tag=rc_tag, manifest=staging)
+            env["FAKE_VERSION"] = rc_tag
+            result = subprocess.run([BASH, str(SCRIPT), "--verify-environment"], env=env,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("ENVIRONMENT_CONFORMANCE=PASS", result.stdout)
+
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(
+                Path(d), tag=rc_tag, manifest={"release": {"strategy": "release-please"}}
+            )
+            env["CHANNEL"] = "production"
+            Path(env["STATE_DIR"], "pin").write_text(rc_tag + "\n", encoding="utf-8")
+            env["FAKE_VERSION"] = rc_tag
+            result = subprocess.run([BASH, str(SCRIPT), "--verify-environment"], env=env,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("ENVIRONMENT_CONFORMANCE=PASS", result.stdout)
 
     def test_syntax(self):
         subprocess.run([BASH, "-n", str(SCRIPT)], check=True)
