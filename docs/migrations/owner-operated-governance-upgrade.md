@@ -10,8 +10,9 @@ For a solo project, each answer defaults to **no/not selected**, not a hidden bl
 ## Proposed manifest examples
 Owner-operated T2:
 ```json
-{"acceptance":{"mode":"none"},"review":{"independentHumanReview":false}}
+{"acceptance":{"mode":"none"},"review":{"teamProcess":false,"independentHumanReview":false}}
 ```
+The new PR-process relaxation takes effect only when the consumer **explicitly pins a published major that contains it**. Earlier pinned versions retain their former enforcement. An existing private TEST runner may keep its three built-in labels; no automatic runner re-registration or other consumer mutation occurs.
 Selected team attestation (only where the owner has real producers and needs it):
 ```json
 {"acceptance":{"mode":"continuous","assurance":"attested"},"review":{"independentHumanReview":true}}

@@ -38,9 +38,9 @@ Pick the mode:
 | **NEW** | "build / create project X" | §1 |
 | **ADOPT** | "bring existing repo X under KavoshStart" | §2 |
 | **UPGRADE** | "update X to KavoshStart vN / its selected design-system package" | §3 |
-| **WORK** | "implement issue #n in X" (project already adopted) | §4 |
+| **WORK** | "implement or maintain X" (with an existing Issue when applicable) | §4 |
 
-Never skip a step. Never invent an answer the owner has not given — ask.
+Apply only steps relevant to this task and the selected project profile. Do not turn team-only conventions, optional Apps, extra hosts or forms into a blocker. Never invent a material owner decision; reuse settled answers and ask only what truly matters.
 
 ---
 
@@ -66,7 +66,7 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
 2. Explain the runner and cost boundary: in private, an existing
    **self-hosted runner on an existing accepted, least-privileged host** registered in GitHub Actions may
-   be chosen without a second machine or mandatory trust ADR; keep actual repository labels and untrusted-code/secret protection (CI-2).
+   be chosen without a second machine or mandatory trust ADR, and without an extra custom label for a private owner-operated TEST runner. Native `self-hosted/linux/x64` labels can suffice when they actually route to the intended repo-scoped Runner. Avoid giving untrusted code access to real secrets, writable main/release credentials or Production (CI-2).
    Private **GitHub-hosted** runs require **explicit prior authorization** from the
    designated human billing owner (the person who issued the policy; not another admin or agent)
    for each exact workflow/PR/ref/head SHA, even within included free minutes.
@@ -83,7 +83,7 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
    Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`). Never copy the illustrative `vX.Y.Z` from the example and never use the reserved `self` value in a consumer project.
    For a UI project, record its selected exact package and version under `ui.designSystem`, or a scoped `ui.exceptionADR`.
    Never publish consumer-private package names, URLs or evidence in public KavoshStart.
-2. For a single-owner project of **any tier**, use `acceptance.mode: none` unless the owner specifically requested `continuous` during intake G9. Do not infer it from T2, data sensitivity or multiple domains. A large team may explicitly select `continuous` plus `assurance` only after learning the cost and real availability of separate evidence/decision Apps for attested outcomes. Missing elected producers block only the elected protocol; do not invent Apps or claim a fake receipt. Existing consumers retain their pinned profile until a separate reviewed upgrade.
+2. For a single-owner project of **any tier**, default to `acceptance.mode: none` and omit `review.teamProcess` (or set it `false`); avoid a new Issue, PR-body form or artificial branch name solely for process. An explicitly collaborating team may opt into `review.teamProcess=true` separately from second-person review. Use `continuous` only if the owner specifically requested it during intake G9. Do not infer it from T2, data sensitivity or multiple domains. A large team may explicitly select `continuous` plus `assurance` only after learning the cost and real availability of separate evidence/decision Apps for attested outcomes. Missing elected producers block only the elected protocol; do not invent Apps or claim a fake receipt. Existing consumers retain their pinned profile until a separate reviewed upgrade.
 3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G9 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
 4. Show both to the owner. Continue only after confirmation.
 
@@ -120,8 +120,7 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
 
 ### Step 5 — Backlog
 1. For a sizeable team **if useful**, create a release milestone; a sole owner may deliver the first usable version with the existing Issue/PR/Release and no additional milestone.
-2. Create issues with the repository's issue forms: epics (T2), features (T1/T2), tasks. Every issue gets a
-   `type:*` label (`WK-1`), acceptance criteria, and — for tasks — "Where to look".
+2. Create issues for genuine independently trackable work, especially when a team needs coordination; a single owner does not need a new Issue, Epic or Spec per small change. Issues that do exist use one `type:*` label (`WK-1`) and their real acceptance scope. Do not inflate a template into a prerequisite for implementing the first small product slice.
 3. If `acceptance.mode=continuous`, populate `acceptance/scope.json` for the first release from the approved scope: stable AC-* IDs, canonical GitHub issue, owner, risk and required evidence. The file declares scope only; never write live accepted/done status into it.
 4. Use coherent, independently reviewable capability deliveries (`WK-6`, `PR-3`), not one PR per source requirement or intake answer. Plan criteria, assertions and risk-sized evidence with the implementation; reconcile them at capability closure. Shared evidence may cover multiple criteria only with actual traceability. Explicit not-needed decisions create no feature/test/receipt work.
 5. Post the backlog summary to the owner (issue links only; do not write live backlog/status into a file — `SRC-1`).
@@ -156,13 +155,12 @@ For an **owner-selected upgrade** from any older stable major, use [the versione
 
 For a new or changed material test/requirement, state **why it exists**, which released upstream/native contract already covers it, which product integration gap remains and which focused observation detects that gap. Only run expensive/specialist tests at the relevant risk/lifecycle decision. For duplicated/stale criteria, propose a reviewed change to the existing owning Issue/Spec/PR, not a new test package. Do not bypass existing failed mandatory checks.
 
-0. Complete §0 first. If §0 routes this session to UPGRADE, finish or explicitly defer that upgrade before opening a normal feature branch.
-1. `gh issue view <n>`; read its parent, the project's `AGENTS.md` and the relevant settled architecture decisions from §0. Reopen only decisions affected by this scope. Read additional material only when the issue or those decisions require it.
-2. `git fetch origin && git switch -c <type>/<n>-<slug> origin/main` (`BR-2`).
-3. Open a **draft PR early** with your plan (`PR-1`, `PR-2`). Body from the PR template. Draft stacks may be deep;
-   health warns until the Ready stack is normalized.
-4. Implement one coherent packet; run focused verification plus the project's semantic `check` command. The default scaffold exposes this through `make check`, but an adopted project may use another documented adapter (CI-8). Heavy CI is off by default on Draft; early CI still needs direct approval if it consumes shared quota.
-5. Update the PR body: Change risk / affected capabilities / Done / Remaining (as canonical issues) / Decisions / How verified / AI involvement. A remaining required outcome is never silently converted into "done" by starting the next task (FLOW-2).
+0. Complete the relevant §0 checks first. A newer standards tag alone does **not** route ordinary WORK to UPGRADE. Upgrade is a separate owner-selected action, unless a real applicable incompatibility/security blocker needs a scoped resolution.
+1. Read the actual task request and the existing Issue/PR/Spec **if one exists**; use the project's `AGENTS.md` and affected settled architecture decisions. Do not manufacture an Issue, Epic or new decision record to start a bounded fix. Reopen only decisions affected by this scope.
+2. Work from current source on a short-lived branch. Use `<type>/<n>-<slug>` if `review.teamProcess=true`; for owner-operated work any safe, descriptive branch name is sufficient (`BR-2`). No direct push to protected `main`.
+3. Open a coherent PR once there is code to review. Draft-first, a specific PR-title format and extensive forms are **team-process options**, not prerequisites for owner-operated development.
+4. Implement one coherent packet; run focused verification plus the project's actual required semantic `check` command. The scaffold uses `make check` by default, but adopted projects may provide a different documented adapter (CI-8). Do not force unrelated heavy suites to run for documentation-only work. Private hosted billing still requires prior owner consent.
+5. Summarize the actual change, verification result and relevant outstanding decisions in the PR. `Risk`, `Capabilities`, Issue mapping and `AI involvement` are required only for the explicitly chosen team process or optional continuous-acceptance protocol, not for owner-operated work. Do not report an unverified outcome as done (FLOW-2).
 6. Mark ready for review. Recheck base, mergeability, exact head, required green checks, unresolved review threads and blockers immediately before merge.
    - `low` / `medium`: when all required gates are complete, the agent may perform the ordinary Squash merge on the exact current head without asking the owner to click Merge.
    - `high` / `critical`, control-plane, security/trust-boundary, destructive-data or release-policy change: require an explicit human decision for the current scope first; after that decision the agent may perform the mechanical merge.
@@ -170,8 +168,8 @@ For a new or changed material test/requirement, state **why it exists**, which r
    - Never use `--admin`, bypass protection, or merge a red/missing check.
 7. If the branch is stale or `main` moved materially, refresh/rebase based on conflict and risk rather than a universal age threshold. Branch age remains a health signal, not proof that the change is unsafe (BR-3).
 
-## Hard stops — ask the owner, do nothing else
+## Scoped hard stops — pause only the dependent unsafe operation
 - Creating/deleting repositories, deleting branches or tags, closing issues you did not create.
-- High/critical risk decisions, Production data changes and credentials require direct human authorization scoped to the current action/scope; SETAD/Moadian/bank credentials, OTP/CAPTCHA and signing keys are never handled by agents.
-- A rule in `standard/RULES.md` would have to be broken to finish the task.
+- Production data changes and credentials require direct human authorization scoped to the current action/scope; high/critical **merge or release decisions** also require exact-scope human authorization, not a second person by default. Ordinary preparation, focused tests and safe edits can continue. SETAD/Moadian/bank credentials, OTP/CAPTCHA and signing keys are never handled by agents.
+- A real security, source integrity, release or authorization gate would have to be bypassed to finish the dependent action. Report the exact blocker; **continue unrelated authorized development** without fabricating approval or PASS.
 - A CI dispatch would consume shared quota without direct, bounded owner approval.

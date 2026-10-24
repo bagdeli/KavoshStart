@@ -246,7 +246,8 @@ class Manifest(unittest.TestCase):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T0")))
 
     def test_UI1_negative_ui_without_designSystem_pin(self):
-        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "designSystem": None})))
+        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "designSystem": None},
+                                                       review={"teamProcess": True})))
 
     def test_UI1_positive_ui_exception_with_safety_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
@@ -277,6 +278,7 @@ class Manifest(unittest.TestCase):
     def test_DEP1_negative_custom_deploy_without_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
         m["deploy"]["method"] = "custom"
+        m["review"] = {"teamProcess": True}
         self.assertTrue(fails_for("DEP-1", manifest=m))
 
     def test_DEP5_positive_T1_maintenance_window_with_ADR(self):
@@ -377,11 +379,12 @@ def fake_gh(lines=100, parent_base=None, filename="src/a.py"):
 def run_pr(visibility="private", **kw):
     gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base", "filename") if k in kw}
     independent = kw.pop("independentHumanReview", False)
+    structured = kw.pop("teamProcess", True)  # Existing coverage exercises opt-in team invariants.
     g.results.clear()
     original, g.gh = g.gh, fake_gh(**gh_kw)
     try:
         g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility,
-                    "review": {"independentHumanReview": independent},
+                    "review": {"independentHumanReview": independent, "teamProcess": structured},
                     "ui": {"kind": "admin", "designSystem": {"package": "@example/ui-kit", "version": "1.0.0"}}}, pr_event(**kw), "o/r")
     finally:
         g.gh = original

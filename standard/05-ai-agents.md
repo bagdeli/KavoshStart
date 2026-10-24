@@ -49,7 +49,7 @@ Issue (feature) → PR#1: specs/<n>-<slug>/spec.md  (چه و چرا، ≤ 400 خ
 
 ## کنترل سرعت
 - حداکثر PRهای باز غیر-Draft: 3 (PR-8). عامل‌ها می‌توانند موازی کار کنند، ولی بازبینی شما سریالی است.
-- یک جلسه = یک Issue؛ برای Claude Code بین کارها `/clear`.
+- برای کار مالک‌محور، یک وظیفهٔ واقعی می‌تواند بدون Issue مصنوعی و PR آغازینِ جدا پیش برود؛ فقط scope همان تصمیم حفظ شود. برای تیم، Issue/PR مرتبط را دنبال کنید؛ `/clear` ابزار اختیاری است.
 - شروع جلسه: `START.md §0` + `AGENTS.md` + Issue؛ pin KavoshStart را با آخرین release مقایسه کن و control-plane upgrade لازم را قبل از feature/gate جدید حل یا با owner محدود defer کن. پایان جلسه: بدنه‌ی PR و acceptance mapping را به‌روز کن.
 
 ## نسبت‌دهی

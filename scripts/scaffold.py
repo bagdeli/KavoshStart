@@ -53,7 +53,10 @@ def values(m: dict) -> dict:
     # CI-1: the manifest selects the runner; private GitHub-hosted jobs require per-run authorization.
     runner = m.get("ci", {}).get("runner", "github-hosted")
     if runner == "self-hosted":
-        labels = m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
+        labels = m.get("ci", {}).get("runnerLabels") or (
+            ["self-hosted", "linux", "x64"]
+            if m.get("visibility") == "private" and not (m.get("review") or {}).get("teamProcess")
+            else ["self-hosted", "linux", "x64", slug])
     else:
         labels = ["ubuntu-latest"]
     return {

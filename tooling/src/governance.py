@@ -131,6 +131,11 @@ def standard_pin_problems(m, actual_repo=None):
     return [("ok", "STD-1", "Consumer KavoshStart exact pin", pin)]
 
 
+def team_process(m):
+    """Optional team-only process gate; visibility, Tier and risk never imply a team."""
+    return (m.get("review") or {}).get("teamProcess") is True
+
+
 def standard_lifecycle_problems(m):
     """STD-2 / ACC-1: explicit opt-in, never silently mandate attestors from tier."""
     out = []
@@ -253,8 +258,11 @@ def check_manifest(actual_repo=None):
     elif method == "custom":
         problem = decision_adr_problem(m.get("deploy", {}).get("authorizationADR"),
                                        ("safety and release gates", "rel-5", "least privilege", "tag", "rollback", "database"))
-        add("fail" if problem else "ok", "DEP-1", "Custom deploy preserves equivalent gates",
-            problem or m["deploy"]["authorizationADR"])
+        selected = m.get("deploy", {}).get("authorizationADR")
+        persistent_production = "production" in (m.get("deploy", {}).get("environments") or [])
+        level = ("fail" if selected or team_process(m) or persistent_production else "warn") if problem else "ok"
+        add(level, "DEP-1", "Custom deploy preserves equivalent gates",
+            problem if level == "fail" else ("owner-selected adapter: prove real release identity, health and rollback when used" if problem else selected))
     else:
         add("ok", "DEP-1", "Deploy method fits runtime", f"{rt} → {method}")
     migration_mode = m.get("deploy", {}).get("migrationMode", "expand-contract")
@@ -271,8 +279,10 @@ def check_manifest(actual_repo=None):
     if ui.get("kind") != "none" and not ui.get("designSystem"):
         problem = decision_adr_problem(ui.get("exceptionADR"),
                                        ("ui exception", "scope", "rtl", "accessibility", "tests"))
-        add("fail" if problem else "ok", "UI-1", "Selected design-system pin or approved exception ADR",
-            problem or ui["exceptionADR"])
+        selected = ui.get("exceptionADR")
+        level = ("fail" if selected or team_process(m) else "warn") if problem else "ok"
+        add(level, "UI-1", "Selected design-system pin or approved exception ADR",
+            problem if level == "fail" else ("owner-selected custom UI: verify actual accessibility/licensing as applicable" if problem else selected))
     budget = m.get("ci", {}).get("monthlyMinutesBudget")
     if budget not in (None, 0):
         add("warn", "CI-3", "Portfolio budget hint is not a core authorization",
@@ -374,13 +384,19 @@ def runner_labels(m):
     """Use actual manifest labels, otherwise retain the safe legacy default."""
     slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
     ci = m.get("ci", {})
-    return ci["runnerLabels"] if "runnerLabels" in ci else ["self-hosted", "linux", "x64", slug]
+    if "runnerLabels" in ci:
+        return ci["runnerLabels"]
+    if m.get("visibility") == "private" and not team_process(m):
+        # Native GitHub labels already exist on registered runners: no extra label setup.
+        return ["self-hosted", "linux", "x64"]
+    return ["self-hosted", "linux", "x64", slug]
 
 
-def runner_label_problem(labels, slug):
+def runner_label_problem(labels, slug, allow_private_existing=False):
     """Validate deterministic routing, not the existence/isolation of a physical runner."""
-    if not slug or not isinstance(labels, list) or not 4 <= len(labels) <= 12:
-        return "select 4-12 explicit labels including OS, architecture and a dedicated custom selector"
+    minimum = 3 if allow_private_existing else 4
+    if not slug or not isinstance(labels, list) or not minimum <= len(labels) <= 12:
+        return f"select {minimum}-12 static labels including OS and architecture"
     if any(not isinstance(label, str) or
            not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", label) for label in labels):
         return "labels must be bounded literal names (no expressions, groups or YAML syntax)"
@@ -397,8 +413,10 @@ def runner_label_problem(labels, slug):
     if not any(label in normalized for label in ("x64", "arm", "arm64")):
         return "self-hosted labels need a physical architecture selector"
     custom = [label for label in normalized if label not in base_labels]
-    if not custom or any(label in {"shared", "default", "generic", "pool", "common"} for label in custom):
-        return "a non-generic, consumer-declared, dedicated custom runner selector is required"
+    if any(label in {"shared", "default", "generic", "pool", "common"} for label in custom):
+        return "unsafe/generic custom runner selector"
+    if not custom and not allow_private_existing:
+        return "a dedicated custom selector is required for public/team runners"
     return None
 
 
@@ -454,13 +472,15 @@ def runner_manifest_problems(m):
                         "No separate ADR required; verify effective privileges, fork exclusions and sensitive credentials on the actual host"))
         labels = runner_labels(m)
         slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
-        label_problem = runner_label_problem(labels, slug)
+        allow_existing = vis == "private" and not team_process(m)
+        label_problem = runner_label_problem(labels, slug, allow_existing)
         if label_problem:
             out.append(("fail", "CI-2", "Self-hosted runner labels are scoped and explicit",
                         f"{label_problem}; got {labels!r}"))
         else:
-            out.append(("ok", "CI-2", "Self-hosted runner profile",
-                        f"labels exactly {labels}; physical registration/isolation requires owner verification"))
+            level = "warn" if allow_existing and len(labels) == 3 else "ok"
+            out.append((level, "CI-2", "Self-hosted runner profile",
+                        f"labels exactly {labels}; physical repo scope, credential reach and untrusted-code exposure require owner verification"))
         overrides = m.get("ci", {}).get("runnerJobLabels", {})
         if not isinstance(overrides, dict):
             out.append(("fail", "CI-2", "Per-job selectors are a mapping", "runnerJobLabels must be an object"))
@@ -468,7 +488,7 @@ def runner_manifest_problems(m):
             for route, alternate in overrides.items():
                 valid_route = isinstance(route, str) and re.fullmatch(
                     r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml#[A-Za-z0-9_-]+", route)
-                why = runner_label_problem(alternate, slug)
+                why = runner_label_problem(alternate, slug, allow_existing)
                 if not valid_route or why:
                     out.append(("fail", "CI-2", "Per-job runner selector", 
                                 "requires a literal .github/workflows/file.yml#job path and safe complete labels"
@@ -1140,7 +1160,7 @@ CONTROL_PLANE_ARCH_RE = re.compile(
 ADR_PATH_RE = re.compile(r"^docs/decisions/[0-9]{4}-[a-z0-9-]+\.md$", re.I)
 
 
-def architectural_decision_problems(title, files):
+def architectural_decision_problems(title, files, structured=True):
     """DOC-2: a breaking control-plane Conventional Commit must carry its ADR in the same PR."""
     names = [item.get("filename", "") if isinstance(item, dict) else str(item) for item in files]
     breaking = bool(BREAKING_CC_RE.match(title or ""))
@@ -1149,19 +1169,19 @@ def architectural_decision_problems(title, files):
         return [("ok", "DOC-2", "Breaking control-plane ADR", "not required for this PR shape")]
     adrs = [name for name in names if ADR_PATH_RE.fullmatch(name)]
     if not adrs:
-        return [("fail", "DOC-2", "Breaking control-plane ADR",
+        return [("fail" if structured else "warn", "DOC-2", "Breaking control-plane ADR",
                  f"breaking control-plane change requires a changed docs/decisions ADR; paths: {', '.join(control[:5])}")]
     return [("ok", "DOC-2", "Breaking control-plane ADR", ", ".join(adrs[:3]))]
 
 
-def change_risk_problems(body, files, bot=False):
+def change_risk_problems(body, files, bot=False, structured=True):
     """CR-1/2: declare change risk independently of diff size; sensitive paths impose a high-risk floor."""
     if bot:
         return [("ok", "CR-1", "Automated dependency/change risk", "bot PR uses its automation policy")], "medium"
     risk_match = re.search(r"(?im)^Risk:\s*(low|medium|high|critical)\s*$", body or "")
     cap_match = re.search(r"(?im)^Capabilities:\s*(\S.+)$", body or "")
     if not risk_match or not cap_match:
-        return [("fail", "CR-1", "Declared change risk and capabilities",
+        return [("fail" if structured else "warn", "CR-1", "Declared change risk and capabilities",
                  "add Risk: low|medium|high|critical and a non-empty Capabilities: line")], None
     risk = risk_match.group(1).lower()
     out = [("ok", "CR-1", "Declared change risk and capabilities",
@@ -1172,7 +1192,7 @@ def change_risk_problems(body, files, bot=False):
         if HIGH_RISK_PATH_RE.search(name):
             sensitive.append(name)
     if sensitive and RISK_ORDER[risk] < RISK_ORDER["high"]:
-        out.append(("fail", "CR-2", "Sensitive/control-plane change risk floor",
+        out.append(("fail" if structured else "warn", "CR-2", "Sensitive/control-plane change risk floor",
                     f"{risk} is below high for {', '.join(sensitive[:5])}"))
     else:
         out.append(("ok", "CR-2", "Risk floor", "high-sensitive paths respected" if sensitive else "no machine-detected high-risk path"))
@@ -1195,26 +1215,30 @@ def check_pr(m, event, repo):
     pr = event["pull_request"]
     default = event["repository"]["default_branch"]
     head, base = pr["head"]["ref"], pr["base"]["ref"]
-    title, body = pr["title"] or "", pr.get("body") or ""
+    # PR templates often contain examples inside HTML comments; these are not
+    # claimed evidence, risk declarations, or real agent attribution.
+    title, body = pr["title"] or "", re.sub(r"<!--.*?-->", "", pr.get("body") or "", flags=re.S)
     limits = m.get("limits", {}) if m else {}
     max_ready = int(limits.get("maxOpenReadyPRs", 3))
     bot = pr["user"]["type"] == "Bot" or bool(EXEMPT_BRANCH_RE.search(head))
+    structured = team_process(m)
 
     actual = "private" if event["repository"].get("private") else "public"
     if m.get("visibility") and m["visibility"] != actual:
         add("fail", "CI-1", "Manifest visibility matches the repository",
             f"repository is {actual}, manifest says {m['visibility']} — actual visibility determines runner policy")
-    add("ok" if CC_RE.match(title) else "fail", "PR-2", "Title is a Conventional Commit", title)
-    add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
-    add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")
+    convention_level = "fail" if structured else "warn"
+    add("ok" if CC_RE.match(title) else convention_level, "PR-2", "Title is a Conventional Commit", title)
+    add("ok" if bot or BRANCH_RE.match(head) else convention_level, "BR-2", "Branch name <type>/<issue>-<slug>", head)
+    add("ok" if bot or LINK_RE.search(body) else convention_level, "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "not required for owner-operated work")
 
     files = pull_request_files(repo, pr["number"])
     counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]
     lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
-    risk_results, _declared_risk = change_risk_problems(body, files, bot)
+    risk_results, _declared_risk = change_risk_problems(body, files, bot, structured=structured)
     for level, rule, t, d in risk_results:
         add(level, rule, t, d)
-    for level, rule, t, d in architectural_decision_problems(title, files):
+    for level, rule, t, d in architectural_decision_problems(title, files, structured=structured):
         add(level, rule, t, d)
     visual_files = ui_render_files(files)
     if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
@@ -1243,13 +1267,16 @@ def check_pr(m, event, repo):
         elif immediately_mergeable_parent(repo, parents, base, default, gh):
             add("warn", "BR-4", "Ready PR has an immediately mergeable parent", f"stacked on {base}")
         else:
-            add("fail", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent")
+            add("fail" if structured else "warn", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent; verify exact intended merge target")
 
     if bot:
         add("ok", "PR-4", "AI involvement section", "bot PR")
     else:
         for level, rule, t, d in ai_section_problems(body):
-            add(level, rule, t, d)
+            # No forced PR-body attestation in owner-operated work; explicit fake
+            # identity/trailer claims remain failures, not waived paperwork.
+            fake_claim = rule == "AI-3" and ("placeholder" in t.lower() or ("Co-Authored-By:" in body and "trailer" in t.lower()))
+            add(level if structured or fake_claim else ("warn" if level == "fail" else level), rule, t, d)
     for level, rule, t, d in acceptance_mapping_problems(m, body, bot):
         add(level, rule, t, d)
 

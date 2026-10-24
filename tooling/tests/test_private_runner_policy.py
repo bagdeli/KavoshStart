@@ -145,6 +145,8 @@ class PrivateActionsPolicy(unittest.TestCase):
                 m = manifest(runner="self-hosted")
                 m["repo"] = "demo/Example"
                 m["ci"]["runnerLabels"] = labels
+                if labels == ["self-hosted", "linux", "x64"]:
+                    m["review"] = {"teamProcess": True}  # Strict/team mode requires a custom label.
                 findings = g.runner_manifest_problems(m)
                 self.assertTrue(any(level == "fail" and rid == "CI-2"
                                     and "runner labels" in title.lower()
@@ -393,6 +395,7 @@ class PrivateActionsPolicy(unittest.TestCase):
     def test_CI1_positive_private_self_hosted_standard_reusable_input(self):
         m = manifest(runner="self-hosted")
         m["repo"] = "demo/Example"
+        m["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
         source = ("jobs:\n  governance:\n"
                   "    uses: bagdeli/KavoshStart/.github/workflows/kavosh-governance.yml@v6.0.0\n"
                   "    with:\n"
