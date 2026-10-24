@@ -55,11 +55,11 @@ Other capabilities such as `control-plane` and `infrastructure` are explicit bec
 |---|---|---|---|
 | Planning | issues + labels | + milestone per release, Project board | + epics, **spec per feature** (`specs/`) |
 | ADR | optional | for material architectural decisions | for material decisions, not one ADR per routine test or permission |
-| Environments | none | real selected environment if server | real selected environments; a separate Test host/VM is optional |
+| Environments | none | only declared persistent environments | only the owner's declared persistent environments; a separate Test host/VM/channel is never inferred from T2 |
 | CI on PR | semantic `check` adapter (lint+test) | semantic `check` + build | relevant contract/migration checks only when the changed capability needs them; no duplicated giant suite |
 | AI review workflow | no | only by explicit opt-in | only by explicit opt-in; never scaffolded automatically |
 | Secret scan in CI | no (local hook) | yes | yes |
-| Release | gated release strategy (release-please is the scaffold default) | + rc on test | + rc → UAT → final |
+| Release | gated product release when publishing code | optional RC only for an actually selected Test channel | optional RC/UAT only when an actual product release & risk requires them; routine upstream maintenance uses native controls |
 | Runner (CI-1/2) | Private: existing isolated self-hosted allowed; hosted only with explicit per-run approval | Same; exact-head dispatch for private hosted only | Public standard GitHub-hosted minutes free; self-hosted requires CI-2 trust ADR and excludes untrusted fork code |
 | **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |

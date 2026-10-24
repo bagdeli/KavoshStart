@@ -291,7 +291,7 @@ class Manifest(unittest.TestCase):
             path.write_text("# Migration and recovery\nmaintenance window backup restore test rollback", encoding="utf-8")
         self.assertEqual(fails_for("DEP-5", setup, manifest=m), [])
 
-    def test_DEP5_negative_T2_maintenance_window(self):
+    def test_DEP5_positive_T2_owner_selected_maintenance_window_with_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
         m["deploy"]["migrationMode"] = "maintenance-window"
         m["deploy"]["migrationADR"] = "docs/decisions/0004-maintenance.md"
@@ -299,7 +299,7 @@ class Manifest(unittest.TestCase):
             path=d / m["deploy"]["migrationADR"]
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("# Migration and recovery\nmaintenance window backup restore test rollback", encoding="utf-8")
-        self.assertTrue(fails_for("DEP-5", setup, manifest=m))
+        self.assertEqual(fails_for("DEP-5", setup, manifest=m), [])
 
     def test_CI2_positive_runner_capacity_is_not_fixed_by_tier(self):
         self.assertEqual(fails_for("CI-2"), [])

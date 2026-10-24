@@ -202,7 +202,7 @@
     },
     {
       "id": "STD-1",
-      "statement": "هر **مصرف‌کننده** KavoshStart باید `kavoshStart: vX.Y.Z` دقیق داشته باشد و Health آن را با آخرین Release پایدار مقایسه کند؛ مقدار رزروشدهٔ `self` فقط برای `bagdeli/KavoshStart` مجاز است و همان repo باید local checked-out source را اجرا کند. consumer با `self` و خود KavoshStart با pin نسخه‌ای fail می‌شوند. ارتقا خودکار ممنوع؛ تغییر control-plane پیش از feature/gate جدید یا upgrade می‌شود یا defer محدود و صریح مالک می‌گیرد.",
+      "statement": "مصرف‌کننده pin **دقیق و منتشرشدهٔ** `kavoshStart: vX.Y.Z` دارد؛ فقط مخزن canonical مقدار `self` را اجرا می‌کند. Health اختلاف با latest stable را **هشدار اطلاعاتی** اعلام می‌کند، نه توقف کار محصول یا الزام به PR/Defer جدید در هر جلسه. ارتقای استاندارد به نسخهٔ جدید صرفاً با تصمیم مالک و بررسی اثر واقعی امنیتی/سازگاری در PR نسخه‌دار انجام می‌شود؛ اقدام اصلاحی برای آسیب‌پذیری تأییدشده یا ناسازگاری مؤثر باید متناسب با همان خطر برنامه‌ریزی شود، اما صرف انتشار نسخهٔ استاندارد به خودی خود Gate توسعه/انتشار مصرف‌کننده نیست.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -450,7 +450,7 @@
     },
     {
       "id": "FLOW-2",
-      "statement": "هر نتیجهٔ الزامی که هنگام handoff ناقص می‌ماند باید پیش از ادامه به Issue canonical یا acceptance item قابل ردیابی تبدیل شود. کار بعدی می‌تواند مستقل ادامه یابد، اما هیچ گزارش/Release نباید آن بخش را complete نشان دهد تا evidence و acceptance واقعی بسته شود.",
+      "statement": "نتیجهٔ واقعاً لازم اما ناقص باید در **همان** Issue/PR/acceptance item صاحب رفتار با وضعیت NOT_RUN/FAIL/PENDING و اثر بر انتشار شفاف بماند. برای هر handoff، تست یا ردیف سابقه Issue/فرم/رسید جدید ایجاد نشود؛ Issue مستقل تنها برای کار باقیماندهٔ واقعاً مستقل و بی‌مالک ثبت شود. ادامهٔ کار نامرتبط مجاز است، ولی هیچ Release یا گزارش، outcome ناقص را complete/PASS نمی‌نامد.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2197,7 +2197,7 @@
     },
     {
       "id": "DEP-1",
-      "statement": "pull-based پیش‌فرض است. معماری دیگر فقط با ADR، حداقل‌دسترسی credential و اثبات دروازه‌های معادل REL-5، tag تغییرناپذیر، rollback برنامه و عدم restore خودکار DB مجاز است.",
+      "statement": "برای **انتشار کد محصول**، pull-based پیش‌فرض است؛ روش native/custom فقط با تصمیم ثبت‌شدهٔ مالک، حداقل‌دسترسی و قرارداد معادل exact-source/Release/rollback در همان پروژه پذیرفته می‌شود. **به‌روزرسانی عادی جزء upstream از طریق updater بومیِ معتبر**، وقتی سورس/بستهٔ منتشرشدهٔ محصول تغییر نکرده، خودکار یک Release محصول، PR جدا، استقرار سفارشی یا ADR تازه نیست؛ فقط نسخهٔ واقعی، سلامت رفتار متاثر، تعهدات مجوز و خطر تغییر داده بررسی شوند.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -2224,7 +2224,7 @@
     },
     {
       "id": "DEP-2",
-      "statement": "فقط tagهای SemVer مستقر می‌شوند: test ← بالاترین نسخه طبق SemVer (`v1.2.0` > `v1.2.0-rc.3`)، production ← نسخه‌ای که مالک روی همان host پین کرده. branch/working-tree/label موقت target رسمی نیست.",
+      "statement": "برای **استقرار نسخهٔ محصول از source/release repository** هدف Test/Production باید tag غیرقابل‌تغییر SemVer و SHA متناظر باشد؛ Production به نسخهٔ تأییدشدهٔ مالک پین است. به‌روزرسانی نگهداریِ upstream بدون انتشار تغییر در سورس محصول، نسخهٔ واقعی **همان upstream** را با مسیر بومی خود بررسی می‌کند و نباید tag تصنعی Kavosh یا RC الزامی بسازد. branch/working tree جای نسخهٔ منتشرشدهٔ محصول نیست.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -2252,7 +2252,7 @@
     },
     {
       "id": "DEP-3",
-      "statement": "`/version` نسخه و SHA دقیق runtime را برمی‌گرداند و deployer آن را با tag/SHA مورد انتظار مقایسه می‌کند؛ identity با health یکی نیست.",
+      "statement": "هنگام استقرار **نسخهٔ محصول**، runtime/adapter باید version و SHA همان release را با منبع مقایسه کند؛ health جداست. برای نگهداری native وابستگیِ بدون release محصول، اثبات نسخهٔ واقعی از ابزار بومی/پلتفرم پذیرفته است و endpoint جدید `/version` فقط برای انجام یک آپدیت معمولی اجبار نمی‌شود.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2279,7 +2279,7 @@
     },
     {
       "id": "DEP-4",
-      "statement": "استقرار health-check مستقل و بازگشت خودکار **برنامه** به نسخه‌ی قبل دارد؛ هر نسخه در پوشه‌ی تمیز خودش و `.env` بیرون آن است. **دیتابیس خودکار برنمی‌گردد.**",
+      "statement": "در **استقرار تحت adapter استاندارد**، سلامت مستقل از هویت و rollback برنامه بررسی می‌شود؛ نسخه‌های استاندارد در دایرکتوری تمیز با secrets بیرون از release هستند، DB خودکار restore نمی‌شود. نگهداری native دارای rollback و health متناسب با همان پلتفرم است و به systemd/چیدمان اختصاصی Kavosh یا یک محیط Test جدید اجبار نمی‌شود.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2307,7 +2307,7 @@
     },
     {
       "id": "DEP-5",
-      "statement": "production T2 از expand/contract استفاده می‌کند. T1 می‌تواند maintenance window محدود با downtime داشته باشد، فقط با ADR و مجوز همان اجرا، backup/restore آزموده و runbook بازگشت برنامه.",
+      "statement": "برای migration واقعیِ دادهٔ Product، T2 به‌طور پیش‌فرض expand/contract است؛ **T1 و T2** می‌توانند با انتخاب آگاهانهٔ مالک، maintenance-window محدود و downtime قابل‌قبول داشته باشند، همراه runbook معتبر، مجوز همان tag/اجرا و کنترل بازیابی متناسب با ریسک. این قرارداد برای به‌روزرسانی عادی upstream که migration محصول ندارد، Test جدا، توقف خدمات یا ADR جدید تحمیل نمی‌کند.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2335,7 +2335,7 @@
     },
     {
       "id": "DEP-6",
-      "statement": "پیش از migration سلامت continuous backup/PITR و restore rehearsal بررسی می‌شود؛ snapshot تازه برای migration مخرب/high-risk یا rewrite لازم است. failure استقرار را متوقف می‌کند؛ restore فقط با runbook و مجوز جدا انجام می‌شود.",
+      "statement": "فقط پیش از migration واقعی که دادهٔ پایدار را تغییر می‌دهد، وضعیت **backup قابل‌بازیابیِ موجود** با کنترل معتبر بررسی می‌شود؛ PITR، مقصد تازه، Snapshot و Restore drill برای هر بروزرسانی یا migration کم‌ریسک پیش‌فرض نیست. برای high/destructive/irreversible، بررسی موفق Restore متناسب و snapshot تازه پیش از اجرا لازم است؛ دادهٔ حساسِ بدون راه بازیابی معتبر نباید به عملیات مخرب سپرده شود. شکست کنترل واقعاً لازم، همان عملیات را متوقف می‌کند و restore دیتابیس فقط با مجوز جدا انجام می‌شود.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2363,7 +2363,7 @@
     },
     {
       "id": "DEP-7",
-      "statement": "هر environment persistent استاندارد پیش از ادعای Test/Production، Server Admission را پاس می‌کند: layout release/shared/current، deploy env/binary، unit/timer project-scoped، SemVer target، exact local+canonical identity و health. preview موقت بدون این PASS canonical environment نیست.",
+      "statement": "فقط **محیط persistent که مالک واقعاً به‌عنوان canonical Test/Production انتخاب کرده** باید identity و health واقعی داشته باشد. اگر adapter استاندارد Kavosh به‌کار می‌رود، admission چیدمان release/shared/current، deploy binary و timer project-scoped، exact local+canonical version/health را می‌سنجد؛ برای نگهداری native/adapter سفارشی، **شاهد معادل همان پلتفرم** کافی است. وجود Test جدا، VM دوم، Docker Compose ایزوله یا نصب timer برای صرف ارتقای یک dependency پیش‌فرض نیست؛ محیطِ مشاهده‌نشده PASS نمی‌شود.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2390,7 +2390,7 @@
     },
     {
       "id": "DEP-8",
-      "statement": "timer حتی وقتی target = current است drift را fail-closed می‌سنجد: local و canonical `/version` باید exact tag+SHA و `/health` باید سالم باشد؛ mismatch یا proxy به runtime دیگر failure است.",
+      "statement": "در **adapter استانداردِ زمان‌بندی‌شده**، timer حتی در target=current هم identity/health محلی و canonical را برای کشف drift بررسی می‌کند. در روش native/custom، بررسی واقعی نسخه و سلامت مسیر موجود هنگام ادعای استقرار جایگزین معادل است؛ نه اجبار به ساخت timer جدید.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {

@@ -1,6 +1,6 @@
 # Runbook — deploy {{NAME}}
 
-Pull-based (KavoshStart DEP-1…9): the **project-scoped** server timer polls immutable SemVer releases. A persistent environment is not accepted merely because CI or a disposable Compose proof is green.
+**Only when the project actually chooses the Kavosh pull-based deployer:** its project-scoped timer handles immutable *product* SemVer releases. A routine native upstream component update **only when this is already the owner's chosen deployment adapter and the component version is not pinned in product source/lock/image** does not require installing this deployer, an extra Test environment, a new project release/RC, or a new restore rehearsal. If the canonical product tracks the component, update the tracked reference and use the real product release path; do not create untracked server drift. Native update paths must verify their real version, affected integration and health; durable data changes still require an adequate recoverable backup. A persistent environment is not accepted merely because CI or a disposable Compose proof is green.
 
 ```text
 /opt/kavosh/{{SLUG}}/
@@ -15,7 +15,9 @@ Pull-based (KavoshStart DEP-1…9): the **project-scoped** server timer polls im
 
 Per deploy: fetch tags → prepare clean release → recovery gates → optional snapshot → migrate → build/pull artifact → start → exact local + canonical `/version` → independent local + canonical `/health` → activate `current`. The database is **never** restored automatically.
 
-## New server — admission sequence
+## New server — admission sequence (only for the selected standard deployer)
+
+These steps apply to a selected canonical environment using this adapter, **not to every existing CMS/site or dependency update**. No separate Test VM/host is required. Production and Test share no sensitive data/credentials merely because they share hardware.
 
 Do not point a canonical Test/Production name at an ad-hoc long-lived Compose project and “standardize later”. Temporary previews use unique project/data names and are not Kavosh Test/Production until this admission passes.
 
@@ -78,9 +80,9 @@ If registry/signature provenance cannot be verified, use `pull-build` or an ADR-
 
 Write the exact approved SemVer tag to the pin; the next project-scoped timer run deploys it. Verify both identity and health, or run `--verify-environment`. A 200 response without exact version/SHA is not a successful deployment.
 
-## T1 maintenance-window migration
+## T1/T2 expressly selected maintenance-window migration
 
-Use only when the manifest selects `migrationMode: maintenance-window` and names an ADR that documents migration/recovery, downtime, backup, restore test and rollback. Configure `MAINTENANCE_STOP_CMD`. The timer cannot authorize this operation; an owner must directly run the deploy command for the exact tag:
+Use only for a real product DB migration when T1 **or T2** explicitly selects `migrationMode: maintenance-window` and names an accepted ADR that documents downtime, migration/recovery, backup, restore test and rollback. No extra ADR or downtime mode applies merely because a mature upstream component updates itself. Configure `MAINTENANCE_STOP_CMD`. The timer cannot authorize this operation; an owner must directly run the deploy command for the exact tag:
 
 ```sh
 sudo env DEPLOY_ACTOR="$USER" bash -c 'set -a; . /etc/kavosh/{{SLUG}}/deploy.env; set +a; /usr/local/bin/kavosh-deploy-{{SLUG}} --authorize-maintenance-window vX.Y.Z'
@@ -100,7 +102,7 @@ The expected revision must come directly from the actual checked-out migration g
 
 ## Expand / contract (DEP-5/6)
 
-A release may only add compatible schema or stop using old schema in the same compatibility window. Before migration, continuous backup/PITR and recent restore evidence must pass; high-risk/destructive migration additionally requires a fresh snapshot. Database restore stays manual.
+For migrations using `expand-contract`, keep schema compatible across the release window. A **real durable-data migration** first checks its existing recoverable backup; for low-risk reversible work the standard deployer does **not** require a new PITR service, external backup provider or fresh restore drill, although any configured restore check must pass. High/destructive migrations require successful reviewed restore evidence and a fresh snapshot. For a non-migration upstream maintenance update, leave `MIGRATE_CMD` unset: the backup/migration commands never run. Database restore stays manual and owner-authorized.
 
 ## Logs
 

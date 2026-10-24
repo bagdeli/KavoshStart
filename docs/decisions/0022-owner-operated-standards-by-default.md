@@ -1,7 +1,7 @@
 # ADR 0022 — Owner-operated delivery by default; team assurance only by consent
 
 ## Status
-Proposed for the next **breaking major** KavoshStart release; no consumer is auto-upgraded.
+Accepted and published in KavoshStart v8.0.0. Any further source corrections require their own reviewed PR/release; no consumer is auto-upgraded.
 
 ## Context
 Project complexity, data sensitivity and repository tier do **not** measure how many humans manage delivery. A single owner may operate a complex T2 project without another person, a second model, dedicated App attestors, external counsel, a new Test VM or a second host. Defaulting to enterprise assurance creates uninstalled dependencies and release deadlocks rather than stronger real evidence.
@@ -21,3 +21,9 @@ The public standard remains independent of all consumer project identities and i
 The T2 mandatory continuous profile, review-gate activation and scaffold defaults are deliberately **breaking**. Introduce only through a reviewed major-version Release PR after real required/governance checks. Previously published exact tags, attested consumers and signed evidence remain unchanged. Migration of an already opted-in consumer requires its own owner decision and source-scoped upgrade PR, preserving honest failures and irreversible duties.
 
 This change neither issues legal advice for a specific product nor waives any applicable licence or owner authorization. It creates no service, App, new Runner, second reviewer or consumer change.
+
+## Proportional upstream maintenance follow-up (under review)
+
+Routine, well-understood upstream component maintenance is not automatically a product release or new deployment subsystem. Requiring a new physical Test environment, new timer/VM, another App, a new Issue per intermediate result, a fresh database-restore rehearsal and a new KavoshStart upgrade merely because an upstream version appeared conflicts with owner-operated delivery. Keep native component-version/health checks and the actual affected integration tests, but **never** waive a real failed required CI check, changed product source provenance or backup recovery when durable data is actually at risk.
+
+If a project actually executes a high-risk/destructive migration, it must verify recovery and obtain current owner authorization; an unchanged low-risk/native update needs no performative fresh restore test. This refinement is not retroactively applied to consumers pinned to older releases.

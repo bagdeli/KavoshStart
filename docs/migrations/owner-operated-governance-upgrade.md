@@ -1,6 +1,6 @@
-# Owner-operated governance — future breaking release migration
+# Owner-operated governance — v8.0.0 and later exact-version migration
 
-This is an implementation guide for a proposed breaking standard change, **not a published tag**. Do not pin it in any consumer before the canonical GitHub Release exists.
+KavoshStart **v8.0.0 was officially published** with the owner-operated default. Consumers remain on their existing exact pins until their owner chooses a scoped upgrade; newer follow-up fixes also require a published tag and a project-owned upgrade PR. Do not turn freshness advisories into mandatory work interruptions.
 
 ## One existing owner decision (no new questionnaire)
 Reuse intake D3/G9 or an existing approved project decision. Ask whether the work is managed by one human or a sizeable collaborating team and, separately, whether the owner *wants* another human reviewer, independent App attestation/continuous acceptance, an outside legal specialist, or dedicated physical Test capacity.

@@ -309,7 +309,7 @@
             "expand-contract",
             "maintenance-window"
           ],
-          "description": "Defaults to expand-contract. maintenance-window is limited to T1 with a migration ADR and per-run owner authorization."
+          "description": "Defaults to expand-contract for real product schema migrations. T1/T2 server may explicitly select maintenance-window with an accepted existing migration/recovery ADR, bounded downtime and exact-tag owner authorization. Routine upstream maintenance without a product migration requires no new migration-mode gate."
         },
         "migrationADR": {
           "type": "string",

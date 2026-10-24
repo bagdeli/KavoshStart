@@ -26,7 +26,7 @@ Before choosing NEW / ADOPT / UPGRADE / WORK:
 1. Verify the exact repository, default branch, workspace/remote when available, approved environments and task scope. Never infer authority from access.
 2. Read the project's root `AGENTS.md`, `kavosh.project.json`, `PROJECT.md` architecture decisions, and the selected Issue/Spec/plan. Reuse settled answers and their recorded scope; ask again only for a missing or materially changed decision. Treat old reports as provenance, not live status.
 3. For a consumer project, read its exact `kavoshStart: vX.Y.Z`, query the latest stable KavoshStart Release, and compare them. If behind, read the CHANGELOG between the pin and latest. The reserved value `self` is valid only when the repository is exactly `bagdeli/KavoshStart`; there it means the checked-out canonical source and is never used as a workflow ref.
-4. If the newer release changes governance, acceptance, security, release, deploy, CI or agent-control semantics, perform UPGRADE before starting a new feature/gate packet unless the owner has recorded a bounded, traceable defer. Never silently auto-upgrade a dependency in the middle of unrelated work.
+4. A newer KavoshStart release is **an advisory input**, not a default prerequisite to routine product work. Read only the relevant CHANGELOG delta; continue on the exact pinned version unless the owner elects upgrade or an actual applicable security/compatibility defect requires a scoped action. No new defer Issue/form just because latest changed, and never silently upgrade.
 5. A T2 project may be **owner-operated** with `acceptance.mode=none`; advanced continuous acceptance, attestation Apps and second-person review are separate owner opt-ins selected in intake. `adoptionPhase: true` remains invalid; no report-only bypass.
 6. Refresh only the moving facts needed for the task: current `main`, related open PRs/checks/releases and, when runtime behavior matters, exact deployed version/SHA/schema/health. Do not turn routine continuation into an unrelated full audit.
 7. Choose the mode below and complete one coherent packet. A genuine hotfix may proceed with an owner-approved bounded standard-upgrade defer, recorded in GitHub with its expiry/review trigger.
@@ -116,14 +116,10 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
    Hosted does not imply private Test/Production access. T1/static 'none'
    creates no workflows: require real local 'make check' evidence, never
    bypass an existing failed required check.
-9. **Persistent server/static environment (DEP-7/8):** a green CI candidate is not a Test/Production deployment.
-   Follow `docs/runbooks/deploy.md` on the target host, use only an immutable SemVer target, install project-scoped
-   deploy units, configure distinct version/health plus the canonical origin, and require
-   `kavosh-deploy-<slug> --verify-environment` to emit `ENVIRONMENT_CONFORMANCE=PASS` before representing that host
-   as canonical Test/Production. Temporary runner/Compose previews stay non-canonical and isolated.
+9. **Only selected persistent Test/Production environments (DEP-7/8):** green CI is not an installed product release. With the default Kavosh pull deployer, use its existing project-scoped units and real `--verify-environment` identity/health check. For an owner-approved native/custom adapter, use its **actual equivalent** source/version/health and recovery checks; do not install Kavosh systemd units, a separate Test server or an extra VM just to do an ordinary upstream maintenance update. Temporary previews cannot impersonate a canonical environment.
 
 ### Step 5 — Backlog
-1. Create milestone `v0.1.0` (first usable release).
+1. For a sizeable team **if useful**, create a release milestone; a sole owner may deliver the first usable version with the existing Issue/PR/Release and no additional milestone.
 2. Create issues with the repository's issue forms: epics (T2), features (T1/T2), tasks. Every issue gets a
    `type:*` label (`WK-1`), acceptance criteria, and — for tasks — "Where to look".
 3. If `acceptance.mode=continuous`, populate `acceptance/scope.json` for the first release from the approved scope: stable AC-* IDs, canonical GitHub issue, owner, risk and required evidence. The file declares scope only; never write live accepted/done status into it.
@@ -147,7 +143,7 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §3 UPGRADE
 
-For direct migration from any older stable major, first use [the versioned compatibility matrix](docs/migrations/direct-upgrade-compatibility.md). Only an **actually published exact tag** can be adopted. Do not convert every legacy requirement or mature dependency's internal proof into new acceptance rows, new runners or heavy suites. Preserve accepted evidence only where actual source/version/environment coverage remains valid; reconcile obsolete requirements through their own approved scope, without forging PASS.
+For an **owner-selected upgrade** from any older stable major, use [the versioned compatibility matrix](docs/migrations/direct-upgrade-compatibility.md). Only an **actually published exact tag** can be adopted. Do not convert every legacy requirement or mature dependency's internal proof into new acceptance rows, new runners or heavy suites. Preserve accepted evidence only where actual source/version/environment coverage remains valid; reconcile obsolete requirements through their own approved scope, without forging PASS.
 
 1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target and classify every change that affects governance, acceptance, security, release, deploy, CI, agent controls or templates.
 2. Use one dedicated PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart` to the same exact tag (REL-6), apply template changes listed in the changelog, and update all reusable workflow pins together. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.

@@ -260,9 +260,9 @@ def check_manifest(actual_repo=None):
     if migration_mode == "maintenance-window":
         problem = decision_adr_problem(m.get("deploy", {}).get("migrationADR"),
                                        ("migration and recovery", "maintenance window", "backup", "restore test", "rollback"))
-        if m.get("tier") != "T1" or rt != "server":
-            problem = "maintenance-window is limited to T1 server projects"
-        add("fail" if problem else "ok", "DEP-5", "Maintenance-window migration is T1 and ADR-backed",
+        if m.get("tier") not in ("T1", "T2") or rt != "server":
+            problem = "maintenance-window is supported only for selected server projects"
+        add("fail" if problem else "ok", "DEP-5", "Owner-authorized maintenance-window migration is ADR-backed",
             problem or m["deploy"]["migrationADR"])
     else:
         add("ok", "DEP-5", "Migration strategy", "expand-contract (default)")
