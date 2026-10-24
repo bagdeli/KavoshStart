@@ -1,72 +1,51 @@
-# 05 — همکاری با عامل‌های هوش مصنوعی
+# 05 — همکاری منضبط و کم‌اصطکاک با عامل‌ها
 
-قواعد: AI-1…6، PR-4، PR-6، WK-5
+قواعد: AI-1…6، CR-1…4، PR-1/6/7، WK-6. مالک‌محور به معنی توسعهٔ بدون قاعده نیست.
+
+## قرارداد روزمره
+
+پیش از تغییر، عامل هدف مصوب، مرز کار، مالک فعلی مفهوم/داده و روش بررسی نتیجه را از همان درخواست، Issue، PR یا PROJECT موجود استخراج می‌کند. برای کار ساده چند جمله کافی است؛ کار چندمرحله‌ای یک برنامهٔ کوتاه و قابل‌آزمون می‌خواهد. سؤال فقط برای تصمیم مؤثرِ واقعاً نامعلوم است؛ جواب و مجوز موجود دوباره مطالبه نمی‌شود.
+
+| موضوع | همیشه لازم | فقط هنگام نیاز |
+|---|---|---|
+| محدوده | نتیجهٔ روشن و عدم گسترش خودسرانه | Spec برای ابهام/وابستگی مهم؛ نه هر تغییر |
+| معماری | استفاده از مالک canonical موجود؛ نه پیاده‌سازی موازی | تصمیم جدید دربارهٔ مرز سرویس/داده/API پیش از کار وابسته |
+| کیفیت | بررسی واقعی رفتار متاثر و گزارش نتیجه | تست منفی auth/data، migration و integration در مرز مربوط |
+| تحویل | PR منسجم، CI واقعی، هویت سورس | ADR مستقل، فرم تیمی، App و reviewer دوم فقط با انتخاب یا نیاز واقعی |
+| اختیار | اقدام در دامنهٔ مجوز موجود | تصمیم تازه برای ریسک بالا، دادهٔ ماندگار، هزینه یا انتشار/Production جدید |
 
 ## نقش‌ها
-| نقش | چه کسی | کار |
-|---|---|---|
-| مالک | شما | دامنه، اولویت، تأیید رده و Spec، مجوزهای محدود برای ادغام، انتشار و production |
-| مجری | Claude Code، Codex، Copilot، Gemini | برنامه، کد، تست، به‌روزرسانی PR و اجرای عمل صریحاً مجاز |
-| بازبین | **همان مالک**؛ فقط با انتخاب صریح تیم بزرگ، انسان/مدل کمکی | بازبینی متناسب با ریسک؛ عامل دوم هیچ جایگاه الزامی یا تأیید انسانی ندارد |
-| پلتفرم | workflowهای KavoshStart | اجرای قواعد، بی‌طرف |
+
+مالک هدف، اولویت و تصمیم‌های پرخطر را تعیین می‌کند؛ عامل اجرا، تست و گزارش صادقانه را انجام می‌دهد. همان مالک می‌تواند بازبین باشد. عامل دوم، مشاور یا GitHub App پیش‌فرض نیست و عامل نباید تأیید انسانی را جعل کند. ماشین فقط آنچه واقعاً اندازه گرفته را تأیید می‌کند؛ وجود توضیح PR به‌تنهایی اثبات کیفیت توضیح نیست.
 
 ## فایل‌های دستورالعمل
-| فایل | محتوا |
-|---|---|
-| `AGENTS.md` | **تنها منبع**: پروژه (از مانیفست)، نقشه‌ی ریپو، فرمان‌ها، قراردادها، Definition of Done، مرزها |
-| `CLAUDE.md` | `@AGENTS.md` + نکات مخصوص Claude |
-| `GEMINI.md`، `.github/copilot-instructions.md` | یک خط ارجاع |
-| `.claude/settings.json` | deny برای اعمال ممنوع و ask برای اعمال نیازمند اجازه (لایه‌ی A) |
-| `.githooks/pre-push` | مسدودکردن push به main و force-push (لایه‌ی A) |
-| `apps/*/AGENTS.md` | جزئیات هر بخش در monorepo (نزدیک‌ترین فایل اولویت دارد) |
 
-AGENTS.md بر اساس الگوی تحلیل GitHub روی 2,500 ریپو: فرمان‌های دقیق، ساختار، سبک کد با مثال، مرزهای **Always / Ask first / Never**. هر بار که عامل اشتباهی تکرار کرد، یک خط به آن اضافه کنید — نه یک سند جدید.
+AGENTS.md منبع پایدار فرمان‌ها، نقشه و مرزهاست؛ CLAUDE/GEMINI/Copilot به آن ارجاع می‌دهند. اندازهٔ 150 خط/12KB هدف خوانایی است، نه مانع عادی مالک‌محور. مشکل تکراری را در نزدیک‌ترین دستور مرتبط اصلاح کنید؛ برای هر خطا قانون یا سند سراسری نسازید. وضعیت زنده را در چند فایل و Issue تکثیر نکنید. provenance تاریخی با وضعیت جاری اشتباه نشود.
 
-## الزام/آزمون تازه باید دلیل داشته باشد؛ الزام قدیمی قابل بازبینی است
+## چرخهٔ اجرای کار
 
-عامل پیش از ساختن الزام، تست یا چک تازه در همان کار مشخص می‌کند که رفتار واقعاً در مالکیت **پلتفرم/upstream، integration یا محصول** است، چه نسخه‌ای از قرارداد موجود آن را تضمین می‌کند، چه خطر/نتیجه‌ای واقعاً بدون آزمون مانده و ارزان‌ترین مدرک معتبر چیست. تست‌های داخلی کتابخانهٔ شناخته‌شده را در مصرف‌کننده بازنسازی نکند؛ ولی ترکیب واقعی، RTL/UX، auth/payment و سایر مرزهای محصول باید به‌قدر ریسک بررسی شوند. برای الزام/تست زائد، منسوخ یا بی‌مبنا مسیر حذف یا ادغام در Issue/Spec/PR **همان مالک** باز است؛ نیاز به دفتر تازه یا چند ماه اثبات منفی نیست، و اصلاح نباید CI قرمز را دور بزند یا تعهد امنیتی حقیقی را پنهان کند.
+1. مخزن و نسخهٔ پین‌شده را بررسی و قراردادهای مرتبط، callerها، تست‌ها و تصمیم‌های موجود را بخوانید. نسخهٔ جدید استاندارد به‌تنهایی مانع کار نامرتبط نیست.
+2. کوچک‌ترین تغییر **کامل** را طراحی کنید. مفهوم واحد، یک مالک/نویسنده دارد؛ کپی منطق، مسیر دوم، fallback خاموش، سرویس و dependency فرضی نسازید. API، مصرف‌کننده و تست متاثر با هم سازگار شوند.
+3. تغییر را روی شاخهٔ قابل‌بازبینی انجام دهید. ایجاد Issue مصنوعی، Draft-first، یک push یا قالب نام شاخه پیش‌فرض اجباری نیست؛ فقط `review.teamProcess=true` قرارداد شکلی تیم را فعال می‌کند.
+4. تست نزدیک به رفتار را زود اجرا کنید؛ پیش از ادغام contract واقعی check و CI required را اجرا کنید. هر باگ منطق غیرساده regression متناسب می‌خواهد. نبود suite لازم با حذف یا skip آن PASS نمی‌شود.
+5. در همان PR هدف، تغییر، تست انجام‌شده، NOT_RUN/N/A مستدل و ریسک باقی‌مانده را روشن کنید. PR Ready خالی یا صرفاً headings کافی نیست؛ فرم تازه‌ای لازم نیست.
+6. قبل از merge، SHA فعلی، base، checkها و blocker واقعی بررسی شوند. low/medium در مجوز موجود می‌تواند delegated باشد؛ high/critical و تغییر مرز امنیت/انتشار تصمیم واقعی مالک می‌خواهد. مجوز merge مجوز Production نیست.
 
-## کمترین تغییر کامل، نه کمترین خط کد
+## تست و محدودیت تازه
 
-این یک روش بازبینی **توصیه‌ای** زیر قواعد موجود AI-1، CR-3/4، PR-3 و TP-1/2 است؛ Rule، معیار عددی یا دروازهٔ جدیدی اضافه نمی‌کند.
+ابتدا invariant، مالک رفتار، پوشش معتبر موجود و کوچک‌ترین regression مفقود را مشخص کنید. تست داخلی یک upstream معتبر را کپی نکنید؛ integration واقعی محصول را بررسی کنید. تست سنگین فقط برای مرز متاثر/مرحلهٔ انتشار لازم است، نه هر typo. در PR مربوط، تست زائد با دلیل و بررسی اثر قابل حذف/ادغام است؛ تست قرمز را برای سبزشدن حذف نکنید. ریسک از رفتار می‌آید: نبود فرم Risk هزینهٔ اداری ایجاد نمی‌کند، اما اعلام low برای تغییر حساس پذیرفته نیست.
 
-1. **اثر واقعی تغییر را بشناسید:** مسیر داده و مصرف‌کنندگان متاثر از جمله callerها، قرارداد API، UI، config، تست و fixture را بخوانید؛ Diff به‌تنهایی مرز مسئله نیست.
-2. **راه موجود را زودتر بررسی کنید:** آیا کد تازه لازم است؟ اول الگوی مالک همان مفهوم در مخزن، بعد قابلیت بومی/stdlib، سپس وابستگی موجود و مناسب با بررسی TP-1/2، و سرانجام کوچک‌ترین پیاده‌سازی **کامل و خوانا**. نصب‌بودن dependency یا کم‌بودن خطوط به‌تنهایی دلیل انتخاب نیست.
-3. **کامل اصلاح کنید:** ریشهٔ مشکل و تمام مصرف‌کنندگان متاثر را یکجا سازگار نگه دارید؛ wrapper، config و abstraction فرضی نسازید. کوتاه‌شدن Diff مجوز حذف کنترل امنیتی، اعتبارسنجی، مدیریت خطا، جلوگیری از اتلاف داده یا accessibility نیست.
-4. **با شواهد بازبینی کنید:** ابتدا خطا/امنیت/بار واقعی و آزمون رگرسیون منطق غیرساده را بسنجید و بعد کد اضافی را حذف کنید. یک اشکال باید نمونهٔ شکست مشخص داشته باشد؛ آزمون یا gate سراسری تازه فقط طبق CR-4.
-5. **ریسک را گزارش کنید:** در PR روشن کنید چه چیزی بررسی شده، چه چیزی *بررسی نشده* و ریسک باقی‌مانده چیست. تأیید مالک، CI، مستندات و تعهدات حقوقی همچنان معتبرند.
+## TEST و مرزهای واقعی
 
-الهام مفهومی: [Ponytail v5.3.2](https://github.com/DietrichGebert/ponytail/tree/v5.3.2) (MIT). این متن مستقل نوشته شده و هیچ prompt، کد، Hook یا تله‌متریِ Ponytail کپی یا نصب نمی‌شود. [نتایج بنچمارک خود Ponytail](https://github.com/DietrichGebert/ponytail/blob/v5.3.2/benchmarks/results/2026-10-07-agentic.md) به‌معنای اثبات صرفه‌جویی برای KavoshStart نیست.
+Runner خصوصیِ موجود با ورودی مورداعتماد و دادهٔ دورریختنی، الزام خودکار به VM دوم، Runner دوم یا ADR ندارد. دسترسی خارج از TEST به Secret، credential انتشار، مخزن اصلی و Production باید واقعاً محدود باشد. خصوصی‌بودن مخزن یا نام label اثبات این محدودیت نیست. حساب و مجوز همان Runner را بررسی کنید؛ فقط خطر واقعی باقی‌مانده را مطرح کنید. مصرف خصوصی GitHub-hosted همچنان تابع مجوز مالیِ پیشینی مالک است.
 
-## جریان Spec-Driven (فقط قابلیت‌های پرریسک/چندتیمیِ منتخب؛ برای تک‌مالک اختیاری)
+## متن شروع یک کار
+
 ```text
-Issue (feature) → PR#1: specs/<n>-<slug>/spec.md  (چه و چرا، ≤ 400 خط)  → مالک تأیید
-                → PR#1 یا #2: plan.md  (چطور؛ owner‌های canonical؛ migration؛ tasks)
-                → sub-issueهای type:task  (نه فایل tasks.md)
-                → هر task یک PR
-```
-هم‌راستا با GitHub Spec Kit؛ استفاده از خود Spec Kit (`specify init`) مجاز است به شرط این‌که tasks به Issue تبدیل شوند.
-
-## کنترل سرعت
-- حداکثر PRهای باز غیر-Draft: 3 (PR-8). عامل‌ها می‌توانند موازی کار کنند، ولی بازبینی شما سریالی است.
-- برای کار مالک‌محور، یک وظیفهٔ واقعی می‌تواند بدون Issue مصنوعی و PR آغازینِ جدا پیش برود؛ فقط scope همان تصمیم حفظ شود. برای تیم، Issue/PR مرتبط را دنبال کنید؛ `/clear` ابزار اختیاری است.
-- شروع جلسه: `START.md §0` + `AGENTS.md` + Issue؛ pin KavoshStart را با آخرین release مقایسه کن و control-plane upgrade لازم را قبل از feature/gate جدید حل یا با owner محدود defer کن. پایان جلسه: بدنه‌ی PR و acceptance mapping را به‌روز کن.
-
-## نسبت‌دهی
-```text
-Co-Authored-By: Claude <noreply@anthropic.com>
-Co-Authored-By: Codex <noreply@openai.com>
-Co-Authored-By: Copilot <copilot@github.com>
-```
-و بخش `## AI involvement` در PR. هویت git انسانی باید یکنواخت و قابل‌ردیابی بماند؛ از چند هویت نویسنده برای یک مالک استفاده نشود.
-
-## جمله‌ی استاندارد برای شروع کار با هر عامل
-```text
-Use KavoshStart (bagdeli/KavoshStart, START.md §0 then the selected mode). Stay in bagdeli/<repo> only.
-First verify repository identity, live main/task state, the project's exact KavoshStart pin, and the latest stable
-KavoshStart release. If a newer control-plane release materially affects governance/acceptance/security/release/deploy/CI,
-upgrade it in a separate PR before normal feature work unless the owner has recorded a bounded defer.
-For WORK, handle exactly issue #<n>, branch <type>/<n>-<slug> from origin/main, open a draft PR, keep the diff reviewable,
-run `make check`, map acceptance IDs **only if continuous was explicitly selected**, and update the PR body. Merge only when the owner explicitly authorizes this
-PR and current head after fresh base/check/review preflight. Never use `--admin`, report-only governance, or silent auto-upgrades.
+Use the project's pinned KavoshStart contract and START.md WORK. Stay in this repository and the authorized scope.
+Reuse settled decisions. State the intended outcome, existing implementation owner and focused verification plan.
+Change the smallest complete slice; keep API/data/UI callers consistent. Do not introduce duplicate services or rules.
+Use the existing task or PR; do not manufacture an Issue, Spec or second reviewer. Run relevant checks and real required CI.
+Report results, NOT_RUN/N/A reasons and residual risk. Preserve source, secret and release boundaries.
+Block only the affected unsafe/unresolved action; continue unrelated authorized work. Never fabricate PASS or bypass protections.
 ```

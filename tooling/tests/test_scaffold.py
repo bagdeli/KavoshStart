@@ -1,4 +1,7 @@
 import sys
+import json
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -58,6 +61,87 @@ class StandardPin(unittest.TestCase):
     def test_standard_version_pin_is_rejected(self):
         with self.assertRaisesRegex(SystemExit, "must use kavoshStart 'self'"):
             scaffold.validate_standard_pin({"repo": "bagdeli/KavoshStart", "kavoshStart": "v1.7.0"})
+
+
+class SelectedScaffolding(unittest.TestCase):
+    def manifest(self, team=False, method="custom"):
+        m = json.loads((ROOT / "intake/kavosh.project.example.json").read_text())
+        m["kavoshStart"] = "v8.1.0"
+        m["review"] = {"teamProcess": team}
+        m["acceptance"] = {"mode": "none"}
+        m["deploy"]["method"] = method
+        return m
+
+    def test_owner_core_retained_and_unselected_team_files_omitted(self):
+        for team in (False, True):
+            with tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                (root / "kavosh.project.json").write_text(json.dumps(self.manifest(team)))
+                run = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp], capture_output=True)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                for name in ("PROJECT.md", "AGENTS.md", "Makefile", ".githooks/pre-push",
+                             ".github/workflows/ci.yml", ".github/workflows/kavosh.yml",
+                             ".github/workflows/release.yml"):
+                    self.assertTrue((root / name).is_file(), name)
+                self.assertEqual((root / "specs/_template/spec.md").exists(), team)
+                self.assertEqual((root / ".github/ISSUE_TEMPLATE/task.yml").exists(), team)
+                self.assertFalse((root / "compose.yaml").exists())
+                self.assertFalse((root / "deploy").exists())
+                self.assertFalse((root / "docs/runbooks/deploy.md").exists())
+                self.assertFalse((root / "acceptance").exists())
+                self.assertNotIn("package-ecosystem: pip", (root / ".github/dependabot.yml").read_text())
+                self.assertNotIn("package-ecosystem: npm", (root / ".github/dependabot.yml").read_text())
+                self.assertIn("check-full: check", (root / "Makefile").read_text())
+                self.assertNotEqual(subprocess.run(["make", "test"], cwd=root, capture_output=True).returncode, 0)
+
+    def test_per_job_selection_is_rendered_without_changing_default_runner(self):
+        import yaml
+        m = self.manifest()
+        m["visibility"] = "private"
+        m["ci"].update(runner="self-hosted", runnerLabels=["self-hosted", "linux", "x64", "example-ci"],
+                       runnerJobLabels={".github/workflows/release.yml#release": ["self-hosted", "linux", "x64", "example-release"]})
+        vals = scaffold.values(m)
+        rel = ".github/workflows/release.yml"
+        text = scaffold.render((ROOT / "templates/common" / rel).read_text(), vals, rel)
+        text = scaffold.render_job_runners(text, rel, m)
+        actual = json.loads(yaml.safe_load(text)["jobs"]["release"]["with"]["runs-on"])
+        self.assertEqual(actual, m["ci"]["runnerJobLabels"][rel + "#release"])
+        rel = ".github/workflows/ci.yml"
+        text = scaffold.render((ROOT / "templates/common" / rel).read_text(), vals, rel)
+        text = scaffold.render_job_runners(text, rel, m)
+        self.assertEqual(yaml.safe_load(text)["jobs"]["required"]["runs-on"], m["ci"]["runnerLabels"])
+
+    def test_adopt_never_overwrites_a_pending_review_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "kavosh.project.json").write_text(json.dumps(self.manifest()))
+            (root / "README.md").write_text("existing product documentation")
+            (root / "README.md.kavosh-new").write_text("owner review in progress")
+            run = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp, "--adopt"], capture_output=True)
+            self.assertNotEqual(run.returncode, 0)
+            self.assertEqual((root / "README.md").read_text(), "existing product documentation")
+            self.assertEqual((root / "README.md.kavosh-new").read_text(), "owner review in progress")
+
+    def test_bootstrap_default_is_dry_run_without_team_taxonomy_or_milestone(self):
+        cmd = ["bash", str(ROOT / "scripts/bootstrap-repo.sh"), "example/example"]
+        run = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("DRY-RUN", run.stdout)
+        self.assertNotIn("type:epic", run.stdout)
+        self.assertNotIn("/milestones", run.stdout)
+        team = subprocess.run(cmd + ["--team-process", "--milestone", "v0.2.0"], capture_output=True, text=True)
+        self.assertEqual(team.returncode, 0, team.stderr)
+        self.assertIn("type:epic", team.stdout)
+        self.assertIn("/milestones", team.stdout)
+        self.assertIn("v0.2.0", team.stdout)
+
+    def test_pull_adapter_is_not_removed_by_owner_mode(self):
+        m = self.manifest(method="pull-build")
+        self.assertTrue(scaffold.include_template("runtime/server", "compose.yaml", m))
+        self.assertTrue(scaffold.include_template("runtime/server", "deploy/kavosh-deploy.sh", m))
+        self.assertFalse(scaffold.include_template("tier/T1", "docs/runbooks/local-validation.md", m))
+        m["ci"]["runner"] = "none"
+        self.assertTrue(scaffold.include_template("tier/T1", "docs/runbooks/local-validation.md", m))
 
 
 if __name__ == "__main__":

@@ -11,10 +11,26 @@ v8 owner-operated acceptance removed mandatory attestation/reviewer infrastructu
 ## Proposed design
 
 - `review.teamProcess` is an **optional** boolean in the existing manifest `review` object. It defaults to false and **does not infer team membership from visibility, Tier, domain count or risk**. A collaborative team can explicitly opt into the existing structured PR conventions by setting true, independently of choosing a second reviewer.
-- In owner-operated mode, PR-only ceremony is informational/advisory, not required-check failures. Do not create Issue/Spec/extra PR merely to fill in a template. Real false attribution is not excused, and source/required CI, secret boundaries, exact-source release and non-bypassed protection rules still apply.
+- In owner-operated mode, formal ceremony is advisory, while a Ready human PR still needs real change context. Explicit understatements of sensitive source risk fail in every profile, including when other form fields are absent. Do not create Issue/Spec/extra PR merely to fill in a template. Real false attribution is not excused, and source/required CI, secret boundaries, exact-source release and non-bypassed protection rules still apply.
 - For private owner-operated self-hosted CI, existing platform labels `self-hosted`, OS and architecture can route a real runner without registering a new custom label or provisioning another VM. Public or explicitly formal team profiles retain a custom selector. Route matching remains exact; static labels are not proof of isolation, host security or access restrictions.
 - A disposable non-Production custom TEST adapter needs no document-specific ADR; actual installed release/source identity and health cannot be invented. A selected Production environment and an explicitly selected/claimed ADR retain the existing validation. UI customizations without a chosen Design System do not create a solo-owner ADR obligation, but real accessibility/licensing needs remain.
 - Retain owner-only prior approval for metered private GitHub-hosted use, and existing explicit high-risk/Production/release decisions. No consumer hosts, secrets, service accounts or configured checks are changed by this proposal.
+
+## Balanced implementation boundaries
+
+A scoped outcome, existing canonical implementation owner, focused verification and truthful handoff remain the core.
+Multi-step work uses a short plan in the existing record. No speculative service, duplicate data writer or silent fallback
+is authorized by switching off team forms. Formatting caps are advisory for owner-led work; selected team rules remain.
+
+Core unit/schema/generated-workflow/scaffold checks run on every executing required job. Only an exact documentation-only
+PR diff omits cross-domain conformance. Source/workflow/dependency changes, unknown diffs, main integration and trusted
+release verification keep full tests. Manual core-only runs explicitly say conformance NOT_RUN. No required job is replaced
+with a success stub, and no private hosted dispatch is introduced.
+
+Scaffolding keeps core project facts and guards, but omits unselected team forms/Specs and custom adapter infrastructure.
+An absent applicable test/build target remains fail-closed; N/A requires a real scoped reason. The obsolete Runner installer
+is removed, portfolio scheduling becomes explicit, and branch cleanup changes from deny to ask without allowing protected
+branch deletion or credential use. Historical tags, selected continuous evidence and published contracts stay unchanged.
 
 ## Compatibility and verification
 

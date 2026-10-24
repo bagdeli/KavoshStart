@@ -93,6 +93,18 @@ def include_template(layer: str, rel: str, manifest: dict) -> bool:
         return False  # Optional inventory only for an actual distribution/legal use case.
     if layer == "tier/T2" and rel.startswith("acceptance/"):
         return (manifest.get("acceptance") or {}).get("mode") == "continuous"
+    # Keep architecture facts in PROJECT.md; a template library is not a task list.
+    team = (manifest.get("review") or {}).get("teamProcess") is True
+    if not team and (rel.startswith("specs/") or rel.startswith("docs/architecture/")
+                     or (rel.startswith(".github/ISSUE_TEMPLATE/") and not rel.endswith(("bug.yml", "config.yml")))
+                     or rel in ("docs/decisions/0000-template.md", "docs/decisions/0001-adopt-kavoshstart.md")):
+        return False
+    if layer == "runtime/server" and (manifest.get("deploy") or {}).get("method") not in ("pull-build", "pull-image"):
+        # Custom/native adapters own their runtime; do not install Compose, .env,
+        # systemd or the standard pull-deployer's runbook under another adapter.
+        return rel.startswith(".github/workflows/")
+    if rel == "docs/runbooks/local-validation.md":
+        return (manifest.get("ci") or {}).get("runner") == "none"
     return True
 
 
@@ -103,9 +115,30 @@ def render(text: str, vals: dict, rel: str) -> str:
     return PLACEHOLDER.sub(lambda mt: vals[mt.group(1)], text)
 
 
+def render_job_runners(text: str, rel: str, manifest: dict) -> str:
+    """Honor selected per-job labels in generated callers without changing other jobs."""
+    overrides = (manifest.get("ci") or {}).get("runnerJobLabels") or {}
+    for key, labels in overrides.items():
+        path, separator, job = key.rpartition("#")
+        if not separator or path != rel:
+            continue  # A consumer-owned workflow may be added after scaffold.
+        pattern = re.compile(r"(?ms)^  " + re.escape(job) + r":.*?(?=^  [A-Za-z0-9_-]+:|\Z)")
+        def replace(match):
+            block = match.group(0)
+            selector = json.dumps(labels, separators=(",", ":"))
+            # A reusable workflow input is JSON text; a concrete job uses an array.
+            value = "'" + selector + "'" if re.search(r"(?m)^    uses:", block) else selector
+            return re.sub(r"(?m)^( +runs-on:).*$", lambda m: m.group(1) + " " + value, block)
+        text = pattern.sub(replace, text)
+    return text
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     adopt, dry = "--adopt" in sys.argv, "--dry-run" in sys.argv
+    unknown = [a for a in sys.argv[1:] if a.startswith("--") and a not in ("--adopt", "--dry-run")]
+    if unknown:
+        raise SystemExit("unknown scaffold option: " + ", ".join(unknown))
     if len(args) != 1:
         print(__doc__)
         return 2
@@ -141,8 +174,14 @@ def main() -> int:
                     plan[rel] = f
 
     created, conflicts = [], []
+    blocked_review = False
     for rel, src in sorted(plan.items()):
         text = render(src.read_text(encoding="utf-8"), vals, rel)
+        if rel == ".github/dependabot.yml":
+            # Actions only by default; add native ecosystems when their real
+            # dependency files exist, not merely because a Tier is T1/T2.
+            text = render((TEMPLATES / "common" / rel).read_text(encoding="utf-8"), vals, rel)
+        text = render_job_runners(text, rel, manifest)
         dest = target / rel
         if dest.exists():
             if not adopt:
@@ -150,6 +189,10 @@ def main() -> int:
                 continue
             dest = dest.with_name(dest.name + ".kavosh-new")
             conflicts.append(rel)
+            if dest.exists():
+                blocked_review = True
+                print("  ! preserved existing review file:", dest.relative_to(target).as_posix())
+                continue
         if not dry:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(text, encoding="utf-8", newline="\n")
@@ -170,7 +213,7 @@ def main() -> int:
             if p.is_file() and ".git" not in p.parts and "TODO(kavosh)" in p.read_text(encoding="utf-8", errors="ignore")] if not dry else []
     if todo:
         print(f"Next: replace TODO(kavosh) markers in {len(todo)} files, make `make check` pass, then run install-agent-guards.sh")
-    return 1 if conflicts and not adopt else 0
+    return 1 if blocked_review or (conflicts and not adopt) else 0
 
 
 if __name__ == "__main__":

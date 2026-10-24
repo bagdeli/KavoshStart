@@ -153,6 +153,14 @@ For an **owner-selected upgrade** from any older stable major, use [the versione
 
 ## §4 WORK on an issue (every day)
 
+**Bounded delivery is not unstructured development.** Before non-trivial editing, state the accepted outcome,
+existing canonical implementation/data owner, affected callers and focused verification in the existing task/PR.
+Use a short plan for multi-step work; do not add a parallel service, data writer or fallback without a real decision.
+Keep one coherent change, actual regression/negative checks where risk warrants them, and a truthful handoff.
+A bare template is not a Ready PR. Missing formal risk fields are advisory for solo work; an explicitly understated
+risk for sensitive paths is not. Block the affected uncertain action, not unrelated authorized development.
+
+
 For a new or changed material test/requirement, state **why it exists**, which released upstream/native contract already covers it, which product integration gap remains and which focused observation detects that gap. Only run expensive/specialist tests at the relevant risk/lifecycle decision. For duplicated/stale criteria, propose a reviewed change to the existing owning Issue/Spec/PR, not a new test package. Do not bypass existing failed mandatory checks.
 
 0. Complete the relevant §0 checks first. A newer standards tag alone does **not** route ordinary WORK to UPGRADE. Upgrade is a separate owner-selected action, unless a real applicable incompatibility/security blocker needs a scoped resolution.

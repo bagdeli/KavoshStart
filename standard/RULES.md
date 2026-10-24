@@ -16,8 +16,8 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | SRC-1 | وضعیت زنده (کار باز، اولویت، مسئول، نسخه‌ی منتشرشده) فقط در GitHub: Issue، Project، PR، Release. | MUST | All | via SRC-2, SRC-3, SRC-4 |
-| SRC-2 | هیچ SHA کامل (40 hex) در Markdown عادی نگه‌داری نمی‌شود. استثناهای provenance immutable عبارت‌اند از `CHANGELOG.md`، `docs/decisions/`، مسیرهای audit (`audits/` یا `docs/audits/`) و release note نسخه‌دار زیر `docs/release/RELEASE_NOTES_<version>.md`. exact source SHA در این evidenceها مجاز است؛ status زنده نباید با SHA در prose منجمد شود. | MUST | All | P |
-| SRC-3 | فایل‌های ردیاب وضعیت (`STATUS.md`، `HANDOFF.md`، `PROJECT_STATE.md`، `CURRENT_STATE.md`) و پوشه‌ی `archive/` وجود ندارند. | MUST | All | P |
+| SRC-2 | وضعیت زنده در متن ثابت منجمد نمی‌شود؛ SHA در شواهد نسخه‌دار، گزارش audit، ADR و release note مجاز است. وجود SHA در Markdown عادی برای مالک‌محور هشدار بازبینی provenance است، نه مانع توسعه؛ با `review.teamProcess=true` قرارداد محل نگهداری SHA به‌صورت سخت اجرا می‌شود. | MUST | All | P |
+| SRC-3 | برای وضعیت زنده یک مرجع واقعی نگه دارید و tracker متناقض نسازید. نام‌های STATUS/HANDOFF/PROJECT_STATE/CURRENT_STATE و archive در مالک‌محور هشدار بازبینی‌اند، نه ممنوعیت یادداشت یا سابقه؛ در فرایند تیمی منتخب محدودیت نام/مسیر اجرا می‌شود. | MUST | All | P |
 | SRC-4 | `AGENTS.md` به Issue/PR خاص به‌عنوان «مرجع فعلی» ارجاع نمی‌دهد و تاریخ وضعیت ندارد. detector فقط reference صریح GitHub (مثل `Issue #12`، `PR #12`، `pull request #12` یا URL issue/PR) را live-state می‌شمارد؛ citationهایی مثل `UTS #39` یا شمارهٔ استاندارد/بخش live-state نیستند. | SHOULD | All | P |
 | SRC-5 | هر پروژه `kavosh.project.json` معتبر در ریشه دارد. | MUST | All | P |
 | SRC-6 | `README.md`، `PROJECT.md` و `AGENTS.md` دامنه‌ی محصول را یکسان توصیف می‌کنند (همان `summary` مانیفست). | SHOULD | All | R |
@@ -39,7 +39,7 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | CR-1 | فقط با opt-in فرایند تیمی (`review.teamProcess=true`)، هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند. | MUST | All | P |
-| CR-2 | تغییرات control-plane/governance، auth/permission/security boundary، migration یا عملیات مخرب داده، deploy/release policy و credential/trust boundary ریسک بالا محسوب می‌شوند. در فرایند تیمی اعلام سطح high پیش از Ready شدن gate است؛ برای پروژهٔ مالک‌محور، نبود/کم‌اظهاری متن risk هشدار است، نه مجوز bypass تصمیم واقعی مالک یا تست/انتشار نامعتبر. | MUST | All | P, R |
+| CR-2 | ریسک تغییرات control-plane/governance، auth/permission، migration، deploy/release و credential/trust از اثر واقعی است، نه از فرم. نبود متن Risk در مالک‌محور هشدار است؛ ولی اعلام صریح low/medium برای مسیر حساس در همهٔ پروفایل‌ها FAIL است. تشخیص مسیر حساس حتی برای bot حفظ می‌شود و تصمیم واقعی مالک و تست مرتبط لازم است؛ تشخیص ماشینی همهٔ خطرهای رفتاری را کشف نمی‌کند. | MUST | All | P, R |
 | CR-3 | شاهد و تست متناسب با ریسک، قابلیت، مرحله و مالک قرارداد انتخاب می‌شود؛ آزمون تکراریِ upstream یا محیط/تأییدکنندهٔ دوم به‌طور پیش‌فرض ایجاد نمی‌شود. برای تغییر high/critical **تصمیم صریح صاحب اختیار انسانی همان پروژه** لازم است؛ این تصمیم الزام به «نفر دوم مستقل» نیست. آزمون قطعی ناموفق با نظر انسان یا ادعای عامل PASS نمی‌شود. انتخاب بازبینی مستقل فقط مطابق تصمیم اولیهٔ مالک و دامنهٔ واقعی است. | MUST | All | A, R |
 | CR-4 | قبل از افزودن الزام، تست یا Gate تازه، invariant واقعی، منبع و نسخه، مالک رفتار، پوشش موجود و سود تشخیصی در برابر هزینه/زمان سنجیده شود. defect باید detector یا regression حداقلیِ **مالک همان رفتار** را اصلاح کند؛ نه آزمون مجدد internals پلتفرم یا Workflow عمومی. آزمون/الزام قدیمی چون یک بار نوشته شده دائمی نیست: با استدلال، مالک و ریسک مشخص در همان Issue/Spec/PR قابل `keep/narrow/merge/retire` است؛ Scope و tests متأثر همراه هم بازبینی و سابقه نگه‌داری شود. خطر امنیت/مالی/دادهٔ واقعی، تست required قرمز یا approval مستقل با PASS جعلی، حذف خاموش یا bypass حل نمی‌شوند. Rule عمومی جدید فقط با کاربرد مشترک، detector معتبر و منفعت متناسب با هزینه و تأیید مالک پذیرفته می‌شود. | MUST | T1, T2 | R |
 
@@ -53,7 +53,7 @@
 ## WK — مدیریت کار
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| WK-1 | هر Issue دقیقاً یک برچسب `type:*` دارد (از فرم‌های Issue خودکار). | MUST | All | H |
+| WK-1 | فقط در `review.teamProcess=true`، هر Issue انسانی دقیقاً یک برچسب type دارد؛ مالک‌محور می‌تواند Issue آزاد یا مرجع کار موجود استفاده کند و Issue خودکار Kavosh معاف است. | MUST | All | H |
 | WK-2 | Issue بیش از 30 کامنت ندارد؛ پیش از آن، خلاصه در بدنه و Issue تقسیم/بسته می‌شود. | SHOULD | All | H |
 | WK-3 | Release Milestone برای پروژهٔ تیمیِ بزرگ **اختیاری و متناسب با حجم** است؛ تک‌مالک می‌تواند بدون Milestone جدا با Issue/PR و Release موجود کار کند. تصمیم مرحلهٔ انتشار همچنان مستقل و دقیق است. | SHOULD | T1, T2 | R |
 | WK-4 | Issue منسوخ با «Close as not planned» یا «duplicate» بسته می‌شود — نه Issue جدید با عنوان SUPERSEDED. | SHOULD | All | R |
@@ -76,7 +76,7 @@
 ## PR — Pull Request
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| PR-1 | برای `review.teamProcess=true` بدنه‌ی PR شامل `Closes #n` یا `Refs #n` است؛ در حالت مالک‌محور لینک Issue اجباری نیست و Issue مصنوعی ساخته نمی‌شود. | MUST | All | P |
+| PR-1 | هر PR انسانی Ready باید توضیح واقعی کار یا مرجع وظیفهٔ موجود داشته باشد؛ بدنهٔ خالی یا صرفاً قالب پذیرفته نیست. هدف، مرز تغییر، آزمون انجام‌شده/انجام‌نشده و خطر باقی‌مانده در همان PR/مرجع بازبینی می‌شوند. فقط با `review.teamProcess=true` قالب Closes/Refs اجباری است؛ Issue یا فرم مصنوعی ساخته نمی‌شود. | MUST | All | P |
 | PR-2 | فقط در فرایند تیمی عنوان PR الزاماً Conventional Commit است (`type(scope): summary`)؛ در حالت مالک‌محور نبود آن هشدارِ اثر روی changelog/Release Please است، نه مانع PR. | MUST | All | P |
 | PR-3 | line count، file count و commit count فقط telemetry برای reviewability هستند و به‌تنهایی hard gate یا دلیل اجبار به split نیستند. تغییرهای generated/بزرگ باید منبع تولید، روش بازبینی و verification مناسب داشته باشند. | SHOULD | All | P, R |
 | PR-4 | بخش `## AI involvement` فقط در فرایند تیمی لازم است؛ در کار مالک‌محور نبود فرم و trailer مانع PR نیست، اما جعل یا انتساب نادرست هویت پذیرفتنی نیست. | MUST | All | P |
@@ -127,7 +127,7 @@
 ## AI — عامل‌های هوش مصنوعی
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| AI-1 | `AGENTS.md` ریشه ≤ 150 خط و ≤ 12KB؛ `CLAUDE.md`/`GEMINI.md`/copilot فقط به آن ارجاع می‌دهند. | MUST | All | P |
+| AI-1 | AGENTS.md ریشه با فرمان‌ها، نقشه، قراردادها و مرزهای واقعی موجود است؛ bridgeها به آن ارجاع می‌دهند. حدود 150 خط/12KB برای خوانایی راهنماست و در مالک‌محور تخطی هشدار دارد؛ فقط در فرایند تیمی منتخب سقف سخت است. افزودن دستور بدون فایده یا تعارض با قرارداد جاری ممنوع است. | MUST | All | P |
 | AI-2 | یک جلسه‌ی عامل = یک Issue = یک PR. | SHOULD | All | R |
 | AI-3 | در فرایند تیمی انتساب عامل با `Co-Authored-By:` ثبت می‌شود؛ در پروژهٔ مالک‌محور فرم PR/trailer اجبار ماشینی نیست. ادعای جعلی مشارکت یا هویت همچنان مردود است. | MUST | All | P (بخش AI)، H |
 | AI-4 | محافظ‌ها موجود و فعال‌اند: `.githooks/`، `.claude/settings.json`، و `kavosh.yml` که governance، main-guard و health را فرا می‌خواند؛ report-only نامعتبر check را سبز نمی‌کند. | MUST | All | A, P, O |
@@ -137,7 +137,7 @@
 ## DOC — مستندات
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| DOC-1 | هیچ فایل Markdown بزرگ‌تر از 60KB (به‌جز CHANGELOG). | MUST | All | P |
+| DOC-1 | مستندات به‌اندازهٔ نیاز، قابل‌جستجو و بدون تکرار نگه داشته شوند. Markdown بیش از 60KB (جز CHANGELOG) در مالک‌محور هشدار خوانایی است؛ سقف سخت فقط برای فرایند تیمی منتخب اعمال می‌شود. | MUST | All | P |
 | DOC-2 | تصمیم معماری = ADR در `docs/decisions/` (قالب MADR). برای `review.teamProcess=true` breaking control-plane change (Conventional Commit با `!` روی Rule/schema/governance/release policy) باید ADR را در همان PR تغییر دهد؛ در حالت مالک‌محور عدم ADR هشدار است و تصمیم واقعی compatibility/major همچنان لازم است. | MUST | T1, T2 | P, R |
 | DOC-3 | اصطلاح/مخفف داخلی جدید یک خط در `docs/GLOSSARY.md` دارد. | SHOULD | All | R |
 | DOC-4 | prompt یا سند «کامل‌کننده‌ی محصول» چندصد KB ممنوع؛ به Spec/Issue شکسته می‌شود. | MUST | All | via DOC-1 |

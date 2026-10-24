@@ -14,8 +14,8 @@ TODO(kavosh): replace with the real layout, for example
 src/                application code
 tests/              tests mirror src/
 docs/decisions/     ADRs — why things are the way they are
-docs/runbooks/      operational how-tos (T1+)
-specs/              one folder per feature: spec.md, plan.md (T1+)
+docs/runbooks/      only the actual selected operations
+specs/              optional plan/spec only when complexity warrants it
 ```
 
 ## Commands (the only commands CI runs)
@@ -24,7 +24,7 @@ make setup    # install toolchain and dependencies
 make lint     # static checks
 make test     # tests — focused: TODO(kavosh) e.g. `pytest -k <pattern>`
 make build    # production build
-make check    # lint + test + build — run before your single push
+make check    # lint + test + build — run before review; rerun relevant checks after changes
 ```
 
 ## Where to find work
@@ -35,10 +35,10 @@ make check    # lint + test + build — run before your single push
 
 ## Workflow
 1. Start from current main and use a short-lived PR branch. In `review.teamProcess=true`, follow the team's `<type>/<issue>-<slug>`, Conventional Commit, Issue link and AI/risk section conventions. Otherwise use a simple meaningful branch/PR; **do not** create an Issue just to satisfy formatting.
-2. Create one coherent PR when the code is reviewable; Draft-first and a single push are suggestions, not universal stage gates. Do not spawn PRs to prove that you followed a checklist.
+2. Before non-trivial editing, state the accepted outcome, existing canonical owner, affected callers and focused verification in the existing task/PR. Use a short plan for multi-step work. Create one coherent PR when the code is reviewable; Draft-first and a single push are suggestions, not universal stage gates. Do not spawn PRs to prove that you followed a checklist.
 3. Use the existing tests relevant to changed behavior and the project's real `make check`/required CI. Big codegen/migration changes can be one atomic, reviewable PR; explain generated changes only when it helps verification.
 4. If `ci.runner=none` (T1/static), run the actual local contract and report its result. Do not fabricate required checks. On a private disposable TEST self-hosted runner, existing native labels and host are sufficient when repository/secret boundaries hold; no extra VM or Trust ADR automatically.
-5. Record what changed, what was actually verified, what remains, and **only genuinely required** owner decisions. A failing required security/source/release check must be fixed, not silenced.
+5. A Ready PR must contain real change context, not just headings. No duplicate implementation owner, speculative service or silent fallback. Record what changed, what was actually verified, what remains, and **only genuinely required** owner decisions. A failing required security/source/release check must be fixed, not silenced.
 
 ## Code conventions
 - Read the affected data flow and callers, contracts, configs, tests and fixtures before editing. Prefer an existing owner/UI primitive, native/stdlib capability, or suitable already-reviewed dependency (TP-1/2) before writing the smallest **complete, readable** fix.
@@ -70,7 +70,7 @@ TODO(kavosh): if `ui.kind` is not `none`, consume the exact pinned Design System
 - [ ] Unfinished necessary work reported clearly; open a new Issue only when independent tracking has real value
 
 ## Boundaries
-**Always:** stay in the authorized task scope · follow the actual project contracts · report real tests and limits. Agent attribution may be added when appropriate; a PR body field/trailer is enforced only with `review.teamProcess=true`, and fake attribution is never acceptable.
+**Always:** stay in the authorized task scope · follow the actual project contracts · report real tests and limits. Agent attribution may be added when appropriate; a formal attribution fields are enforced only with `review.teamProcess=true`; fake attribution and explicitly understated sensitive-path risk are never acceptable.
 **Ask first:** actual destructive/persistent data migrations · spending or privileged/Production deployment · access to real secrets · material auth/permission/release trust changes. Routine local/test edits, deleting generated temporary files, and non-privileged maintenance are not automatically new approval requests.
 **Never:** push to `main` · `--admin`/protection bypass · force-push shared branches · `--no-verify` · commit, log or disclose secrets ·
 disable or skip tests to go green · handle SETAD/Moadian/bank credentials, OTPs, CAPTCHAs, cookies or signing keys ·

@@ -13,7 +13,7 @@ import governance as g
 import scaffold
 
 
-def event(body="", title="tiny fix", branch="hotfix", base="main", private=True):
+def event(body="Fix the documented example; checked its rendered output.", title="tiny fix", branch="hotfix", base="main", private=True):
     return {"repository": {"default_branch": "main", "private": private},
             "pull_request": {"number": 77, "title": title, "body": body,
                              "head": {"ref": branch}, "base": {"ref": base},
@@ -95,6 +95,52 @@ class OwnerOperatedFastPath(unittest.TestCase):
         self.assertIn("continue unrelated authorized development", work)
         self.assertNotIn("`gh issue view <n>`", work)
         self.assertNotIn("Open a **draft PR early**", work)
+
+    def test_empty_ready_pr_is_not_a_fastpath(self):
+        for body in ("", "<!-- placeholder -->", "## Change\n## Verification"):
+            out = findings({"visibility": "private", "ui": {"kind": "none"}}, event(body=body))
+            self.assertEqual(out["PR-1"], "fail")
+        draft = event(body="")
+        draft["pull_request"]["draft"] = True
+        self.assertEqual(findings({"visibility": "private"}, draft)["PR-1"], "warn")
+
+    def test_risk_floor_survives_missing_forms_and_bot_metadata(self):
+        for path in ("src/auth/roles.py", "migrations/002.sql", "tooling/src/governance.py",
+                     "tooling/src/rc_gate.py", "tooling/src/receipts.py",
+                     "tooling/templates/kavosh-release.yml", "intake/kavosh.project.schema.json"):
+            for body, bot in (("Owner requested this scoped change.", False), ("Dependency update", True)):
+                rows, risk = g.change_risk_problems(body, [{"filename": path}], bot=bot, structured=False)
+                self.assertEqual(risk, "high", (path, rows))
+                self.assertTrue(any(rule == "CR-2" and level == "warn" for level,rule,*_ in rows))
+            for body in ("Risk: low", "Risk: medium\nCapabilities: control-plane"):
+                rows, risk = g.change_risk_problems(body, [{"filename": path}], structured=False)
+                self.assertEqual(risk, "high")
+                self.assertTrue(any(rule == "CR-2" and level == "fail" for level,rule,*_ in rows))
+        rows, risk = g.change_risk_problems("Risk: low\nCapabilities: docs", ["docs/example.md"], structured=False)
+        self.assertEqual(risk, "low")
+        self.assertFalse(any(level == "fail" for level,*_ in rows))
+
+    def test_owner_document_shape_is_advisory_but_core_files_are_not(self):
+        with tempfile.TemporaryDirectory() as temp:
+            docs = {"AGENTS.md": "x\n" * 180 + "a" * 40,
+                    "STATUS.md": "historical note", "large.md": "x" * 70000}
+            for name, content in docs.items():
+                Path(temp, name).write_text(content)
+            import os
+            previous = os.getcwd()
+            try:
+                os.chdir(temp)
+                for team in (False, True):
+                    g.results.clear()
+                    with patch.object(g, "git_files", return_value=list(docs)), patch.object(g, "read", side_effect=lambda f: docs.get(f, "")):
+                        g.check_files({"review": {"teamProcess": team}, "ci": {"runner": "none"}, "release": {"strategy": "custom"}})
+                    expected = "fail" if team else "warn"
+                    for rule in ("AI-1", "SRC-2", "SRC-3", "DOC-1"):
+                        self.assertTrue(any(level == expected and rid == rule for level,rid,*_ in g.results), (team,rule,g.results))
+                    self.assertTrue(any(level == "fail" and rid == "AI-4" for level,rid,*_ in g.results))
+                    self.assertTrue(any(level == "fail" and rid == "SRC-7" for level,rid,*_ in g.results))
+            finally:
+                os.chdir(previous)
 
     def test_schema_accepts_optional_team_choice(self):
         s = json.loads((ROOT/"intake/kavosh.project.schema.json").read_text())

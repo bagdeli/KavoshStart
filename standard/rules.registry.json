@@ -40,7 +40,7 @@
     },
     {
       "id": "SRC-2",
-      "statement": "هیچ SHA کامل (40 hex) در Markdown عادی نگه‌داری نمی‌شود. استثناهای provenance immutable عبارت‌اند از `CHANGELOG.md`، `docs/decisions/`، مسیرهای audit (`audits/` یا `docs/audits/`) و release note نسخه‌دار زیر `docs/release/RELEASE_NOTES_<version>.md`. exact source SHA در این evidenceها مجاز است؛ status زنده نباید با SHA در prose منجمد شود.",
+      "statement": "وضعیت زنده در متن ثابت منجمد نمی‌شود؛ SHA در شواهد نسخه‌دار، گزارش audit، ADR و release note مجاز است. وجود SHA در Markdown عادی برای مالک‌محور هشدار بازبینی provenance است، نه مانع توسعه؛ با `review.teamProcess=true` قرارداد محل نگهداری SHA به‌صورت سخت اجرا می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -67,7 +67,7 @@
     },
     {
       "id": "SRC-3",
-      "statement": "فایل‌های ردیاب وضعیت (`STATUS.md`، `HANDOFF.md`، `PROJECT_STATE.md`، `CURRENT_STATE.md`) و پوشه‌ی `archive/` وجود ندارند.",
+      "statement": "برای وضعیت زنده یک مرجع واقعی نگه دارید و tracker متناقض نسازید. نام‌های STATUS/HANDOFF/PROJECT_STATE/CURRENT_STATE و archive در مالک‌محور هشدار بازبینی‌اند، نه ممنوعیت یادداشت یا سابقه؛ در فرایند تیمی منتخب محدودیت نام/مسیر اجرا می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -339,7 +339,7 @@
     },
     {
       "id": "CR-2",
-      "statement": "تغییرات control-plane/governance، auth/permission/security boundary، migration یا عملیات مخرب داده، deploy/release policy و credential/trust boundary ریسک بالا محسوب می‌شوند. در فرایند تیمی اعلام سطح high پیش از Ready شدن gate است؛ برای پروژهٔ مالک‌محور، نبود/کم‌اظهاری متن risk هشدار است، نه مجوز bypass تصمیم واقعی مالک یا تست/انتشار نامعتبر.",
+      "statement": "ریسک تغییرات control-plane/governance، auth/permission، migration، deploy/release و credential/trust از اثر واقعی است، نه از فرم. نبود متن Risk در مالک‌محور هشدار است؛ ولی اعلام صریح low/medium برای مسیر حساس در همهٔ پروفایل‌ها FAIL است. تشخیص مسیر حساس حتی برای bot حفظ می‌شود و تصمیم واقعی مالک و تست مرتبط لازم است؛ تشخیص ماشینی همهٔ خطرهای رفتاری را کشف نمی‌کند.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -507,7 +507,7 @@
     },
     {
       "id": "WK-1",
-      "statement": "هر Issue دقیقاً یک برچسب `type:*` دارد (از فرم‌های Issue خودکار).",
+      "statement": "فقط در `review.teamProcess=true`، هر Issue انسانی دقیقاً یک برچسب type دارد؛ مالک‌محور می‌تواند Issue آزاد یا مرجع کار موجود استفاده کند و Issue خودکار Kavosh معاف است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -917,7 +917,7 @@
     },
     {
       "id": "PR-1",
-      "statement": "برای `review.teamProcess=true` بدنه‌ی PR شامل `Closes #n` یا `Refs #n` است؛ در حالت مالک‌محور لینک Issue اجباری نیست و Issue مصنوعی ساخته نمی‌شود.",
+      "statement": "هر PR انسانی Ready باید توضیح واقعی کار یا مرجع وظیفهٔ موجود داشته باشد؛ بدنهٔ خالی یا صرفاً قالب پذیرفته نیست. هدف، مرز تغییر، آزمون انجام‌شده/انجام‌نشده و خطر باقی‌مانده در همان PR/مرجع بازبینی می‌شوند. فقط با `review.teamProcess=true` قالب Closes/Refs اجباری است؛ Issue یا فرم مصنوعی ساخته نمی‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1778,7 +1778,7 @@
     },
     {
       "id": "AI-1",
-      "statement": "`AGENTS.md` ریشه ≤ 150 خط و ≤ 12KB؛ `CLAUDE.md`/`GEMINI.md`/copilot فقط به آن ارجاع می‌دهند.",
+      "statement": "AGENTS.md ریشه با فرمان‌ها، نقشه، قراردادها و مرزهای واقعی موجود است؛ bridgeها به آن ارجاع می‌دهند. حدود 150 خط/12KB برای خوانایی راهنماست و در مالک‌محور تخطی هشدار دارد؛ فقط در فرایند تیمی منتخب سقف سخت است. افزودن دستور بدون فایده یا تعارض با قرارداد جاری ممنوع است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1947,7 +1947,7 @@
     },
     {
       "id": "DOC-1",
-      "statement": "هیچ فایل Markdown بزرگ‌تر از 60KB (به‌جز CHANGELOG).",
+      "statement": "مستندات به‌اندازهٔ نیاز، قابل‌جستجو و بدون تکرار نگه داشته شوند. Markdown بیش از 60KB (جز CHANGELOG) در مالک‌محور هشدار خوانایی است؛ سقف سخت فقط برای فرایند تیمی منتخب اعمال می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

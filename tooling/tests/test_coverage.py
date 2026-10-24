@@ -20,6 +20,8 @@ import health as h  # noqa: E402
 EXAMPLE = json.loads((ROOT / "intake" / "kavosh.project.example.json").read_text(encoding="utf-8"))
 # The checked-in example deliberately carries unresolved vX.Y.Z. Test fixtures resolve it before scaffold/governance.
 EXAMPLE["kavoshStart"] = "v1.7.0"
+# File-shape negative tests below exercise the explicitly selected formal profile.
+EXAMPLE["review"] = {"teamProcess": True}
 BASH = shutil.which("bash")
 GIT_ID = ["-c", "user.email=t@t", "-c", "user.name=t"]
 

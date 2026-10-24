@@ -722,6 +722,7 @@ def read(f):
 
 def check_files(m, actual_repo=None):
     files = git_files()
+    style_level = "fail" if team_process(m) else "warn"
     md = [f for f in files if f.lower().endswith(".md")]
 
     if "AGENTS.md" not in files:
@@ -729,9 +730,9 @@ def check_files(m, actual_repo=None):
     for f in [x for x in files if Path(x).name == "AGENTS.md"]:
         t = read(f)
         n, b = t.count("\n") + 1, len(t.encode("utf-8"))
-        add("fail" if (f == "AGENTS.md" and (n > 150 or b > 12288)) else "ok", "AI-1", f"{f} size", f"{n} lines / {b} bytes (limit 150 / 12288)")
+        add(style_level if (f == "AGENTS.md" and (n > 150 or b > 12288)) else "ok", "AI-1", f"{f} size", f"{n} lines / {b} bytes (limit 150 / 12288)")
         if SHA_RE.search(t):
-            add("fail", "SRC-2", f"{f} has no commit SHAs", f"{len(SHA_RE.findall(t))} found")
+            add(style_level, "SRC-2", f"{f} has no commit SHAs", f"{len(SHA_RE.findall(t))} found")
         refs = sorted(set(ISSUE_REF_RE.findall(t)))
         dates = sorted(set(DATE_RE.findall(t)))
         if refs or dates:
@@ -741,7 +742,7 @@ def check_files(m, actual_repo=None):
             add("warn", "AI-1", f"{bridge} points to AGENTS.md", "should import/reference AGENTS.md, not duplicate it")
 
     bad = [f for f in files if FORBIDDEN_RE.search(f)]
-    add("fail" if bad else "ok", "SRC-3", "No status-tracker files or archive/", ", ".join(bad[:10]) or "none")
+    add(style_level if bad else "ok", "SRC-3", "No status-tracker files or archive/", ", ".join(bad[:10]) or "none")
 
     for level, rule, title, detail in acceptance_scope_problems(m):
         add(level, rule, title, detail)
@@ -753,11 +754,11 @@ def check_files(m, actual_repo=None):
         c = len(SHA_RE.findall(read(f)))
         if c:
             offenders.append(f"{f} ({c})")
-    add("fail" if offenders else "ok", "SRC-2", "No commit SHAs in Markdown", ", ".join(offenders[:10]) or "none")
+    add(style_level if offenders else "ok", "SRC-2", "No commit SHAs in Markdown", ", ".join(offenders[:10]) or "none")
 
     big = [f"{f} ({Path(f).stat().st_size // 1024}KB)" for f in md
            if not f.endswith("CHANGELOG.md") and Path(f).exists() and Path(f).stat().st_size > 61440]
-    add("fail" if big else "ok", "DOC-1", "Markdown files ≤ 60KB", ", ".join(big) or "none")
+    add(style_level if big else "ok", "DOC-1", "Markdown files ≤ 60KB", ", ".join(big) or "none")
 
     add("ok" if ".githooks/pre-push" in files else "fail", "AI-4", "Agent guard hook committed", ".githooks/pre-push")
     claude = read(".claude/settings.json")
@@ -1175,28 +1176,30 @@ def architectural_decision_problems(title, files, structured=True):
 
 
 def change_risk_problems(body, files, bot=False, structured=True):
-    """CR-1/2: declare change risk independently of diff size; sensitive paths impose a high-risk floor."""
-    if bot:
-        return [("ok", "CR-1", "Automated dependency/change risk", "bot PR uses its automation policy")], "medium"
+    """CR-1/2: optional forms never waive a detected risk or permit false claims."""
+    names = [item.get("filename", "") if isinstance(item, dict) else str(item) for item in files]
+    sensitive = [name for name in names if HIGH_RISK_PATH_RE.search(name)
+                 or CONTROL_PLANE_ARCH_RE.search(name)
+                 or re.search(r"^tooling/(?:src/(?:rc_gate|receipts)\.py|build_workflows\.py|templates/)", name)]
     risk_match = re.search(r"(?im)^Risk:\s*(low|medium|high|critical)\s*$", body or "")
     cap_match = re.search(r"(?im)^Capabilities:\s*(\S.+)$", body or "")
-    if not risk_match or not cap_match:
-        return [("fail" if structured else "warn", "CR-1", "Declared change risk and capabilities",
-                 "add Risk: low|medium|high|critical and a non-empty Capabilities: line")], None
-    risk = risk_match.group(1).lower()
-    out = [("ok", "CR-1", "Declared change risk and capabilities",
-            f"{risk}; {cap_match.group(1).strip()}")]
-    sensitive = []
-    for item in files:
-        name = item.get("filename", "") if isinstance(item, dict) else str(item)
-        if HIGH_RISK_PATH_RE.search(name):
-            sensitive.append(name)
-    if sensitive and RISK_ORDER[risk] < RISK_ORDER["high"]:
-        out.append(("fail" if structured else "warn", "CR-2", "Sensitive/control-plane change risk floor",
-                    f"{risk} is below high for {', '.join(sensitive[:5])}"))
+    declared = risk_match.group(1).lower() if risk_match else None
+    if bot:
+        out = [("ok", "CR-1", "Automated change metadata", "automation policy; source risk still applies")]
+    elif not declared or not cap_match:
+        out = [("fail" if structured else "warn", "CR-1", "Declared change risk and capabilities",
+                "formal fields required only for teamProcess; explain actual intent, checks and risk in the PR")]
     else:
-        out.append(("ok", "CR-2", "Risk floor", "high-sensitive paths respected" if sensitive else "no machine-detected high-risk path"))
-    return out, risk
+        out = [("ok", "CR-1", "Declared change risk and capabilities", f"{declared}; {cap_match.group(1).strip()}")]
+    effective = declared or ("medium" if bot else None)
+    if sensitive:
+        effective = "critical" if declared == "critical" else "high"
+        understated = declared is not None and RISK_ORDER[declared] < RISK_ORDER["high"]
+        out.append(("fail" if understated else "warn", "CR-2", "Sensitive/control-plane change risk floor",
+                    f"effective risk={effective}; {', '.join(sensitive[:5])}; actual owner decision and focused checks required, not a second reviewer"))
+    else:
+        out.append(("ok", "CR-2", "Risk floor", "no machine-detected high-risk path; review behavioral risks too"))
+    return out, effective
 
 
 def immediately_mergeable_parent(repo, parents, branch, default, api):
@@ -1231,6 +1234,13 @@ def check_pr(m, event, repo):
     add("ok" if CC_RE.match(title) else convention_level, "PR-2", "Title is a Conventional Commit", title)
     add("ok" if bot or BRANCH_RE.match(head) else convention_level, "BR-2", "Branch name <type>/<issue>-<slug>", head)
     add("ok" if bot or LINK_RE.search(body) else convention_level, "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "not required for owner-operated work")
+
+    # A template containing only headings/comments is not a description of work.
+    # Presence is machine-checkable; adequacy of scope/evidence remains owner review.
+    context = re.sub(r"(?m)^\s*#{1,6}\s.*$", "", body).strip()
+    if not bot and not context:
+        add("warn" if pr.get("draft") else "fail", "PR-1", "Change context is present",
+            "describe the intended change and actual verification, or reference the existing task; no special form or new Issue")
 
     files = pull_request_files(repo, pr["number"])
     counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]

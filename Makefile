@@ -16,7 +16,7 @@ test:
 	python3 tooling/test_templates.py
 
 build:
-	@true
+	@echo "N/A: no product binary; generated workflows are verified by lint"
 
 check: lint test build
 

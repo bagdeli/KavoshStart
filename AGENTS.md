@@ -15,7 +15,7 @@ standard/RULES.md        canonical rule list — every rule has ID, level, tiers
 standard/0*.md           explanations (Persian)
 templates/common|tier|runtime   files copied into product repos by scripts/scaffold.py
 templates/labels.json, rulesets/ settings applied by scripts/bootstrap-repo.sh (not copied)
-scripts/portfolio_guard.py Layer O (daily via .github/workflows/kavosh-portfolio.yml; reuses layer P checks)
+scripts/portfolio_guard.py Layer O (explicit audit via .github/workflows/kavosh-portfolio.yml; reuses layer P checks)
 tooling/src/*.py         source of the reusable workflows' logic
 tooling/templates/*.yml  workflow skeletons; tooling/build_workflows.py writes .github/workflows/kavosh-*.yml
 docs/decisions/ adoption/  ADRs and generic adoption guidance; private-project audits/plans never live here
@@ -28,6 +28,12 @@ make conformance                    # real cross-domain fixtures; see tooling/fi
 python3 tooling/build_workflows.py  # after editing tooling/src or tooling/templates or the schema
 python3 tooling/test_templates.py   # scaffold every tier×runtime and run governance on it (+ negative test)
 ```
+
+## Delivery discipline
+Use one existing task/PR for accepted outcome, scope, affected implementation owners and verification.
+Keep short plans for multi-step changes and a single canonical owner for each concept/data writer.
+Forms, new services, duplicate tests and second reviewers are not substitutes for real quality.
+Record PASS/FAIL/NOT_RUN/N/A truthfully; a skipped check is never evidence of an executed test.
 
 ## Rules for changing KavoshStart
 - Trace affected callers, tests and fixtures and prefer the smallest complete fix; reuse existing code/platform features without weakening security, validation, CI, licensing or approval gates.

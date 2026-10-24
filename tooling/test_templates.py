@@ -207,7 +207,8 @@ def main():
                 continue
             if combo[0] != "T1" or combo[1] != "server":
                 continue
-            # Negative test: inject known violations and require each rule to fail.
+            # Inject real safety violations plus style debt: safety fails in both profiles;
+            # style is advisory for owners and enforced only after explicit team opt-in.
             (repo / "docs" / "STATUS.md").write_text("current head 4c9c17d816b936e176bc81b48a0eca093ae6e599\n", encoding="utf-8")
             agents = (repo / "AGENTS.md").read_text(encoding="utf-8")
             (repo / "AGENTS.md").write_text(agents + "\nRead Issue #51 first.\n" + "x\n" * 150, encoding="utf-8")
@@ -224,10 +225,28 @@ def main():
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
             report = (repo / "report.md").read_text(encoding="utf-8")
-            expected = ["SRC-3", "SRC-2", "AI-1", "DOC-1", "SRC-5", "CI-1", "AI-4"]
-            caught = [rid for rid in expected if any(l.startswith("| ❌") and f"| {rid} |" in l for l in report.splitlines())]
+            safety = ["SRC-5", "CI-1", "AI-4"]
+            style = ["SRC-3", "SRC-2", "AI-1", "DOC-1"]
+            expected = safety + style
+            owner_missing = [rid for rid in safety if not any(
+                line.startswith("| ❌") and f"| {rid} |" in line for line in report.splitlines())]
+            owner_missing += [rid for rid in style if not any(
+                line.startswith("| ⚠️") and f"| {rid} |" in line for line in report.splitlines())]
+            if owner_missing or r.returncode != 1:
+                print(f"FAIL owner negative scope: {owner_missing}; return={r.returncode}")
+                failures += 1
+            else:
+                print("ok   owner negative: 3 safety failures retained, 4 style advisories")
+            m["review"] = {"teamProcess": True}
+            (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
+            subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+            r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env,
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
+            report = (repo / "report.md").read_text(encoding="utf-8")
+            caught = [rid for rid in expected if any(line.startswith("| ❌") and f"| {rid} |" in line
+                                                    for line in report.splitlines())]
             missed = sorted(set(expected) - set(caught))
-            print(f"{'ok  ' if not missed and r.returncode == 1 else 'FAIL'} negative test caught {len(caught)}/{len(expected)} {missed or ''}")
+            print(f"{'ok  ' if not missed and r.returncode == 1 else 'FAIL'} team negative test caught {len(caught)}/{len(expected)} {missed or ''}")
             if missed or r.returncode != 1:
                 failures += 1
     # CI-1: a T1/static local-only project must scaffold no Actions workflows and pass governance locally.
@@ -256,7 +275,7 @@ def main():
             else:
                 print("ok  T1/static local-only scaffold has no Actions workflows; local governance PASS")
     # CI-1/CI-2: fully render an isolated private self-hosted profile, including
-    # the trust ADR and nested workflow runner forwarding, and run real governance.
+    # an explicitly selected optional ADR and nested runner forwarding, and run real governance.
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
@@ -271,6 +290,7 @@ def main():
             failures += 1
         else:
             adr = repo / "docs/decisions/0042-isolated-runner.md"
+            adr.parent.mkdir(parents=True, exist_ok=True)
             adr.write_text(
                 "# Runner trust model\n"
                 "isolation: dedicated virtual machine for this repository\n"

@@ -24,6 +24,9 @@ class TypeLabels(unittest.TestCase):
         out = h.type_label_problems([issue(1, "priority:P1"), issue(2, "type:task", "type:bug")])
         self.assertEqual(out, ["#1 (0 type labels)", "#2 (2 type labels)"])
 
+    def test_WK1_owner_mode_does_not_require_issue_labels(self):
+        self.assertEqual(h.type_label_problems([issue(1), issue(2, "type:task", "type:bug")], structured=False), [])
+
     def test_WK1_positive_automation_issues_exempt(self):
         self.assertEqual(h.type_label_problems([issue(3, "kavosh:health"), issue(4, "kavosh:violation")]), [])
 
@@ -129,15 +132,11 @@ class AcceptanceDebt(unittest.TestCase):
 
 
 class TemplateHardening(unittest.TestCase):
-    def test_CI2_retired_private_runner_installer_cannot_register_anything(self):
-        """Covers: CI-2 (negative retired installer); public exceptions require separate review"""
-        text = (ROOT / "scripts/install-runner.sh").read_text(encoding="utf-8")
-        self.assertIn("existing isolated self-hosted GitHub Actions runners are allowed in private", text)
-        self.assertIn("Private GitHub-hosted runs require separate explicit approval", text)
-        self.assertIn("exit 1", text)
-        self.assertNotIn("usermod -aG docker", text)
+    def test_CI2_scaffold_does_not_install_or_register_runners(self):
+        self.assertFalse((ROOT / "scripts/install-runner.sh").exists())
+        text = (ROOT / "scripts/scaffold.py").read_text(encoding="utf-8")
         self.assertNotIn("registration-token", text)
-        self.assertNotIn("--ephemeral", text)
+        self.assertNotIn("usermod -aG docker", text)
 
     def test_SEC1_gitleaks_download_is_checksum_verified(self):
         text = (ROOT / "templates/common/.github/workflows/ci.yml").read_text(encoding="utf-8")
