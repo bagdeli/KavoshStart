@@ -82,15 +82,15 @@ class IntakeArchitectureContract(unittest.TestCase):
         self.assertIn("Never convert vague answers", self.questionnaire)
 
     def test_receipt_rollout_is_planned_without_fabricating_a_producer(self):
-        self.assertIn("real admitted evidence/decision producers", self.protocol)
-        self.assertIn("before promising delivery", self.protocol)
+        self.assertIn("real availability of separate evidence/decision Apps", self.protocol)
+        self.assertIn("Missing elected producers block only the elected protocol", self.protocol)
         self.assertIn("not permission to invent receipts or build a new App by default", self.questionnaire)
         self.assertNotIn("unless the owner explicitly chooses a documented phased adoption", self.protocol)
 
     def test_runner_instruction_distinguishes_self_hosted_from_hosted_private_quota(self):
-        self.assertIn("self-hosted runner on an isolated server", self.protocol)
+        self.assertIn("self-hosted runner on an existing accepted, least-privileged host", self.protocol)
+        self.assertIn("without a second machine or mandatory trust ADR", self.protocol)
         self.assertIn("explicit authorization", self.protocol)
-        self.assertIn("CI-2 trust ADR", self.protocol)
         self.assertNotIn("Self-hosted is not an option for private repositories", self.protocol)
 
     def test_spec_links_evidence_without_manufacturing_acceptance(self):
