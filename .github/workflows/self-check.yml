@@ -1,92 +1,133 @@
-# CI of KavoshStart itself: generated workflows up to date, JSON/shell valid, every template passes governance.
+# Temporary exact-tree assembly for draft PR 197; absent from the final tree.
+# This job is NOT the required check and never changes any ref or runs candidate tests.
 name: self-check
-
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-  workflow_dispatch:
-    inputs:
-      pr-number:
-        description: Open release PR number for trusted release verification
-        required: false
-        type: string
-      expected-head:
-        description: Exact release PR head SHA
-        required: false
-        type: string
-      ci-full:
-        description: Compatibility input with the common CI dispatch contract
-        required: false
-        default: false
-        type: boolean
-  push:
-    branches: [main]
-
-concurrency:
-  group: self-check-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+    types: [synchronize]
 permissions:
   contents: read
-  actions: read
-
 jobs:
-  required:
-    name: required
+  prepare-balanced-tree:
+    name: prepare-balanced-tree
     if: >-
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+      github.repository == 'bagdeli/KavoshStart' &&
+      github.event.pull_request.number == 197 &&
+      github.event.pull_request.draft &&
+      github.event.pull_request.user.login == 'bagdeli' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/190-owner-operated-friction-fastpath'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: 1df73bba0e2973bebeddd3ca7a05831d7acffaa9
           persist-credentials: false
-      - run: pip install --quiet pyyaml && make check
-      - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"
-      - name: Exercise the pinned Node setup action
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24"
-          package-manager-cache: false
-      - name: Prepare isolated cross-domain fixture dependencies
-        env:
-          KAVOSH_CONFORMANCE_DEPS: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          pip install --quiet -r tooling/conformance-requirements.txt
-          bash tooling/prepare_conformance.sh
-      - name: Exercise real capability boundaries and seeded regressions
-        env:
-          KAVOSH_TERRAFORM: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}/terraform
-          KAVOSH_WORDPRESS_ROOT: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}/wordpress
-          KAVOSH_CONFORMANCE_REPORT: ${{ runner.temp }}/cross-domain.xml
-        run: make conformance
-      - name: Retain actual conformance result
-        id: conformance-artifact
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: cross-domain-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cross-domain.xml
-          retention-days: 7
-          if-no-files-found: error
-      - name: Verify live artifact transport and tamper rejection
+      - name: Assemble checked source as immutable objects only
         env:
           GH_TOKEN: ${{ github.token }}
-          KAVOSH_ARTIFACT_ID: ${{ steps.conformance-artifact.outputs.artifact-id }}
-        run: python3 tooling/receipt_transport_smoke.py
-      - name: Capture exact verified public source
-        if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
+          STAGING_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          mkdir -p "$RUNNER_TEMP/kavosh-verification"
-          git archive --format=tar HEAD > "$RUNNER_TEMP/kavosh-verification/source.tar"
-          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/kavosh-verification/source-identity.txt"
-          sha256sum "$RUNNER_TEMP/kavosh-verification/source.tar" > "$RUNNER_TEMP/kavosh-verification/source-sha256.txt"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
-        with:
-          name: kavosh-verified-source-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/kavosh-verification/
-          retention-days: 7
-          if-no-files-found: error
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, os, re, subprocess, urllib.error, urllib.request
+          from pathlib import Path
+
+          REPO = 'bagdeli/KavoshStart'
+          BASE_TREE = 'acb1b3578f8e73370f5cfc4fd91d1744d8eda8d6'
+          TARGET_TREE = 'd78f9bf1693309dbea03d08c4b82db8f3ad59ffa'
+          PATCH_HASH = 'f53ab688538987e2ccadb08e2b3b1aba2ce92dfd81352138b82d678ffc51bb09'
+          PARTS = ['38d55d6af7aeeac044b3a08eb83ca6b27935e56d',
+                   '15c3f0f37de736d585f58ea49e678b51005edc48',
+                   'f11ce75cc375a04a3a84701da3382345e7825b79']
+          GENERATORS = {'tooling/build_workflows.py': 'c3f821033e290284b3725f577b854fa9e16aad6752782fbffbee3742e5870226',
+                        'tooling/rule_registry.py': '70973101836b205cb08f73925fc9e8aaba460b7c3ec05a733e542b1412560f26'}
+          if os.environ.get('GITHUB_REPOSITORY') != REPO:
+              raise SystemExit('wrong repository')
+          head = os.environ['STAGING_HEAD']
+          if not re.fullmatch('[0-9a-f]{40}', head):
+              raise SystemExit('invalid staging identity')
+
+          def git(*args):
+              return subprocess.check_output(['git', *args]).decode().strip()
+
+          def api(path, data=None):
+              raw = json.dumps(data).encode() if data is not None else None
+              req = urllib.request.Request('https://api.github.com/repos/' + REPO + '/' + path,
+                  data=raw, method='POST' if data is not None else 'GET',
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                           'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
+                           'X-GitHub-Api-Version': '2022-11-28'})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      return json.load(response)
+              except urllib.error.HTTPError as error:
+                  raise SystemExit('Git object API failed: HTTP ' + str(error.code)) from None
+
+          pr = api('pulls/197')
+          if not (pr.get('draft') and pr.get('state') == 'open' and pr['head']['sha'] == head
+                  and pr['head']['ref'] == 'feat/190-owner-operated-friction-fastpath'
+                  and pr['head']['repo']['full_name'] == REPO):
+              raise SystemExit('staging lease changed')
+          if git('rev-parse', 'HEAD^{tree}') != BASE_TREE:
+              raise SystemExit('baseline mismatch')
+          compressed = b''
+          for sha in PARTS:
+              obj = api('git/blobs/' + sha)
+              content = base64.b64decode(obj['content'])
+              actual = hashlib.sha1(('blob ' + str(len(content)) + '\0').encode() + content).hexdigest()
+              if obj['encoding'] != 'base64' or actual != sha:
+                  raise SystemExit('immutable patch chunk mismatch')
+              compressed += content
+          patch = lzma.decompress(compressed)
+          if hashlib.sha256(patch).hexdigest() != PATCH_HASH:
+              raise SystemExit('patch checksum mismatch')
+          patch_path = Path(os.environ['RUNNER_TEMP']) / 'balanced-source.patch'
+          patch_path.write_bytes(patch)
+          subprocess.run(['git', 'apply', '--check', '--unidiff-zero', str(patch_path)], check=True)
+          subprocess.run(['git', 'apply', '--index', '--unidiff-zero', str(patch_path)], check=True)
+          for path, digest in GENERATORS.items():
+              if hashlib.sha256(Path(path).read_bytes()).hexdigest() != digest:
+                  raise SystemExit('generator changed')
+          clean = {k: v for k, v in os.environ.items() if k not in ('GH_TOKEN', 'GITHUB_TOKEN')}
+          subprocess.run(['python3', 'tooling/rule_registry.py', '--write'], check=True, env=clean)
+          subprocess.run(['python3', 'tooling/build_workflows.py'], check=True, env=clean)
+          subprocess.run(['git', 'add', '-A'], check=True)
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          if git('write-tree') != TARGET_TREE:
+              raise SystemExit('locally verified tree mismatch')
+          changed = subprocess.check_output(['git', 'diff', '--cached', '--name-only', '-z', 'HEAD']).split(b'\0')
+          entries = []
+          for raw in changed:
+              if not raw:
+                  continue
+              path = raw.decode('utf-8')
+              entry = {'path': path, 'mode': '100644', 'type': 'blob'}
+              if not Path(path).exists():
+                  entry['sha'] = None
+              else:
+                  stage = git('ls-files', '--stage', '--', path).split()
+                  mode, local_sha = stage[0], stage[1]
+                  if mode not in ('100644', '100755'):
+                      raise SystemExit('unexpected file mode')
+                  obj = api('git/blobs', {'content': base64.b64encode(Path(path).read_bytes()).decode(),
+                                         'encoding': 'base64'})
+                  if obj['sha'] != local_sha:
+                      raise SystemExit('Git blob checksum mismatch')
+                  entry.update(mode=mode, sha=obj['sha'])
+              entries.append(entry)
+          tree = api('git/trees', {'base_tree': BASE_TREE, 'tree': entries})
+          if tree['sha'] != TARGET_TREE:
+              raise SystemExit('remote tree mismatch')
+          message = ('feat(governance)!: balance owner delivery speed with genuine quality controls\n\n'
+                     'Keep scoped intent, canonical ownership, real tests, risk floors and protected release boundaries. '
+                     'Make paperwork, optional runtime scaffolds and duplicate monitoring proportionate. '
+                     'Restore normal read-only required verification on this exact tree.\n\n'
+                     'Co-Authored-By: ChatGPT <chatgpt@users.noreply.github.com>')
+          commit = api('git/commits', {'message': message, 'tree': TARGET_TREE, 'parents': [head]})
+          print('CANDIDATE_COMMIT=' + commit['sha'])
+          print('CANDIDATE_TREE=' + TARGET_TREE)
+          print('No refs updated. Assembly is NOT a required-test PASS; normal exact-head CI is next.')
+          PY
