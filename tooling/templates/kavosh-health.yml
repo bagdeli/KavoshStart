@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: JSON labels for selected runner; private self-hosted needs CI-2 trust ADR, private GitHub-hosted needs one-run owner approval.
+        description: JSON labels for selected runner; private self-hosted needs real nonprivileged CI-2 controls (optional ADR), private GitHub-hosted needs one-run owner approval.
         type: string
         default: '["ubuntu-latest"]'
       update-issue:
