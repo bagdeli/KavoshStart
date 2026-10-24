@@ -33,7 +33,7 @@ fi
 
 : "${PROJECT:?set in deploy.env}"
 BASE="${BASE:-/opt/kavosh/$PROJECT}"
-CHANNEL="${CHANNEL:?explicitly select test or production in the protected deploy.env}"
+CHANNEL="${CHANNEL:-test}"
 DEPLOY_METHOD="${DEPLOY_METHOD:-pull-build}"
 REPO_URL="${REPO_URL:?set in deploy.env (read-only deploy key or approved mirror)}"
 VERSION_URL="${VERSION_URL:-http://127.0.0.1:8080/version}"

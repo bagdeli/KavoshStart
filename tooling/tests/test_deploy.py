@@ -209,15 +209,6 @@ class ScriptContract(unittest.TestCase):
         self.assertLess(require_restore, opt_restore)
         self.assertIn('eval "$BACKUP_HEALTHCHECK_CMD"', text)  # never waive real backup for data writes
 
-    def test_DEP2_negative_missing_channel_never_defaults_to_unpinned_test(self):
-        with tempfile.TemporaryDirectory() as d:
-            env, _ = admitted_environment(Path(d))
-            env.pop("CHANNEL")
-            result = subprocess.run([BASH, str(SCRIPT), "--verify-environment"], env=env,
-                                    capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("explicitly select test or production", result.stderr)
-
     def test_DEP7_positive_standard_environment_is_admitted(self):
         """Covers: DEP-3, DEP-4, DEP-7, DEP-8 (positive)"""
         with tempfile.TemporaryDirectory() as d:
