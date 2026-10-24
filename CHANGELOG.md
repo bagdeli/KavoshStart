@@ -1,5 +1,17 @@
 # Changelog
 
+## [8.1.0](https://github.com/bagdeli/KavoshStart/compare/v8.0.0...v8.1.0) (2026-10-24)
+
+
+### Features
+
+* **deploy:** proportionate native maintenance, recovery and update cadence ([#195](https://github.com/bagdeli/KavoshStart/issues/195)) ([0757b70](https://github.com/bagdeli/KavoshStart/commit/0757b70b0825d52b68a39b563c61bf2c10138d5d)), closes [#190](https://github.com/bagdeli/KavoshStart/issues/190)
+
+
+### Bug Fixes
+
+* **governance:** retry partial GitHub API PR-file reads ([#187](https://github.com/bagdeli/KavoshStart/issues/187)) ([63df9c0](https://github.com/bagdeli/KavoshStart/commit/63df9c0c1506e8e1f0fbae96e94fe71d1951ef76)), closes [#186](https://github.com/bagdeli/KavoshStart/issues/186)
+
 ## [8.0.0](https://github.com/bagdeli/KavoshStart/compare/v7.2.0...v8.0.0) (2026-10-24)
 
 
