@@ -90,10 +90,13 @@ class PrivatePortfolio(unittest.TestCase):
         _, failures, _ = ppg.run(FakeApi(pin="main"), [REPO], latest=LATEST)
         self.assertGreater(failures, 0)
 
-    def test_t2_requires_continuous_nonempty_scope(self):
+    def test_t2_owner_native_no_continuous_does_not_trigger_receipt_gate(self):
         api = FakeApi(tier="T2", acceptance={"mode": "none"})
+        api.files.pop("acceptance/scope.json")
         _, failures, _ = ppg.run(api, [REPO], latest=LATEST)
-        self.assertGreater(failures, 0)
+        self.assertEqual(failures, 0)
+
+    def test_t2_opted_in_continuous_still_rejects_empty_scope(self):
         api = FakeApi(tier="T2", acceptance={"mode": "continuous"})
         api.files["acceptance/scope.json"] = json.dumps({"items": []})
         _, failures, _ = ppg.run(api, [REPO], latest=LATEST)

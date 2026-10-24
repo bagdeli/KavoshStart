@@ -7,7 +7,7 @@
 |---|---|---|
 | مالک | شما | دامنه، اولویت، تأیید رده و Spec، مجوزهای محدود برای ادغام، انتشار و production |
 | مجری | Claude Code، Codex، Copilot، Gemini | برنامه، کد، تست، به‌روزرسانی PR و اجرای عمل صریحاً مجاز |
-| بازبین | عامل دوم (ابزار یا مدل متفاوت) + شما | بازبینی diff؛ «Request changes» عامل الزام‌آور نیست ولی باید پاسخ داده شود |
+| بازبین | **همان مالک**؛ فقط با انتخاب صریح تیم بزرگ، انسان/مدل کمکی | بازبینی متناسب با ریسک؛ عامل دوم هیچ جایگاه الزامی یا تأیید انسانی ندارد |
 | پلتفرم | workflowهای KavoshStart | اجرای قواعد، بی‌طرف |
 
 ## فایل‌های دستورالعمل
@@ -38,7 +38,7 @@ AGENTS.md بر اساس الگوی تحلیل GitHub روی 2,500 ریپو: فر
 
 الهام مفهومی: [Ponytail v5.3.2](https://github.com/DietrichGebert/ponytail/tree/v5.3.2) (MIT). این متن مستقل نوشته شده و هیچ prompt، کد، Hook یا تله‌متریِ Ponytail کپی یا نصب نمی‌شود. [نتایج بنچمارک خود Ponytail](https://github.com/DietrichGebert/ponytail/blob/v5.3.2/benchmarks/results/2026-10-07-agentic.md) به‌معنای اثبات صرفه‌جویی برای KavoshStart نیست.
 
-## جریان Spec-Driven (T2 اجباری، T1 برای Featureهای بزرگ)
+## جریان Spec-Driven (فقط قابلیت‌های پرریسک/چندتیمیِ منتخب؛ برای تک‌مالک اختیاری)
 ```text
 Issue (feature) → PR#1: specs/<n>-<slug>/spec.md  (چه و چرا، ≤ 400 خط)  → مالک تأیید
                 → PR#1 یا #2: plan.md  (چطور؛ owner‌های canonical؛ migration؛ tasks)
@@ -67,6 +67,6 @@ First verify repository identity, live main/task state, the project's exact Kavo
 KavoshStart release. If a newer control-plane release materially affects governance/acceptance/security/release/deploy/CI,
 upgrade it in a separate PR before normal feature work unless the owner has recorded a bounded defer.
 For WORK, handle exactly issue #<n>, branch <type>/<n>-<slug> from origin/main, open a draft PR, keep the diff reviewable,
-run `make check`, map T2 acceptance IDs, and update the PR body. Merge only when the owner explicitly authorizes this
+run `make check`, map acceptance IDs **only if continuous was explicitly selected**, and update the PR body. Merge only when the owner explicitly authorizes this
 PR and current head after fresh base/check/review preflight. Never use `--admin`, report-only governance, or silent auto-upgrades.
 ```

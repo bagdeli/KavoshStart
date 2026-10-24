@@ -561,8 +561,8 @@
     },
     {
       "id": "WK-3",
-      "statement": "هر انتشار یک Milestone دارد؛ Issueهای آن نسخه به آن وصل‌اند.",
-      "level": "MUST",
+      "statement": "Release Milestone برای پروژهٔ تیمیِ بزرگ **اختیاری و متناسب با حجم** است؛ تک‌مالک می‌تواند بدون Milestone جدا با Issue/PR و Release موجود کار کند. تصمیم مرحلهٔ انتشار همچنان مستقل و دقیق است.",
+      "level": "SHOULD",
       "tier": "T1, T2",
       "enforcement": {
         "raw": "R",
@@ -615,8 +615,8 @@
     },
     {
       "id": "WK-5",
-      "statement": "Feature بزرگ‌تر از یک Task، قبل از پیاده‌سازی Spec تأییدشده در `specs/` دارد.",
-      "level": "MUST",
+      "statement": "Feature چندتیمی یا واقعاً پیچیده می‌تواند قبل از پیاده‌سازی یک Spec کوتاهِ مصوب در `specs/` داشته باشد؛ پروژهٔ تک‌مالک برای تغییر ساده مجبور به پرونده و PR جدا نیست.",
+      "level": "SHOULD",
       "tier": "T2",
       "enforcement": {
         "raw": "R",

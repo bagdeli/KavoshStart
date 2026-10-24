@@ -20,7 +20,7 @@
 | مصرف دقیقه‌ی ماه جاری / بودجه | ≤ 100٪ (هشدار از 80٪) | CI-3 |
 | آخرین Release | وجود دارد؛ T1/T2: ≤ 30 روز | REL-1 |
 | pin KavoshStart در برابر آخرین Release پایدار | current؛ عقب‌ماندگی = warning + review/upgrade | STD-1 |
-| T2 با continuous acceptance | 100٪ | ACC-1, ACC-2 |
+| اگر Continuous Acceptance آگاهانه انتخاب شده باشد | شواهد معتبر فقط برای scope منتخب | ACC-1, ACC-2 |
 | tagهای غیر `v*` (به‌جز tag تاریخی immutable با allowlist صریح) | 0 | REL-3 |
 
 ## سطح پرتفوی
@@ -31,7 +31,7 @@
 
 ## Freshness و بدهی پذیرش
 
-Health هیچ dependency را خودکار ارتقا نمی‌دهد. STD-1 فقط اختلاف pin با آخرین release پایدار را visible می‌کند؛ تصمیم upgrade در PR مستقل و با CHANGELOG گرفته می‌شود. برای T2، نبودن continuous acceptance یک مشکل پیکربندی است، نه انتخاب دائمی.
+Health هیچ dependency را خودکار ارتقا نمی‌دهد. STD-1 فقط اختلاف pin با آخرین release پایدار را visible می‌کند؛ تصمیم upgrade در PR مستقل و با CHANGELOG گرفته می‌شود. برای T2 تک‌مالک، `acceptance.mode=none` انتخاب معتبر است؛ نبود App یا receipt مورد را قرمز نمی‌کند. اگر continuous انتخاب شده بود، نبود شواهد واقعی همان دامنه همچنان failure است.
 
 هشدارهای ACC-2 برای closure کمتر از 80٪ یا acceptance debt قدیمی‌تر از 14 روز قرار نیست تست‌های سنگین را به هر PR تحمیل کنند؛ هدف این است که evidence debt دیده و در طول delivery مصرف شود، نه اینکه به release نهایی منتقل شود.
 
