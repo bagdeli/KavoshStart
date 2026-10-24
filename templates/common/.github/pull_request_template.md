@@ -33,5 +33,5 @@ Co-Authored-By: <Agent> <noreply@example.com>
 - [ ] Change is coherent/reviewable; any generated or broad mechanical diff documents its generator and verification
 - [ ] Searched for existing ownership before new code; material test/requirement changes have a scoped rationale when applicable
 - [ ] API + UI consumer + tests changed together (if an API changed)
-- [ ] Third-party changes reviewed for risk, licence/NOTICE and distribution/network obligations (TP-1/TP-2; N/A with reason if none)
+- [ ] If an actually distributed/network-used third-party component changed, its applicable license/NOTICE/source obligations are met; otherwise N/A (no lawyer, second signer or new inventory needed)
 - [ ] Docs / ADR / runbook updated (if behaviour changed)

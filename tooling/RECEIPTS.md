@@ -1,4 +1,6 @@
-# Reference receipt integration
+# OPTIONAL receipt integration for explicitly opted-in continuous projects
+
+No project needs independent GitHub Apps, a second person, an external evidence store or this transport simply because it is T2, financially sensitive or managed by a solo owner. This reference code remains available only when the owner deliberately adopts an attested continuous contract and accepts the operational costs. `acceptance.mode=none` uses actual source CI plus owner-controlled release decisions without invoking this tool.
 
 The repository delivers a verifier, artifact/JUnit publisher library and bounded
 GitHub.com transport. It does not run a hosted attestation or human-login service.

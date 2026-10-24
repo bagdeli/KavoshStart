@@ -1,12 +1,12 @@
 name: Feature
-description: A deliverable slice (2–10 days). Split into task sub-issues; T2 needs a spec first.
+description: A focused, independently useful change. Split or write a spec only for genuinely complex multi-team work; routine upstream maintenance needs no separate feature tree.
 title: "feat: "
 labels: ["type:feature"]
 body:
   - type: input
     id: parent
     attributes:
-      label: Parent epic (T2)
+      label: Parent epic (optional team scope)
       placeholder: "#3"
   - type: textarea
     id: story
@@ -30,5 +30,5 @@ body:
   - type: input
     id: spec
     attributes:
-      label: Spec folder
+      label: Spec folder (optional complex change)
       placeholder: specs/<issue>-<slug>/ (first PR of this feature)

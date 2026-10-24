@@ -256,8 +256,9 @@ def main():
             add("warn", "STD-1", "KavoshStart standard freshness", pinned or "missing",
                 "latest release unavailable; retry during the next health/session preflight")
     if manifest.get("tier") == "T2":
-        mode = manifest.get("acceptance", {}).get("mode", "none")
-        add(mode == "continuous", "ACC-2", "T2 continuous acceptance profile", mode, "continuous")
+        mode = (manifest.get("acceptance") or {}).get("mode", "none")
+        add(mode in ("none", "continuous"), "ACC-2", "Owner-selected acceptance profile",
+            mode, "none (owner-led) or explicitly opted-in continuous")
 
     # Branches
     branches = [b["name"] for b in paged(f"repos/{repo}/branches") if b["name"] != default]

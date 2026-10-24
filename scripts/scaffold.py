@@ -82,6 +82,17 @@ def values(m: dict) -> dict:
     }
 
 
+def include_template(layer: str, rel: str, manifest: dict) -> bool:
+    """Opt-in complexity only: no default App, second AI or licence ledger."""
+    if rel == ".github/workflows/ai-review.yml":
+        return False  # Optional team example; never auto-install a paid reviewer.
+    if layer == "common" and rel == "docs/THIRD_PARTY.md":
+        return False  # Optional inventory only for an actual distribution/legal use case.
+    if layer == "tier/T2" and rel.startswith("acceptance/"):
+        return (manifest.get("acceptance") or {}).get("mode") == "continuous"
+    return True
+
+
 def render(text: str, vals: dict, rel: str) -> str:
     missing = sorted({k for k in PLACEHOLDER.findall(text) if k not in vals})
     if missing:
@@ -116,6 +127,8 @@ def main() -> int:
             for f in sorted(base.rglob("*")):
                 if f.is_file():
                     rel = f.relative_to(base).as_posix()
+                    if not include_template(layer, rel, manifest):
+                        continue
                     if manifest.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
                         continue
                     if rel == ".github/workflows/rc.yml" and "test" not in manifest.get("deploy", {}).get("environments", []):

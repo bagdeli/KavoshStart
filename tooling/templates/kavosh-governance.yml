@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: JSON labels for selected runner; private self-hosted needs CI-2 trust ADR, private GitHub-hosted needs prior run-scoped consent from the designated human billing owner (not admin/agent).
+        description: JSON labels for selected runner; private self-hosted needs real nonprivileged CI-2 controls (optional ADR), private GitHub-hosted needs prior run-scoped consent from the designated human billing owner (not admin/agent).
         type: string
         default: '["ubuntu-latest"]'
       enforce:

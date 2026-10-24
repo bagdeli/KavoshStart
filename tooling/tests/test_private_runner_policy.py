@@ -51,12 +51,14 @@ class PrivateActionsPolicy(unittest.TestCase):
         self.assertFalse(any(level == "fail" and rule == "CI-1"
                              for level, rule, _, _ in g.runner_manifest_problems(m)))
 
-    def test_CI2_negative_private_self_hosted_without_isolation_adr(self):
+    def test_CI2_positive_private_self_hosted_without_separate_adr_or_vm(self):
         m = manifest(runner="self-hosted")
         m["repo"] = "demo/Example"
         self.assertEqual(g.validate(m, {"allOf": SCHEMA["allOf"]}), [])
-        self.assertTrue(any(level == "fail" and rule == "CI-2"
-                            for level, rule, _, _ in g.runner_manifest_problems(m)))
+        results = g.runner_manifest_problems(m)
+        self.assertFalse(any(level == "fail" and rule == "CI-2" for level, rule, _, _ in results))
+        self.assertTrue(any(level == "warn" and rule == "CI-2" and "actual host" in detail
+                            for level, rule, _, detail in results))
 
 
     def test_CI2_positive_explicit_arm64_custom_repository_labels(self):

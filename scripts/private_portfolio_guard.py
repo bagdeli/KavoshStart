@@ -61,9 +61,8 @@ def acceptance_findings(api, repo: str, branch: str, manifest: dict) -> list[tup
     if manifest.get("tier") != "T2":
         return []
     findings = []
-    if (manifest.get("acceptance") or {}).get("mode") != "continuous":
-        findings.append(("ACC-1", "T2 requires acceptance.mode=continuous"))
-        return findings
+    if (manifest.get("acceptance") or {}).get("mode", "none") != "continuous":
+        return findings  # Owner-operated T2 needs no App/AC register. No false acceptance claim.
     raw = pg.content(api, repo, "acceptance/scope.json", branch)
     if raw is None:
         return [("ACC-1", "continuous T2 is missing acceptance/scope.json")]

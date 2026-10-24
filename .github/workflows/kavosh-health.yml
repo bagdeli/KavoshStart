@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: JSON labels for selected runner; private self-hosted needs CI-2 trust ADR, private GitHub-hosted needs one-run owner approval.
+        description: JSON labels for selected runner; private self-hosted needs real nonprivileged CI-2 controls (optional ADR), private GitHub-hosted needs one-run owner approval.
         type: string
         default: '["ubuntu-latest"]'
       update-issue:
@@ -886,8 +886,9 @@ jobs:
                       add("warn", "STD-1", "KavoshStart standard freshness", pinned or "missing",
                           "latest release unavailable; retry during the next health/session preflight")
               if manifest.get("tier") == "T2":
-                  mode = manifest.get("acceptance", {}).get("mode", "none")
-                  add(mode == "continuous", "ACC-2", "T2 continuous acceptance profile", mode, "continuous")
+                  mode = (manifest.get("acceptance") or {}).get("mode", "none")
+                  add(mode in ("none", "continuous"), "ACC-2", "Owner-selected acceptance profile",
+                      mode, "none (owner-led) or explicitly opted-in continuous")
 
               # Branches
               branches = [b["name"] for b in paged(f"repos/{repo}/branches") if b["name"] != default]

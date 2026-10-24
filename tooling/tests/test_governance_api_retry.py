@@ -93,6 +93,27 @@ class Retry(unittest.TestCase):
             self.assertEqual(url.call_count, 1)
             sleep.assert_not_called()
 
+    def test_truncated_json_without_content_length_retries_get_but_never_post(self):
+        class Partial:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return b'{"items":['
+        class Complete:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return b'{"items":[]}'
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "example"}), \
+             patch.object(g.urllib.request, "urlopen", side_effect=[Partial(), Complete()]) as url, \
+             patch.object(g.time, "sleep") as sleep:
+            self.assertEqual(g.github_api("repos/example/project/pulls"), {"items": []})
+            self.assertEqual(url.call_count, 2)
+            self.assertEqual(sleep.call_count, 1)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "example"}), \
+             patch.object(g.urllib.request, "urlopen", return_value=Partial()) as url:
+            with self.assertRaisesRegex(RuntimeError, "JSONDecodeError"):
+                g.github_api("repos/example/project/issues", method="POST", payload={"body":"example"})
+            self.assertEqual(url.call_count, 1)
+
     def test_pr_file_pagination_is_complete_and_fails_closed_at_api_boundary(self):
         expected = [{"filename": f"src/file-{i}.py"} for i in range(81)]
         calls = []

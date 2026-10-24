@@ -1,5 +1,16 @@
 # Changelog
 
+## [8.0.0](https://github.com/bagdeli/KavoshStart/compare/v7.2.0...v8.0.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **governance:** T2 owner-managed projects no longer mandate Continuous Acceptance, independent App attestation, second-person visual review or dedicated test infrastructure. Optional advanced team governance remains explicit and source-bound.
+
+### Features
+
+* **governance:** default to sole-owner delivery; opt in team assurance ([#193](https://github.com/bagdeli/KavoshStart/issues/193)) ([ba5d425](https://github.com/bagdeli/KavoshStart/commit/ba5d4255b95b94456d2d4f36485df6ee437117e7)), closes [#189](https://github.com/bagdeli/KavoshStart/issues/189)
+
 ## [7.2.0](https://github.com/bagdeli/KavoshStart/compare/v7.1.3...v7.2.0) (2026-10-24)
 
 
