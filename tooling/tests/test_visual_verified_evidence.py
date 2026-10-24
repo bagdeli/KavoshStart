@@ -34,6 +34,14 @@ def api(reviews=None, run=None, jobs=None):
     return get
 
 class VerifiedVisual(unittest.TestCase):
+    def test_UI2_positive_owner_review_does_not_require_second_identity(self):
+        # The owner-only policy is declared in the manifest, not inferred from a PR writer.
+        m = {"tier": "T2", "size": {"domains": 1, "parallelStreams": 1},
+             "review": {"independentHumanReview": False}}
+        self.assertFalse(any(level == "fail" and rule == "UI-2"
+                             for level, rule, _, _ in g.standard_lifecycle_problems(m)))
+
+
     def decide(self, evidence=None, **kw):
         return g.verified_visual_review(REPO, pr(), evidence if evidence is not None else f"UI evidence: {RUN}", api(**kw))[0]
 

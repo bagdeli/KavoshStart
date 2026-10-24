@@ -8,6 +8,20 @@ import scaffold  # noqa: E402
 
 
 class StandardPin(unittest.TestCase):
+    def test_ACC1_positive_T2_default_excludes_optional_services(self):
+        owner = {"tier": "T2", "acceptance": {"mode": "none"}}
+        self.assertFalse(scaffold.include_template("tier/T2", "acceptance/scope.json", owner))
+        self.assertFalse(scaffold.include_template("tier/T2", "acceptance/security/receipt-policy.json", owner))
+        self.assertFalse(scaffold.include_template("tier/T2", ".github/workflows/ai-review.yml", owner))
+        self.assertFalse(scaffold.include_template("common", "docs/THIRD_PARTY.md", owner))
+
+    def test_ACC1_positive_explicit_team_acceptance_installs_only_selected_contract(self):
+        m = {"tier": "T2", "acceptance": {"mode": "continuous", "assurance": "attested"}}
+        self.assertTrue(scaffold.include_template("tier/T2", "acceptance/scope.json", m))
+        self.assertFalse(scaffold.include_template("tier/T2", ".github/workflows/ai-review.yml", m))
+        self.assertTrue(scaffold.include_template("common", "PROJECT.md", m))
+
+
     def test_consumer_exact_release_pin_is_valid(self):
         scaffold.validate_standard_pin({"repo": "bagdeli/ExampleConsumer", "kavoshStart": "v1.7.0"})
 
