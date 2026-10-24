@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.2.0](https://github.com/bagdeli/KavoshStart/compare/v7.1.3...v7.2.0) (2026-10-24)
+
+
+### Features
+
+* **release:** guard Test staging through the existing RC path ([#185](https://github.com/bagdeli/KavoshStart/issues/185)) ([9a96eca](https://github.com/bagdeli/KavoshStart/commit/9a96eca1da9ca3fee566a5122920dbac0cd955ea))
+
 ## [7.1.3](https://github.com/bagdeli/KavoshStart/compare/v7.1.2...v7.1.3) (2026-10-23)
 
 
