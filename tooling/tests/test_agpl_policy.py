@@ -14,7 +14,7 @@ class ConditionalAGPLPolicy(unittest.TestCase):
         policy = (ROOT / "standard/15-third-party-components.md").read_text(encoding="utf-8")
         for term in ("AGPL-3.0-only", "AGPL-3.0-or-later", "ممنوعیت مطلق ندارند",
                      "approved", "blocked", "needs-legal-review", "تناقض حل‌نشده",
-                     "Corresponding Source", "§13", "بررسی حقوقی معتبر"):
+                     "Corresponding Source", "§13", "به اختیار خود"):
             with self.subTest(term=term):
                 self.assertIn(term, policy)
         self.assertNotIn("AGPL مطلقاً ممنوع", policy)
@@ -23,7 +23,7 @@ class ConditionalAGPLPolicy(unittest.TestCase):
         template = (ROOT / "templates/common/docs/THIRD_PARTY.md").read_text(encoding="utf-8")
         for term in ("AGPL-specific decision", "network source offer",
                      "approved", "blocked", "needs-legal-review",
-                     "qualified legal review", "never treat a scanner result as approval"):
+                     "optional qualified legal review", "never treat a scanner result as approval"):
             with self.subTest(term=term):
                 self.assertIn(term, template)
 
