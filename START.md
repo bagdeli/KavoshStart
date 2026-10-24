@@ -138,7 +138,7 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §2 ADOPT an existing repository
 1. Run `bash scripts/audit-repo.sh bagdeli/<repo>` (read-only). Summarise findings against `standard/RULES.md`.
-2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed decisions. Explicitly recover D3/G9 owner-versus-team choices before suggesting second-person review, separate GitHub App attestation, external legal counsel or a second Test environment; default NO for solo ownership. Do not restart the project or re-approve unchanged choices.
+2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed decisions. Explicitly recover D3/G9 owner-versus-team choices before suggesting second-person review, separate GitHub App attestation, external legal counsel or a second Test environment; default NO for solo ownership. Do not restart the project or re-approve unchanged choices. Examples from another product do not authorize work on that product.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
    `*.kavosh-new` next to them for you to merge in a PR.
