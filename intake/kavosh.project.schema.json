@@ -414,6 +414,18 @@
       },
       "minItems": 1
     },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "independentHumanReview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Optional explicit owner-selected second-person GitHub UI reviewer, only for a sizeable team (at least two real contributors and four domains). Missing/false means the sole owner reviews directly and no second-person visual gate is created."
+        }
+      },
+      "description": "Optional team review, not inferred from tier, runtime or risk. Never creates a human or paid reviewer automatically."
+    },
     "dependsOn": {
       "type": "array",
       "items": {
@@ -432,17 +444,17 @@
             "none",
             "continuous"
           ],
-          "description": "Continuous release-scope acceptance/evidence flow. Required for T2 when adopting/upgrading to the current KavoshStart standard."
+          "description": "Optional owner-selected release-scope continuous acceptance. Mode none is allowed at any tier, including T2 solo-owner projects. Choosing continuous activates separate review/evidence obligations: disclose actual producer/App costs before selection."
         },
         "assurance": {
           "enum": [
             "attested",
             "risk-based"
           ],
-          "description": "Optional future-release assurance. Missing means strict attested. Risk-based verifies CI-only low/medium scope items with native source-bound checks; high/critical, deferrals, and specialist evidence require independent attestation."
+          "description": "For explicitly selected continuous acceptance only: choose risk-based or attested at intake; the independent App/decision protocol is needed for specialist/high-risk items. Do not choose this for a solo-owner project merely because of tier."
         }
       },
-      "description": "T2 continuous acceptance; attested is the legacy default if assurance is absent. Opt-in risk-based does not waive source, test or high-risk controls."
+      "description": "Acceptance is optional even for T2; absent or mode none needs no independent publisher. Explicit continuous requires an intentional assurance selection and real producers when its high/specialist contract applies. Old pinned consumers remain unchanged."
     },
     "release": {
       "type": "object",

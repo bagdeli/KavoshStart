@@ -77,10 +77,8 @@
     "codex"
   ],
   "dependsOn": [],
-  "acceptance": {
-    "mode": "continuous",
-    "assurance": "risk-based"
-  },
+  "review": {"independentHumanReview": false},
+  "acceptance": {"mode": "none"},
   "release": {
     "strategy": "release-please",
     "workflow": ".github/workflows/release.yml"

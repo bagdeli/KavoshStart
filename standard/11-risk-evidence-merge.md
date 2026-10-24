@@ -55,7 +55,7 @@ Batch کوچک برای feedback سریع مطلوب است، اما split فق�
 - acceptance mapping/evidence لازم کامل است؛
 - merge فقط ordinary Squash است، بدون `--admin` یا bypass.
 
-برای high/critical و control-plane/security/destructive/release-policy change، قبل از merge یک تصمیم انسانی صریح برای scope فعلی لازم است. بعد از آن خود کلیک/فرمان merge کار مکانیکی است و agent می‌تواند انجام دهد.
+برای high/critical و control-plane/security/destructive/release-policy change، قبل از merge **تصمیم صریح همان مالک انسانی واجد اختیار** لازم است؛ هرگز انسان دوم، مشاور بیرونی یا App را به‌صورت پیش‌فرض فرض نکنید. پس از تصمیم مالک، ادغام معمولی کار مکانیکی عامل است.
 
 ## 6. مرز اثبات انسانی
 
@@ -96,7 +96,7 @@ Evidence باید از ماهیت تغییر بیاید، نه از یک checkli
 
 **A — deterministic, machine-observed:** build/typecheck, relevant behavior and negative authorization tests, bounded regression, baseline secret/dependency/unsafe-rendering checks, artifact/source identity and required environment gates. A red/missing required machine test cannot be replaced by a model's verbal assurance or visual approval.
 
-**B — evaluative:** visual design, language, layout quality, UX and owner-selected outcomes may use a reviewed repeatable machine comparison **or** a genuine human review. For rendered changes UI-2 verifies a same-head GitHub Actions visual comparison with actual passing step, or an authenticated exact-head APPROVED GitHub review by a different human reviewer; a screenshot link or AI-written approval text is insufficient. One method is enough unless a material risk justifies both. A textual PR label/link alone is a pointer, not proof that a person reviewed or a browser ran; never use the agent's own action as independently human-reviewed evidence.
+**B — evaluative:** visual design, language, layout quality, UX and owner-selected outcomes may use a reviewed repeatable machine comparison **or** a genuine human review. For rendered changes the owner may review the actual UI directly. A second-person GitHub review or visual-comparison CI becomes a machine-enforced PR requirement only after explicit opt-in for a large team; an agent-authored approval cannot impersonate a human and a screenshot link cannot prove an observed rendering. One method is enough unless a material risk justifies both. A textual PR label/link alone is a pointer, not proof that a person reviewed or a browser ran; never use the agent's own action as independently human-reviewed evidence.
 
 **Timing:** PR → fast impacted A and applicable B; integrated candidate → cross-component/e2e on representative routes and security baseline; initial release → required gates for that version; post-functional-release → scheduled deep/manual penetration or operational pilot when applicable. High-risk public-facing auth/payment/sensitive-data attack surfaces need focused verification before public exposure. Full manual penetration testing must not be a universal development or initial-release gate.
 
@@ -116,7 +116,7 @@ Evidence باید از ماهیت تغییر بیاید، نه از یک checkli
 
 **No gate inflation:** a defect gets a focused regression on the affected behavior. Before adding a global MUST, the owner must approve its cross-project applicability, measurable safety value, lifecycle timing and operational cost. An agent cannot create a mandatory project-wide security test simply because it suggested one. Capability completion, test output and acceptance remain distinct; the same genuine observation may support multiple criteria without one receipt per row.
 
-The legacy **v3 attested ACC-3 contract remains the default**; an explicit future-release `acceptance.assurance=risk-based` permits native source-bound required-CI proof **only** for low/medium CI-only items. High/critical, deferrals and specialist evidence retain independent source-bound receipts and decisions. Neither mode turns a missing test into PASS. This is a breaking control-plane release choice, never a silent upgrade.
+Solo-owner delivery defaults to `acceptance.mode=none` (including T2), with real required CI and one genuine owner decision. `continuous` is a team/large-project opt-in and must select assurance and accept its technical receipt/App burden up front. Existing opted-in consumers are never silently downgraded, and missing tests are never promoted to PASS. This changes baseline governance and requires a reviewed major release, not a silent patch.
 
 ## 9. Tool adapters
 

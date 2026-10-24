@@ -54,15 +54,17 @@ Other capabilities such as `control-plane` and `infrastructure` are explicit bec
 | | T0 Tool | T1 Application | T2 Platform |
 |---|---|---|---|
 | Planning | issues + labels | + milestone per release, Project board | + epics, **spec per feature** (`specs/`) |
-| ADR | optional | required for architectural decisions | required + review in PR |
-| Environments | none | test + production (if server) | test + production, prerelease channel |
-| CI on PR | semantic `check` adapter (lint+test) | semantic `check` + build | + contract/migration checks; heavy jobs only on `main`/label `ci:full` |
-| AI review workflow | no | optional (`ai-review.yml`) | yes |
+| ADR | optional | for material architectural decisions | for material decisions, not one ADR per routine test or permission |
+| Environments | none | real selected environment if server | real selected environments; a separate Test host/VM is optional |
+| CI on PR | semantic `check` adapter (lint+test) | semantic `check` + build | relevant contract/migration checks only when the changed capability needs them; no duplicated giant suite |
+| AI review workflow | no | only by explicit opt-in | only by explicit opt-in; never scaffolded automatically |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated release strategy (release-please is the scaffold default) | + rc on test | + rc → UAT → final |
 | Runner (CI-1/2) | Private: existing isolated self-hosted allowed; hosted only with explicit per-run approval | Same; exact-head dispatch for private hosted only | Public standard GitHub-hosted minutes free; self-hosted requires CI-2 trust ADR and excludes untrusted fork code |
 | **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
+
+**Collaboration is separate from Tier.** A T2 project may be managed by one person: that does not create an independent reviewer, paid AI workflow, legal adviser, two attestation Apps, or a dedicated physical Test. Ask owner preferences once at intake (D3/G9); default is none. `continuous` and `review.independentHumanReview` are explicitly selected only, never inferred from the T2 label.
 
 ## Budget rule (CI-3)
 Private GitHub Actions may run on an existing isolated self-hosted server runner with CI-2 trust ADR (ADR-0018). Private GitHub-hosted usage is prohibited without explicit prior owner/admin approval of **each exact run** after asking, even before free allowance is exhausted; only manual scoped dispatch may use it. Public standard GitHub-hosted minutes are free; larger runners/storage cost separately. 'monthlyMinutesBudget' is a planning hint, not spending authorization. T1/static may choose 'none' without Actions.
