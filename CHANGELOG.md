@@ -1,5 +1,16 @@
 # Changelog
 
+## [9.0.0](https://github.com/bagdeli/KavoshStart/compare/v8.1.0...v9.0.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **governance:** Owner-operated projects use a scoped, tested fast path; formal team process is opt-in via review.teamProcess. Preserve required source CI, sensitive-risk enforcement, immutable releases and real authority boundaries.
+
+### Features
+
+* **governance:** balance owner-led quality and delivery speed ([#197](https://github.com/bagdeli/KavoshStart/issues/197)) ([823f312](https://github.com/bagdeli/KavoshStart/commit/823f312686390ba158148f8ed9dcf2fac5c56c71))
+
 ## [8.1.0](https://github.com/bagdeli/KavoshStart/compare/v8.0.0...v8.1.0) (2026-10-24)
 
 
