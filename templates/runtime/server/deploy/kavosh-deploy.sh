@@ -33,7 +33,7 @@ fi
 
 : "${PROJECT:?set in deploy.env}"
 BASE="${BASE:-/opt/kavosh/$PROJECT}"
-CHANNEL="${CHANNEL:-test}"
+CHANNEL="${CHANNEL:?explicitly select test or production in the protected deploy.env}"
 DEPLOY_METHOD="${DEPLOY_METHOD:-pull-build}"
 REPO_URL="${REPO_URL:?set in deploy.env (read-only deploy key or approved mirror)}"
 VERSION_URL="${VERSION_URL:-http://127.0.0.1:8080/version}"
@@ -335,7 +335,7 @@ with open(sys.argv[1], encoding="utf-8") as f:
     print(json.load(f).get("deploy", {}).get("migrationADR", ""))
 PY
     )"
-    [ "$manifest_tier" = T1 ] || { log "ABORT: maintenance-window migrations are T1-only"; exit 1; }
+    { [ "$manifest_tier" = T1 ] || [ "$manifest_tier" = T2 ]; } || { log "ABORT: maintenance-window migration requires selected T1/T2 server profile"; exit 1; }
     [ "${MAINTENANCE_AUTH_TAG:-}" = "$target" ] || { log "ABORT: direct per-run authorization requires --authorize-maintenance-window $target"; exit 1; }
     [ -n "$MAINTENANCE_STOP_CMD" ] || { log "ABORT: MAINTENANCE_STOP_CMD is required to enter the downtime window"; exit 1; }
     [ -n "$migration_adr" ] && [ -f "$BASE/releases/$target/$migration_adr" ] || { log "ABORT: release migration ADR is missing"; exit 1; }
@@ -350,11 +350,17 @@ PY
     log "maintenance-window authorized by ${DEPLOY_ACTOR:-$(id -un)} for exact tag $target; stopping service after backup checks"
   fi
   [ -n "$BACKUP_HEALTHCHECK_CMD" ] || { log "ABORT: MIGRATE_CMD is set but BACKUP_HEALTHCHECK_CMD is empty (DEP-6)"; exit 1; }
-  log "verify continuous backup/PITR before migration"
-  (cd "$BASE/releases/$target" && eval "$BACKUP_HEALTHCHECK_CMD") || { log "ABORT: continuous backup/PITR is unhealthy — nothing changed (DEP-6)"; exit 1; }
-  [ -n "$RESTORE_TEST_CHECK_CMD" ] || { log "ABORT: MIGRATE_CMD is set but RESTORE_TEST_CHECK_CMD is empty (DEP-6)"; exit 1; }
-  log "verify recent successful restore rehearsal before migration"
-  (cd "$BASE/releases/$target" && eval "$RESTORE_TEST_CHECK_CMD") || { log "ABORT: latest restore rehearsal is missing, stale, or failed — nothing changed (DEP-6)"; exit 1; }
+  log "verify existing recoverable backup before actual migration"
+  (cd "$BASE/releases/$target" && eval "$BACKUP_HEALTHCHECK_CMD") || { log "ABORT: backup recovery source unavailable — nothing changed (DEP-6)"; exit 1; }
+  # A low-risk reversible migration does not demand a new restore drill on every release.
+  # If a restore assertion has been configured, a failing check still blocks the operation.
+  if [ "$MIGRATION_RISK" = high ] || [ "$MIGRATION_RISK" = destructive ]; then
+    [ -n "$RESTORE_TEST_CHECK_CMD" ] || { log "ABORT: high-risk migration requires RESTORE_TEST_CHECK_CMD (DEP-6)"; exit 1; }
+  fi
+  if [ -n "$RESTORE_TEST_CHECK_CMD" ]; then
+    log "verify selected prior successful restore rehearsal"
+    (cd "$BASE/releases/$target" && eval "$RESTORE_TEST_CHECK_CMD") || { log "ABORT: selected restore evidence is missing, stale, or failed — nothing changed (DEP-6)"; exit 1; }
+  fi
   if [ "$MIGRATION_RISK" = high ] || [ "$MIGRATION_RISK" = destructive ]; then
     [ -n "$BACKUP_CMD" ] || { log "ABORT: high-risk migration requires BACKUP_CMD snapshot (DEP-6)"; exit 1; }
     log "take risk-based snapshot before migration"

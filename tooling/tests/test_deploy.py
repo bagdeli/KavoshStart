@@ -170,10 +170,10 @@ class ScriptContract(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("runtime-drift", result.stderr)
 
-    def test_DEP5_positive_maintenance_window_is_T1_direct_per_tag_authorized(self):
+    def test_DEP5_positive_maintenance_window_is_owner_authorized_for_T1_or_T2(self):
         text = SCRIPT.read_text(encoding="utf-8")
         self.assertIn("--authorize-maintenance-window", text)
-        self.assertIn('[ "$manifest_tier" = T1 ]', text)
+        self.assertIn('[ "$manifest_tier" = T1 ] || [ "$manifest_tier" = T2 ]', text)
         self.assertIn('[ "${MAINTENANCE_AUTH_TAG:-}" = "$target" ]', text)
         self.assertIn('eval "$MAINTENANCE_STOP_CMD"', text)
 
@@ -195,9 +195,28 @@ class ScriptContract(unittest.TestCase):
     def test_DEP6_negative_missing_recovery_inputs_fail_closed(self):
         text = SCRIPT.read_text(encoding="utf-8")
         self.assertIn("MIGRATE_CMD is set but BACKUP_HEALTHCHECK_CMD is empty", text)
-        self.assertIn("MIGRATE_CMD is set but RESTORE_TEST_CHECK_CMD is empty", text)
+        self.assertIn("high-risk migration requires RESTORE_TEST_CHECK_CMD", text)
         self.assertIn("high-risk migration requires BACKUP_CMD snapshot", text)
+        self.assertIn('if [ -n "$RESTORE_TEST_CHECK_CMD" ]; then', text)  # optional low-risk proof, required high risk
         self.assertIn("database is never automatically restored", text)
+
+    def test_DEP6_positive_low_risk_does_not_require_new_restore_rehearsal(self):
+        text = SCRIPT.read_text(encoding="utf-8")
+        assert_high = text.index('if [ "$MIGRATION_RISK" = high ]')
+        require_restore = text.index('high-risk migration requires RESTORE_TEST_CHECK_CMD')
+        opt_restore = text.index('if [ -n "$RESTORE_TEST_CHECK_CMD" ]; then')
+        self.assertLess(assert_high, require_restore)
+        self.assertLess(require_restore, opt_restore)
+        self.assertIn('eval "$BACKUP_HEALTHCHECK_CMD"', text)  # never waive real backup for data writes
+
+    def test_DEP2_negative_missing_channel_never_defaults_to_unpinned_test(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, _ = admitted_environment(Path(d))
+            env.pop("CHANNEL")
+            result = subprocess.run([BASH, str(SCRIPT), "--verify-environment"], env=env,
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("explicitly select test or production", result.stderr)
 
     def test_DEP7_positive_standard_environment_is_admitted(self):
         """Covers: DEP-3, DEP-4, DEP-7, DEP-8 (positive)"""
