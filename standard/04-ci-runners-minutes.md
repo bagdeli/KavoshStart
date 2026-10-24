@@ -6,6 +6,10 @@
 
 Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
 
+## مرز نتیجهٔ CI و آزمون انتخابی
+
+در خود مخزن KavoshStart، `required` فقط برای بررسی PR یا main و اجرای دستیِ **واقعاً جامع** / تأیید head نسخهٔ Release منتشر می‌شود. اجرای دستی `core-only` که Conformance را عمداً `NOT_RUN` ثبت می‌کند، یک Check با نام جداگانهٔ `core-only (non-gating)` دارد؛ هرگز نباید `required` را سبز کند یا جای آزمون مرتبط پیش از ادغام را بگیرد. تست‌های پایه برای هر اجرای CI حاضر اجرا می‌شوند و تغییر سورس، قالب، Workflow یا Diff نامعلوم همچنان Full است؛ تغییر محدود مستنداتیِ تأییدشده از ابزارهای خارجی غیرمرتبط معاف می‌شود.
+
 ## Runner و هزینه (CI-1…3 — ADR-0018 جایگزین تصمیم private در ADR-0015)
 
 | ریپو و mode | اجرای GitHub Actions | مجوز و مرز |

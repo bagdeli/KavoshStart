@@ -173,6 +173,12 @@ jobs:
               if isinstance(node, list):
                   if len(node) < schema.get("minItems", 0):
                       errs.append(f"{path}: needs at least {schema['minItems']} item(s)")
+                  if len(node) > schema.get("maxItems", float("inf")):
+                      errs.append(f"{path}: at most {schema['maxItems']} item(s) allowed")
+                  if schema.get("uniqueItems"):
+                      for i, v in enumerate(node):
+                          if v in node[:i]:
+                              errs.append(f"{path}[{i}]: duplicate item")
                   for i, v in enumerate(node):
                       errs += validate(v, schema.get("items", {}), f"{path}[{i}]")
               if isinstance(node, str):

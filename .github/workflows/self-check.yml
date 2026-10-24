@@ -32,7 +32,9 @@ permissions:
 
 jobs:
   required:
-    name: required
+    # Manual core-only checks must not satisfy the required branch/release gate.
+    # PRs and main always keep the stable `required` check identity.
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs['ci-full'] != true && inputs['pr-number'] == '' && 'core-only (non-gating)' || 'required' }}
     if: >-
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||

@@ -135,6 +135,48 @@ class SelectedScaffolding(unittest.TestCase):
         self.assertIn("/milestones", team.stdout)
         self.assertIn("v0.2.0", team.stdout)
 
+    def test_scaffold_rejects_invalid_manifest_before_writing_any_templates(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            m = self.manifest()
+            m["capabilities"] = ["server", "server"]  # schema.uniqueItems
+            (root / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
+            proc = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp],
+                                  capture_output=True, text=True)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("SRC-5", proc.stderr)
+            self.assertIn("duplicate", proc.stderr)
+            self.assertEqual({p.name for p in root.iterdir()}, {"kavosh.project.json"})
+            m["capabilities"] = ["server"]
+            m["ci"]["monthlyMinutesBudget"] = "none"  # schema integer
+            (root / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
+            proc = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp],
+                                  capture_output=True, text=True)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("SRC-5", proc.stderr)
+            self.assertEqual({p.name for p in root.iterdir()}, {"kavosh.project.json"})
+
+    def test_runner_label_yaml_is_lossless_even_with_quoting_characters(self):
+        import yaml
+        m = self.manifest()
+        m["visibility"] = "private"
+        m["ci"].update(runner="self-hosted", runnerLabels=["self-hosted", "linux", "x64", "rack's-01"],
+                       runnerJobLabels={".github/workflows/release.yml#release":
+                                        ["self-hosted", "linux", "x64", "rack's-02"]})
+        vals = scaffold.values(m)
+        ci = scaffold.render((ROOT / "templates/common/.github/workflows/ci.yml").read_text(),
+                             vals, ".github/workflows/ci.yml")
+        release = scaffold.render((ROOT / "templates/common/.github/workflows/release.yml").read_text(),
+                                  vals, ".github/workflows/release.yml")
+        release = scaffold.render_job_runners(release, ".github/workflows/release.yml", m)
+        caller = scaffold.render((ROOT / "templates/common/.github/workflows/kavosh.yml").read_text(),
+                                 vals, ".github/workflows/kavosh.yml")
+        self.assertEqual(yaml.safe_load(ci)["jobs"]["required"]["runs-on"], m["ci"]["runnerLabels"])
+        self.assertEqual(json.loads(yaml.safe_load(release)["jobs"]["release"]["with"]["runs-on"]),
+                         m["ci"]["runnerJobLabels"][".github/workflows/release.yml#release"])
+        self.assertEqual(json.loads(yaml.safe_load(caller)["jobs"]["kavosh"]["with"]["runs-on"]),
+                         m["ci"]["runnerLabels"])
+
     def test_pull_adapter_is_not_removed_by_owner_mode(self):
         m = self.manifest(method="pull-build")
         self.assertTrue(scaffold.include_template("runtime/server", "compose.yaml", m))

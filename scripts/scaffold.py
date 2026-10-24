@@ -16,6 +16,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# Reuse the exact stdlib-only validator used by published Governance rather than
+# creating a second scaffold schema or adding a toolchain dependency.
+sys.path.insert(0, str(ROOT / "tooling" / "src"))
+from governance import SCHEMA, validate  # noqa: E402
+
 TEMPLATES = ROOT / "templates"
 SELF_STANDARD_REPO = "bagdeli/KavoshStart"
 KAVOSHSTART_TAG_RE = re.compile(r"^v[0-9]+[.][0-9]+[.][0-9]+$")
@@ -34,6 +39,13 @@ def validate_standard_pin(manifest: dict) -> None:
         raise SystemExit(f"kavoshStart 'self' is reserved for {SELF_STANDARD_REPO}; consumers must pin vX.Y.Z")
     if not isinstance(pin, str) or not KAVOSHSTART_TAG_RE.fullmatch(pin):
         raise SystemExit(f"consumer kavoshStart must be an exact release tag vX.Y.Z, got {pin!r}; resolve the latest stable release before scaffold")
+
+
+def validate_manifest(manifest: dict) -> None:
+    """Fail before writing any files: invalid intake cannot become a broken scaffold."""
+    problems = validate(manifest, SCHEMA)
+    if problems:
+        raise SystemExit("SRC-5: fix manifest before scaffolding: " + "; ".join(problems[:8]))
 
 
 def layers(manifest: dict) -> list:
@@ -78,8 +90,11 @@ def values(m: dict) -> dict:
         "BUDGET": str(m.get("ci", {}).get("monthlyMinutesBudget", "")),
         "PACKAGE": "true" if m.get("deploy", {}).get("method") == "release-artifact" else "false",
         "CI_WORKFLOW": m.get("ci", {}).get("requiredWorkflow") or ".github/workflows/ci.yml",
-        "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")),
-        "RUNS_ON_YAML": ("[" + ", ".join(labels) + "]") if labels != ["ubuntu-latest"] else "ubuntu-latest",
+        # RUNS_ON_JSON goes inside a YAML single-quoted scalar; escape apostrophes
+        # without altering the JSON obtained *after* YAML parsing.
+        "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")).replace("'", "''"),
+        # JSON flow arrays are valid YAML and safely quote labels containing YAML syntax.
+        "RUNS_ON_YAML": json.dumps(labels, separators=(",", ":")) if labels != ["ubuntu-latest"] else "ubuntu-latest",
         "PRIVATE_HOSTED": "true" if m.get("visibility") == "private" and m.get("ci", {}).get("runner") == "github-hosted" else "false",
         "SELF_HOSTED": "true" if m.get("ci", {}).get("runner") == "self-hosted" else "false",
     }
@@ -127,7 +142,7 @@ def render_job_runners(text: str, rel: str, manifest: dict) -> str:
             block = match.group(0)
             selector = json.dumps(labels, separators=(",", ":"))
             # A reusable workflow input is JSON text; a concrete job uses an array.
-            value = "'" + selector + "'" if re.search(r"(?m)^    uses:", block) else selector
+            value = "'" + selector.replace("'", "''") + "'" if re.search(r"(?m)^    uses:", block) else selector
             return re.sub(r"(?m)^( +runs-on:).*$", lambda m: m.group(1) + " " + value, block)
         text = pattern.sub(replace, text)
     return text
@@ -148,6 +163,7 @@ def main() -> int:
         raise SystemExit(f"{mpath} not found — complete the intake first (START.md §1 steps 1–3)")
     manifest = json.loads(mpath.read_text(encoding="utf-8"))
     validate_standard_pin(manifest)
+    validate_manifest(manifest)
     runner = manifest.get("ci", {}).get("runner")
     if manifest.get("visibility") == "private" and runner != "self-hosted" and (
             set(manifest.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"}):

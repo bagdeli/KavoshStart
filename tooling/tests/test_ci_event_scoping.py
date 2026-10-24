@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tooling"))
 import ci_scope
 
 
-def expression(source, context):
+def expression(source, context, inputs=None):
     """Evaluate this workflow's boolean/string subset with synthetic GitHub context."""
     source = source.strip()
     if source.startswith('${{'):
@@ -25,7 +25,9 @@ def expression(source, context):
     source = re.sub(r'!(?!=)', 'not ', source)
     source = re.sub(r'\btrue\b', 'True', source)
     source = re.sub(r'\bfalse\b', 'False', source)
-    return eval(source, {'__builtins__': {}}, {'github': context})
+    return eval(source, {'__builtins__': {}},
+                {'github': context, 'inputs': inputs if inputs is not None else
+                 {'ci-full': False, 'pr-number': ''}})
 
 
 def context(event='pull_request', action='synchronize', label='', draft=False, fork=False):
@@ -126,7 +128,19 @@ class StandardVerificationScope(unittest.TestCase):
     def test_workflow_core_is_unconditional_and_full_failure_not_masked(self):
         data = yaml.safe_load((ROOT / ".github/workflows/self-check.yml").read_text())
         job = data["jobs"]["required"]
-        self.assertEqual(job["name"], "required")
+        # An authorized full dispatch still publishes the real required check;
+        # a partial/manual run can never replace a failed/missing required check.
+        cases = [
+            ('pull_request', False, '', 'required'),
+            ('push', False, '', 'required'),
+            ('workflow_dispatch', False, '', 'core-only (non-gating)'),
+            ('workflow_dispatch', True, '', 'required'),
+            ('workflow_dispatch', False, '123', 'required'),
+        ]
+        for event, full, pr, name in cases:
+            with self.subTest(event=event, full=full, pr=pr):
+                self.assertEqual(expression(job['name'], context(event=event),
+                                            inputs={'ci-full': full, 'pr-number': pr}), name)
         steps = job["steps"]
         core = next(x for x in steps if "make check" in x.get("run", ""))
         self.assertNotIn("if", core)

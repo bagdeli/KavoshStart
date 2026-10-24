@@ -220,7 +220,7 @@ def main():
             (repo / "kavosh.project.json").write_text(json.dumps(m), encoding="utf-8")
             wf = repo / ".github" / "workflows" / "ci.yml"
             text = wf.read_text(encoding="utf-8")
-            wf.write_text(text.replace("runs-on: [self-hosted, linux, x64, example]", "runs-on: ubuntu-latest"), encoding="utf-8")
+            wf.write_text(text.replace('runs-on: ["self-hosted","linux","x64","example"]', "runs-on: ubuntu-latest"), encoding="utf-8")
             (repo / ".githooks" / "pre-push").unlink()
             subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
             r = subprocess.run([sys.executable, "gov.py"], cwd=repo, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -308,7 +308,7 @@ def main():
             ci = (repo / ".github/workflows/ci.yml").read_text(encoding="utf-8")
             kavosh = (repo / ".github/workflows/kavosh.yml").read_text(encoding="utf-8")
             if (checked.returncode or any(line.startswith("| ❌") for line in report.splitlines())
-                    or "runs-on: [self-hosted, linux, x64, example]" not in ci
+                    or 'runs-on: ["self-hosted","linux","x64","example"]' not in ci
                     or """runs-on: '["self-hosted","linux","x64","example"]'""" not in kavosh
                     or "(github.event_name == 'push' && !false)" not in ci):
                 print(f"FAIL private self-hosted end-to-end governance: {report}")

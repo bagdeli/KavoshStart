@@ -28,7 +28,7 @@ make check    # lint + test + build — run before review; rerun relevant checks
 ```
 
 ## Where to find work
-- Start every session with KavoshStart `START.md §0`: verify repo/scope and exact pinned standard version. Newer KavoshStart releases are advisory, **not automatic blockers** for routine work; read the relevant delta only when a scoped upgrade/security change matters.
+- Start with KavoshStart `START.md §0`: verify repo/scope and the exact pinned contract. Routine WORK uses that pin without a latest-release query. Look up newer releases only for NEW/ADOPT/UPGRADE, an expressly requested audit or an actual relevant security/compatibility concern; never block unrelated work for a tag.
 - Use the real assigned Issue or PR when present. Owner-operated work does **not** require manufacturing an Issue, Spec, milestone or template section for a bounded change.
 - Work priority and open items live in GitHub, not a status file. Use Projects only if this repository actually uses one.
 - Decisions live in existing Issue/PR/PROJECT or `docs/decisions/` when a substantive architecture decision warrants it; do not start a second tracker.

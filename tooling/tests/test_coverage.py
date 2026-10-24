@@ -37,8 +37,15 @@ def scaffolded(mutate=None, manifest=None):
     prev = os.getcwd()
     try:
         git(d, "init", "-q", "-b", "main")
-        (d / "kavosh.project.json").write_text(json.dumps(manifest or EXAMPLE), encoding="utf-8")
+        # Scaffold now validates the manifest before any output. Governance's
+        # negative-contract tests must therefore inject deliberately malformed
+        # manifests *after* scaffolding a valid starting repository.
+        requested = manifest or EXAMPLE
+        valid_scaffold = requested if not g.validate(requested, g.SCHEMA) else EXAMPLE
+        (d / "kavosh.project.json").write_text(json.dumps(valid_scaffold), encoding="utf-8")
         subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(d)], capture_output=True, check=True)
+        if valid_scaffold is not requested:
+            (d / "kavosh.project.json").write_text(json.dumps(requested), encoding="utf-8")
         if mutate:
             mutate(d)
         git(d, "add", "-A")

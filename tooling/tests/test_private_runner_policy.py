@@ -514,10 +514,10 @@ class PrivateActionsPolicy(unittest.TestCase):
     def test_CI1_positive_scaffolder_private_self_hosted_selects_local_labels(self):
         with tempfile.TemporaryDirectory() as temp:
             target = Path(temp)
-            data = manifest(runner="self-hosted")
+            data = json.loads((ROOT / "intake" / "kavosh.project.example.json").read_text(encoding="utf-8"))
             data.update(name="Example", repo="demo/Example", summary="A purely synthetic example",
                         kavoshStart="v6.0.0")
-            data["ci"]["runnerLabels"] = ["self-hosted", "linux", "x64", "example"]
+            data["ci"].update(runner="self-hosted", runnerLabels=["self-hosted", "linux", "x64", "example"])
             (target / "kavosh.project.json").write_text(json.dumps(data), encoding="utf-8")
             proc = subprocess.run([sys.executable, str(SCAFFOLD), str(target), "--dry-run"],
                                   capture_output=True, text=True)
