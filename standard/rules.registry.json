@@ -40,7 +40,7 @@
     },
     {
       "id": "SRC-2",
-      "statement": "هیچ SHA کامل (40 hex) در Markdown عادی نگه‌داری نمی‌شود. استثناهای provenance immutable عبارت‌اند از `CHANGELOG.md`، `docs/decisions/`، مسیرهای audit (`audits/` یا `docs/audits/`) و release note نسخه‌دار زیر `docs/release/RELEASE_NOTES_<version>.md`. exact source SHA در این evidenceها مجاز است؛ status زنده نباید با SHA در prose منجمد شود.",
+      "statement": "وضعیت زنده در متن ثابت منجمد نمی‌شود؛ SHA در شواهد نسخه‌دار، گزارش audit، ADR و release note مجاز است. وجود SHA در Markdown عادی برای مالک‌محور هشدار بازبینی provenance است، نه مانع توسعه؛ با `review.teamProcess=true` قرارداد محل نگهداری SHA به‌صورت سخت اجرا می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -67,7 +67,7 @@
     },
     {
       "id": "SRC-3",
-      "statement": "فایل‌های ردیاب وضعیت (`STATUS.md`، `HANDOFF.md`، `PROJECT_STATE.md`، `CURRENT_STATE.md`) و پوشه‌ی `archive/` وجود ندارند.",
+      "statement": "برای وضعیت زنده یک مرجع واقعی نگه دارید و tracker متناقض نسازید. نام‌های STATUS/HANDOFF/PROJECT_STATE/CURRENT_STATE و archive در مالک‌محور هشدار بازبینی‌اند، نه ممنوعیت یادداشت یا سابقه؛ در فرایند تیمی منتخب محدودیت نام/مسیر اجرا می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -312,7 +312,7 @@
     },
     {
       "id": "CR-1",
-      "statement": "هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند.",
+      "statement": "فقط با opt-in فرایند تیمی (`review.teamProcess=true`)، هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -339,7 +339,7 @@
     },
     {
       "id": "CR-2",
-      "statement": "تغییرات control-plane/governance، auth/permission/security boundary، migration یا عملیات مخرب داده، deploy/release policy و credential/trust boundary حداقل `high` هستند مگر دلیل versioned و قابل بازبینی برای کاهش ریسک وجود داشته باشد.",
+      "statement": "ریسک تغییرات control-plane/governance، auth/permission، migration، deploy/release و credential/trust از اثر واقعی است، نه از فرم. نبود متن Risk در مالک‌محور هشدار است؛ ولی اعلام صریح low/medium برای مسیر حساس در همهٔ پروفایل‌ها FAIL است. تشخیص مسیر حساس حتی برای bot حفظ می‌شود و تصمیم واقعی مالک و تست مرتبط لازم است؛ تشخیص ماشینی همهٔ خطرهای رفتاری را کشف نمی‌کند.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -507,7 +507,7 @@
     },
     {
       "id": "WK-1",
-      "statement": "هر Issue دقیقاً یک برچسب `type:*` دارد (از فرم‌های Issue خودکار).",
+      "statement": "فقط در `review.teamProcess=true`، هر Issue انسانی دقیقاً یک برچسب type دارد؛ مالک‌محور می‌تواند Issue آزاد یا مرجع کار موجود استفاده کند و Issue خودکار Kavosh معاف است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -697,7 +697,7 @@
     },
     {
       "id": "BR-2",
-      "statement": "نام شاخه: `<type>/<issue>-<slug>`؛ type ∈ feat fix docs refactor test ci chore perf build hotfix revert.",
+      "statement": "در `review.teamProcess=true` نام شاخه: `<type>/<issue>-<slug>`؛ type ∈ feat fix docs refactor test ci chore perf build hotfix revert؛ در حالت مالک‌محور الگوی نام صرفاً پیشنهاد است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -751,7 +751,7 @@
     },
     {
       "id": "BR-4",
-      "statement": "Draft می‌تواند هر عمق پشته‌ای داشته باشد و سلامت آن را هشدار می‌دهد. Ready حداکثر یک والد بلافاصله قابل ادغام دارد؛ Merge فقط به `main` یا همان والد سبز و قابل ادغام.",
+      "statement": "Draft می‌تواند هر عمق پشته‌ای داشته باشد و سلامت آن را هشدار می‌دهد. در فرایند تیمی Ready حداکثر یک والد بلافاصله قابل ادغام دارد؛ برای مالک‌محور ساختار پشته هشدار است نه gate. Merge همچنان باید هدف، SHA و head قابل ادغامِ واقعی داشته باشد.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -917,7 +917,7 @@
     },
     {
       "id": "PR-1",
-      "statement": "بدنه‌ی PR شامل `Closes #n` یا `Refs #n` است.",
+      "statement": "هر PR انسانی Ready باید توضیح واقعی کار یا مرجع وظیفهٔ موجود داشته باشد؛ بدنهٔ خالی یا صرفاً قالب پذیرفته نیست. هدف، مرز تغییر، آزمون انجام‌شده/انجام‌نشده و خطر باقی‌مانده در همان PR/مرجع بازبینی می‌شوند. فقط با `review.teamProcess=true` قالب Closes/Refs اجباری است؛ Issue یا فرم مصنوعی ساخته نمی‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -944,7 +944,7 @@
     },
     {
       "id": "PR-2",
-      "statement": "عنوان PR یک Conventional Commit است (`type(scope): summary`).",
+      "statement": "فقط در فرایند تیمی عنوان PR الزاماً Conventional Commit است (`type(scope): summary`)؛ در حالت مالک‌محور نبود آن هشدارِ اثر روی changelog/Release Please است، نه مانع PR.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -999,7 +999,7 @@
     },
     {
       "id": "PR-4",
-      "statement": "بخش `## AI involvement` در بدنه‌ی PR.",
+      "statement": "بخش `## AI involvement` فقط در فرایند تیمی لازم است؛ در کار مالک‌محور نبود فرم و trailer مانع PR نیست، اما جعل یا انتساب نادرست هویت پذیرفتنی نیست.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1778,7 +1778,7 @@
     },
     {
       "id": "AI-1",
-      "statement": "`AGENTS.md` ریشه ≤ 150 خط و ≤ 12KB؛ `CLAUDE.md`/`GEMINI.md`/copilot فقط به آن ارجاع می‌دهند.",
+      "statement": "AGENTS.md ریشه با فرمان‌ها، نقشه، قراردادها و مرزهای واقعی موجود است؛ bridgeها به آن ارجاع می‌دهند. حدود 150 خط/12KB برای خوانایی راهنماست و در مالک‌محور تخطی هشدار دارد؛ فقط در فرایند تیمی منتخب سقف سخت است. افزودن دستور بدون فایده یا تعارض با قرارداد جاری ممنوع است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1832,7 +1832,7 @@
     },
     {
       "id": "AI-3",
-      "statement": "هر commit عامل trailer `Co-Authored-By:` با نام عامل دارد.",
+      "statement": "در فرایند تیمی انتساب عامل با `Co-Authored-By:` ثبت می‌شود؛ در پروژهٔ مالک‌محور فرم PR/trailer اجبار ماشینی نیست. ادعای جعلی مشارکت یا هویت همچنان مردود است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1947,7 +1947,7 @@
     },
     {
       "id": "DOC-1",
-      "statement": "هیچ فایل Markdown بزرگ‌تر از 60KB (به‌جز CHANGELOG).",
+      "statement": "مستندات به‌اندازهٔ نیاز، قابل‌جستجو و بدون تکرار نگه داشته شوند. Markdown بیش از 60KB (جز CHANGELOG) در مالک‌محور هشدار خوانایی است؛ سقف سخت فقط برای فرایند تیمی منتخب اعمال می‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1974,7 +1974,7 @@
     },
     {
       "id": "DOC-2",
-      "statement": "تصمیم معماری = ADR در `docs/decisions/` (قالب MADR). breaking control-plane change (Conventional Commit با `!` روی Rule/schema/governance/release policy) باید ADR را در همان PR تغییر دهد تا معماری نتواند فقط با prose/code بی‌ردیابی عوض شود.",
+      "statement": "تصمیم معماری = ADR در `docs/decisions/` (قالب MADR). برای `review.teamProcess=true` breaking control-plane change (Conventional Commit با `!` روی Rule/schema/governance/release policy) باید ADR را در همان PR تغییر دهد؛ در حالت مالک‌محور عدم ADR هشدار است و تصمیم واقعی compatibility/major همچنان لازم است.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -2197,7 +2197,7 @@
     },
     {
       "id": "DEP-1",
-      "statement": "برای **انتشار کد محصول**، pull-based پیش‌فرض است؛ روش native/custom فقط با تصمیم ثبت‌شدهٔ مالک، حداقل‌دسترسی و قرارداد معادل exact-source/Release/rollback در همان پروژه پذیرفته می‌شود. **به‌روزرسانی عادی جزء upstream از طریق updater بومیِ معتبر**، وقتی سورس/بستهٔ منتشرشدهٔ محصول تغییر نکرده، خودکار یک Release محصول، PR جدا، استقرار سفارشی یا ADR تازه نیست؛ فقط نسخهٔ واقعی، سلامت رفتار متاثر، تعهدات مجوز و خطر تغییر داده بررسی شوند.",
+      "statement": "برای **انتشار کد محصول**، pull-based پیش‌فرض است؛ روش native/custom برای TEST فاقد Production در پروژهٔ مالک‌محور بدون پروندهٔ ADR تازه و با تصمیم خود مالک قابل استفاده است؛ در فرایند تیمی یا مسیر Production، ثبت قرارداد معادل با ADR لازم است. در هر دو حالت claim انتشار محصول مستلزم هویت واقعی release/source، بررسی سلامت و recovery/rollback متناسب با ریسک در همان پروژه است. **به‌روزرسانی عادی جزء upstream از طریق updater بومیِ معتبر**، وقتی سورس/بستهٔ منتشرشدهٔ محصول تغییر نکرده، خودکار یک Release محصول، PR جدا، استقرار سفارشی یا ADR تازه نیست؛ فقط نسخهٔ واقعی، سلامت رفتار متاثر، تعهدات مجوز و خطر تغییر داده بررسی شوند.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -2445,7 +2445,7 @@
     },
     {
       "id": "UI-1",
-      "statement": "هر پروژهٔ دارای UI بستهٔ Design System منتخب را با نام و نسخهٔ دقیق در manifest همان پروژه ثبت می‌کند؛ عدم مصرف بسته نیازمند ADR با دامنه، RTL، دسترس‌پذیری و آزمون است. هیچ ارائه‌دهندهٔ نام‌دار یا اطلاعات پروژهٔ private وارد استاندارد عمومی نمی‌شود.",
+      "statement": "هر پروژهٔ دارای UI بستهٔ Design System منتخب را با نام و نسخهٔ دقیق در manifest همان پروژه ثبت می‌کند؛ در فرایند تیمی استثنا به ADR نیاز دارد؛ برای پروژهٔ مالک‌محور، UI سفارشیِ انتخاب‌شده بدون ADR اضافی مجاز است و نبود pin هشدار است، اما الزامات واقعی RTL/دسترس‌پذیری/حقوق جزء همچنان برقرارند. هیچ ارائه‌دهندهٔ نام‌دار یا اطلاعات پروژهٔ private وارد استاندارد عمومی نمی‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

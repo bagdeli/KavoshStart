@@ -12,13 +12,16 @@ main   ●────●────●────●────●───�
 - وقتی کار روی شاخه‌های integration بلندعمر جمع شود، `main` می‌تواند صدها commit عقب بماند؛ این دقیقاً نقض BR-1 و BR-8 است. در این مدل، شاخه‌ی integration وجود ندارد؛ integration همان `main` است.
 
 ## چرخه‌ی یک PR
+
+برای `review.teamProcess=true` این چرخهٔ رسمی تیمی برقرار است. در حالت تک‌مالک، Issue/Spec، Draft-first، اسم خاص Branch، risk/AI template و محدودیت عمق stack **gate نیستند**؛ یک Branch و PR منسجم با تست واقعی و مقصد ادغام روشن کافی است. Conventional Commit برای انتشار خودکار release-please توصیه می‌شود تا نسخهٔ جدید جا نماند. هیچ تغییری به direct push، وضعیت required، مجوز Production یا منبع دقیق Release داده نمی‌شود.
+
 1. Issue در وضعیت Ready ← `git switch -c feat/<n>-<slug> origin/main`
 2. Draft PR زود. stack عمیق در Draft مجاز است؛ پیش از Ready به main یا یک والد بلافاصله قابل‌ادغام normalize می‌شود.
 3. **Change Risk** و capabilityهای متاثر را مستقل از Tier اعلام کنید. line/file/commit count فقط telemetry است و risk classifier یا hard gate نیست.
 4. یک packet منسجم پیاده کنید و semantic `check` contract پروژه را اجرا کنید؛ Make فقط adapter پیش‌فرض scaffold است.
 5. Ready for review ← `kavosh` و `required` سبز، exact head معلوم، blocker و thread حل‌نشده وجود ندارد.
 6. `low/medium`: عامل می‌تواند پس از preflight کامل همان exact head را Squash merge کند. `high/critical` و control-plane/security/destructive/release-policy ابتدا تصمیم صریح انسانی برای scope فعلی می‌خواهند؛ سپس خود merge مکانیکی قابل واگذاری است.
-7. «ادامه بده» فقط اجازهٔ گام بعدی است و Acceptance/Merge/Release یا waiver قبلی نیست. outcome ناقص باید Issue/acceptance item canonical داشته باشد.
+7. «ادامه بده» فقط اجازهٔ گام بعدی است و Acceptance/Merge/Release یا waiver قبلی نیست. برای نتیجهٔ ناقص فقط وقتی پیگیری مستقل واقعاً لازم است از Issue/acceptance item موجود استفاده کنید؛ دفتر کار تصنعی نسازید.
 
 ## اندازه و split
 Batch کوچک برای feedback سریع مطلوب است، اما **هیچ سقف عمومی بر اساس تعداد خط یا فایل وجود ندارد**. split فقط وقتی مطلوب است که هر بخش مستقل، قابل‌تست، قابل‌مرور و امن برای merge بماند. generated refactor یا تغییر منسجم بزرگ باید generator/روش بازبینی/verification خود را مستند کند؛ کوچک بودن diff نیز تغییر پرریسک را کم‌ریسک نمی‌کند.

@@ -10,8 +10,9 @@ For a solo project, each answer defaults to **no/not selected**, not a hidden bl
 ## Proposed manifest examples
 Owner-operated T2:
 ```json
-{"acceptance":{"mode":"none"},"review":{"independentHumanReview":false}}
+{"acceptance":{"mode":"none"},"review":{"teamProcess":false,"independentHumanReview":false}}
 ```
+The new PR-process relaxation takes effect only when the consumer **explicitly pins a published major that contains it**. Earlier pinned versions retain their former enforcement. An existing private TEST runner may keep its three built-in labels; no automatic runner re-registration or other consumer mutation occurs.
 Selected team attestation (only where the owner has real producers and needs it):
 ```json
 {"acceptance":{"mode":"continuous","assurance":"attested"},"review":{"independentHumanReview":true}}
@@ -28,3 +29,14 @@ The team example must meet the documented significant-team predicate for the sec
 
 ## Out of scope
 No consumer repository changes, no retroactive migration, no built-in App service, no forced QA suite or new entitlement/legal subsystem. Historical standard decisions remain preserved by version.
+
+## Balanced process proposal (not yet a published version)
+
+The later process proposal keeps one scoped outcome, existing architecture/data owners, a short plan when needed,
+real focused tests and current-source required checks. It does not authorize unplanned development. Ready human PRs
+need actual context; false low-risk claims on sensitive paths fail. Formal team metadata, doc-size caps and Issue/Spec
+scaffolding become optional/advisory. Generated custom adapters do not acquire Compose/systemd implicitly.
+
+Review existing templates and adapter choices together. Do not delete a real suite or silently set a previously
+selected team/continuous contract to false. Core checks always execute; full conformance remains for changed technical
+boundaries, main integration and release verification. An omitted full suite is reported NOT_RUN, not PASS.

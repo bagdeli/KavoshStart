@@ -1,5 +1,10 @@
 """Bounded regression for label-trigger cost and required-check/permission integrity."""
 import re
+import json
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -7,9 +12,11 @@ from types import SimpleNamespace as NS
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tooling"))
+import ci_scope
 
 
-def expression(source, context):
+def expression(source, context, inputs=None):
     """Evaluate this workflow's boolean/string subset with synthetic GitHub context."""
     source = source.strip()
     if source.startswith('${{'):
@@ -18,7 +25,9 @@ def expression(source, context):
     source = re.sub(r'!(?!=)', 'not ', source)
     source = re.sub(r'\btrue\b', 'True', source)
     source = re.sub(r'\bfalse\b', 'False', source)
-    return eval(source, {'__builtins__': {}}, {'github': context})
+    return eval(source, {'__builtins__': {}},
+                {'github': context, 'inputs': inputs if inputs is not None else
+                 {'ci-full': False, 'pr-number': ''}})
 
 
 def context(event='pull_request', action='synchronize', label='', draft=False, fork=False):
@@ -98,6 +107,104 @@ class CIEventScopingTests(unittest.TestCase):
                 for name, mode in callee['permissions'].items():
                     self.assertIn(grants.get(name), ('read', 'write') if mode == 'read' else ('write',))
                 self.assertEqual(grants['actions'], 'read')
+
+
+class StandardVerificationScope(unittest.TestCase):
+    def test_docs_only_keeps_core_but_not_external_fixtures(self):
+        full, _ = ci_scope.choose_full("pull_request", ["README.md", "standard/05-ai-agents.md"])
+        self.assertFalse(full)
+        for paths in (None, [], ["docs/note.md", "tooling/src/governance.py"],
+                      [".github/workflows/self-check.yml"], ["tooling/conformance-requirements.txt"],
+                      ["templates/common/AGENTS.md"], ["docs/../secret.md"], ["unknown.md"]):
+            self.assertTrue(ci_scope.choose_full("pull_request", paths)[0], paths)
+
+    def test_release_main_and_unknown_context_keep_full_verification(self):
+        for event in ("push", "unrecognized"):
+            self.assertTrue(ci_scope.choose_full(event, ["README.md"])[0])
+        self.assertTrue(ci_scope.choose_full("workflow_dispatch", requested=True)[0])
+        self.assertTrue(ci_scope.choose_full("workflow_dispatch", release_pr=True)[0])
+        self.assertFalse(ci_scope.choose_full("workflow_dispatch")[0])
+
+    def test_workflow_core_is_unconditional_and_full_failure_not_masked(self):
+        data = yaml.safe_load((ROOT / ".github/workflows/self-check.yml").read_text())
+        job = data["jobs"]["required"]
+        # An authorized full dispatch still publishes the real required check;
+        # a partial/manual run can never replace a failed/missing required check.
+        cases = [
+            ('pull_request', False, '', 'required'),
+            ('push', False, '', 'required'),
+            ('workflow_dispatch', False, '', 'core-only (non-gating)'),
+            ('workflow_dispatch', True, '', 'required'),
+            ('workflow_dispatch', False, '123', 'required'),
+        ]
+        for event, full, pr, name in cases:
+            with self.subTest(event=event, full=full, pr=pr):
+                self.assertEqual(expression(job['name'], context(event=event),
+                                            inputs={'ci-full': full, 'pr-number': pr}), name)
+        steps = job["steps"]
+        core = next(x for x in steps if "make check" in x.get("run", ""))
+        self.assertNotIn("if", core)
+        for step in steps:
+            self.assertNotIn("continue-on-error", step)
+        for name in ("Exercise the pinned Node setup action", "Prepare isolated cross-domain fixture dependencies",
+                     "Exercise real capability boundaries and seeded regressions",
+                     "Verify live artifact transport and tamper rejection"):
+            step = next(x for x in steps if x.get("name") == name)
+            self.assertEqual(step["if"], "steps.scope.outputs.full == 'true'")
+        upload = next(x for x in steps if x.get("id") == "conformance-artifact")
+        self.assertIn("always()", upload["if"])
+        self.assertIn("steps.conformance.outcome != 'skipped'", upload["if"])
+
+    def test_exact_diff_and_unavailable_diff_are_distinguished(self):
+        with tempfile.TemporaryDirectory() as temp:
+            def git(*args):
+                return subprocess.check_output(["git", *args], cwd=temp, stderr=subprocess.DEVNULL).decode().strip()
+            git("init", "-q")
+            git("config", "user.name", "Example")
+            git("config", "user.email", "example@invalid.test")
+            Path(temp, "README.md").write_text("before")
+            git("add", "."); git("commit", "-qm", "base")
+            base = git("rev-parse", "HEAD")
+            Path(temp, "README.md").write_text("after")
+            git("add", "."); git("commit", "-qm", "doc")
+            self.assertEqual(ci_scope.changed_paths(base, temp), ["README.md"])
+            self.assertIsNone(ci_scope.changed_paths("x" * 40, temp))
+            self.assertIsNone(ci_scope.changed_paths("0" * 40, temp))
+
+    def test_release_dispatch_rejects_wrong_head_and_reports_core_not_run_truthfully(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            event = root / "event.json"
+            env = dict(os.environ, GITHUB_EVENT_NAME="workflow_dispatch", GITHUB_EVENT_PATH=str(event),
+                       GITHUB_OUTPUT=str(root / "out"), GITHUB_STEP_SUMMARY=str(root / "summary"),
+                       GITHUB_SHA="a" * 40)
+            event.write_text(json.dumps({"inputs": {"pr-number": "1", "expected-head": "b" * 40}}))
+            cmd = [sys.executable, str(ROOT / "tooling/ci_scope.py")]
+            self.assertNotEqual(subprocess.run(cmd, env=env, capture_output=True).returncode, 0)
+            event.write_text(json.dumps({"inputs": {"ci-full": "false"}}))
+            run = subprocess.run(cmd, env=env, capture_output=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn("full=false", (root / "out").read_text())
+            self.assertIn("NOT_RUN", (root / "summary").read_text())
+            event.write_text(json.dumps({"inputs": {"pr-number": "1", "expected-head": "a" * 40}}))
+            run = subprocess.run(cmd, env=env, capture_output=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn("full=true", (root / "out").read_text())
+
+
+    def test_unreadable_dispatch_event_cannot_silently_select_core_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            event = Path(temp, "event.json")
+            output = Path(temp, "output")
+            env = dict(os.environ, GITHUB_EVENT_NAME="workflow_dispatch", GITHUB_EVENT_PATH=str(event),
+                       GITHUB_OUTPUT=str(output))
+            for payload in (None, "{broken", "[]"):
+                if payload is not None:
+                    event.write_text(payload)
+                run = subprocess.run([sys.executable, str(ROOT / "tooling/ci_scope.py")],
+                                     env=env, capture_output=True)
+                self.assertNotEqual(run.returncode, 0)
+                self.assertFalse(output.exists(), "unknown input must not emit full=false")
 
 
 if __name__ == '__main__':

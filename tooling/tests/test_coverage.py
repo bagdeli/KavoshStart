@@ -20,6 +20,8 @@ import health as h  # noqa: E402
 EXAMPLE = json.loads((ROOT / "intake" / "kavosh.project.example.json").read_text(encoding="utf-8"))
 # The checked-in example deliberately carries unresolved vX.Y.Z. Test fixtures resolve it before scaffold/governance.
 EXAMPLE["kavoshStart"] = "v1.7.0"
+# File-shape negative tests below exercise the explicitly selected formal profile.
+EXAMPLE["review"] = {"teamProcess": True}
 BASH = shutil.which("bash")
 GIT_ID = ["-c", "user.email=t@t", "-c", "user.name=t"]
 
@@ -35,8 +37,15 @@ def scaffolded(mutate=None, manifest=None):
     prev = os.getcwd()
     try:
         git(d, "init", "-q", "-b", "main")
-        (d / "kavosh.project.json").write_text(json.dumps(manifest or EXAMPLE), encoding="utf-8")
+        # Scaffold now validates the manifest before any output. Governance's
+        # negative-contract tests must therefore inject deliberately malformed
+        # manifests *after* scaffolding a valid starting repository.
+        requested = manifest or EXAMPLE
+        valid_scaffold = requested if not g.validate(requested, g.SCHEMA) else EXAMPLE
+        (d / "kavosh.project.json").write_text(json.dumps(valid_scaffold), encoding="utf-8")
         subprocess.run([sys.executable, str(ROOT / "scripts" / "scaffold.py"), str(d)], capture_output=True, check=True)
+        if valid_scaffold is not requested:
+            (d / "kavosh.project.json").write_text(json.dumps(requested), encoding="utf-8")
         if mutate:
             mutate(d)
         git(d, "add", "-A")
@@ -246,7 +255,8 @@ class Manifest(unittest.TestCase):
         self.assertTrue(fails_for("SRC-5", manifest=dict(EXAMPLE, tier="T0")))
 
     def test_UI1_negative_ui_without_designSystem_pin(self):
-        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "designSystem": None})))
+        self.assertTrue(fails_for("UI-1", manifest=dict(EXAMPLE, ui={"kind": "admin", "designSystem": None},
+                                                       review={"teamProcess": True})))
 
     def test_UI1_positive_ui_exception_with_safety_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
@@ -277,6 +287,7 @@ class Manifest(unittest.TestCase):
     def test_DEP1_negative_custom_deploy_without_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
         m["deploy"]["method"] = "custom"
+        m["review"] = {"teamProcess": True}
         self.assertTrue(fails_for("DEP-1", manifest=m))
 
     def test_DEP5_positive_T1_maintenance_window_with_ADR(self):
@@ -377,11 +388,12 @@ def fake_gh(lines=100, parent_base=None, filename="src/a.py"):
 def run_pr(visibility="private", **kw):
     gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base", "filename") if k in kw}
     independent = kw.pop("independentHumanReview", False)
+    structured = kw.pop("teamProcess", True)  # Existing coverage exercises opt-in team invariants.
     g.results.clear()
     original, g.gh = g.gh, fake_gh(**gh_kw)
     try:
         g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility,
-                    "review": {"independentHumanReview": independent},
+                    "review": {"independentHumanReview": independent, "teamProcess": structured},
                     "ui": {"kind": "admin", "designSystem": {"package": "@example/ui-kit", "version": "1.0.0"}}}, pr_event(**kw), "o/r")
     finally:
         g.gh = original

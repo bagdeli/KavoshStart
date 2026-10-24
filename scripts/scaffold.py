@@ -16,6 +16,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# Reuse the exact stdlib-only validator used by published Governance rather than
+# creating a second scaffold schema or adding a toolchain dependency.
+sys.path.insert(0, str(ROOT / "tooling" / "src"))
+from governance import SCHEMA, validate  # noqa: E402
+
 TEMPLATES = ROOT / "templates"
 SELF_STANDARD_REPO = "bagdeli/KavoshStart"
 KAVOSHSTART_TAG_RE = re.compile(r"^v[0-9]+[.][0-9]+[.][0-9]+$")
@@ -36,6 +41,13 @@ def validate_standard_pin(manifest: dict) -> None:
         raise SystemExit(f"consumer kavoshStart must be an exact release tag vX.Y.Z, got {pin!r}; resolve the latest stable release before scaffold")
 
 
+def validate_manifest(manifest: dict) -> None:
+    """Fail before writing any files: invalid intake cannot become a broken scaffold."""
+    problems = validate(manifest, SCHEMA)
+    if problems:
+        raise SystemExit("SRC-5: fix manifest before scaffolding: " + "; ".join(problems[:8]))
+
+
 def layers(manifest: dict) -> list:
     out = ["common"]
     if manifest["tier"] in ("T1", "T2"):
@@ -53,7 +65,10 @@ def values(m: dict) -> dict:
     # CI-1: the manifest selects the runner; private GitHub-hosted jobs require per-run authorization.
     runner = m.get("ci", {}).get("runner", "github-hosted")
     if runner == "self-hosted":
-        labels = m.get("ci", {}).get("runnerLabels") or ["self-hosted", "linux", "x64", slug]
+        labels = m.get("ci", {}).get("runnerLabels") or (
+            ["self-hosted", "linux", "x64"]
+            if m.get("visibility") == "private" and not (m.get("review") or {}).get("teamProcess")
+            else ["self-hosted", "linux", "x64", slug])
     else:
         labels = ["ubuntu-latest"]
     return {
@@ -75,8 +90,11 @@ def values(m: dict) -> dict:
         "BUDGET": str(m.get("ci", {}).get("monthlyMinutesBudget", "")),
         "PACKAGE": "true" if m.get("deploy", {}).get("method") == "release-artifact" else "false",
         "CI_WORKFLOW": m.get("ci", {}).get("requiredWorkflow") or ".github/workflows/ci.yml",
-        "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")),
-        "RUNS_ON_YAML": ("[" + ", ".join(labels) + "]") if labels != ["ubuntu-latest"] else "ubuntu-latest",
+        # RUNS_ON_JSON goes inside a YAML single-quoted scalar; escape apostrophes
+        # without altering the JSON obtained *after* YAML parsing.
+        "RUNS_ON_JSON": json.dumps(labels, separators=(",", ":")).replace("'", "''"),
+        # JSON flow arrays are valid YAML and safely quote labels containing YAML syntax.
+        "RUNS_ON_YAML": json.dumps(labels, separators=(",", ":")) if labels != ["ubuntu-latest"] else "ubuntu-latest",
         "PRIVATE_HOSTED": "true" if m.get("visibility") == "private" and m.get("ci", {}).get("runner") == "github-hosted" else "false",
         "SELF_HOSTED": "true" if m.get("ci", {}).get("runner") == "self-hosted" else "false",
     }
@@ -90,6 +108,18 @@ def include_template(layer: str, rel: str, manifest: dict) -> bool:
         return False  # Optional inventory only for an actual distribution/legal use case.
     if layer == "tier/T2" and rel.startswith("acceptance/"):
         return (manifest.get("acceptance") or {}).get("mode") == "continuous"
+    # Keep architecture facts in PROJECT.md; a template library is not a task list.
+    team = (manifest.get("review") or {}).get("teamProcess") is True
+    if not team and (rel.startswith("specs/") or rel.startswith("docs/architecture/")
+                     or (rel.startswith(".github/ISSUE_TEMPLATE/") and not rel.endswith(("bug.yml", "config.yml")))
+                     or rel in ("docs/decisions/0000-template.md", "docs/decisions/0001-adopt-kavoshstart.md")):
+        return False
+    if layer == "runtime/server" and (manifest.get("deploy") or {}).get("method") not in ("pull-build", "pull-image"):
+        # Custom/native adapters own their runtime; do not install Compose, .env,
+        # systemd or the standard pull-deployer's runbook under another adapter.
+        return rel.startswith(".github/workflows/")
+    if rel == "docs/runbooks/local-validation.md":
+        return (manifest.get("ci") or {}).get("runner") == "none"
     return True
 
 
@@ -100,9 +130,30 @@ def render(text: str, vals: dict, rel: str) -> str:
     return PLACEHOLDER.sub(lambda mt: vals[mt.group(1)], text)
 
 
+def render_job_runners(text: str, rel: str, manifest: dict) -> str:
+    """Honor selected per-job labels in generated callers without changing other jobs."""
+    overrides = (manifest.get("ci") or {}).get("runnerJobLabels") or {}
+    for key, labels in overrides.items():
+        path, separator, job = key.rpartition("#")
+        if not separator or path != rel:
+            continue  # A consumer-owned workflow may be added after scaffold.
+        pattern = re.compile(r"(?ms)^  " + re.escape(job) + r":.*?(?=^  [A-Za-z0-9_-]+:|\Z)")
+        def replace(match):
+            block = match.group(0)
+            selector = json.dumps(labels, separators=(",", ":"))
+            # A reusable workflow input is JSON text; a concrete job uses an array.
+            value = "'" + selector.replace("'", "''") + "'" if re.search(r"(?m)^    uses:", block) else selector
+            return re.sub(r"(?m)^( +runs-on:).*$", lambda m: m.group(1) + " " + value, block)
+        text = pattern.sub(replace, text)
+    return text
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     adopt, dry = "--adopt" in sys.argv, "--dry-run" in sys.argv
+    unknown = [a for a in sys.argv[1:] if a.startswith("--") and a not in ("--adopt", "--dry-run")]
+    if unknown:
+        raise SystemExit("unknown scaffold option: " + ", ".join(unknown))
     if len(args) != 1:
         print(__doc__)
         return 2
@@ -112,6 +163,7 @@ def main() -> int:
         raise SystemExit(f"{mpath} not found — complete the intake first (START.md §1 steps 1–3)")
     manifest = json.loads(mpath.read_text(encoding="utf-8"))
     validate_standard_pin(manifest)
+    validate_manifest(manifest)
     runner = manifest.get("ci", {}).get("runner")
     if manifest.get("visibility") == "private" and runner != "self-hosted" and (
             set(manifest.get("ci", {})) & {"runnerLabels", "runners", "trustModelADR"}):
@@ -138,8 +190,14 @@ def main() -> int:
                     plan[rel] = f
 
     created, conflicts = [], []
+    blocked_review = False
     for rel, src in sorted(plan.items()):
         text = render(src.read_text(encoding="utf-8"), vals, rel)
+        if rel == ".github/dependabot.yml":
+            # Actions only by default; add native ecosystems when their real
+            # dependency files exist, not merely because a Tier is T1/T2.
+            text = render((TEMPLATES / "common" / rel).read_text(encoding="utf-8"), vals, rel)
+        text = render_job_runners(text, rel, manifest)
         dest = target / rel
         if dest.exists():
             if not adopt:
@@ -147,6 +205,10 @@ def main() -> int:
                 continue
             dest = dest.with_name(dest.name + ".kavosh-new")
             conflicts.append(rel)
+            if dest.exists():
+                blocked_review = True
+                print("  ! preserved existing review file:", dest.relative_to(target).as_posix())
+                continue
         if not dry:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(text, encoding="utf-8", newline="\n")
@@ -167,7 +229,7 @@ def main() -> int:
             if p.is_file() and ".git" not in p.parts and "TODO(kavosh)" in p.read_text(encoding="utf-8", errors="ignore")] if not dry else []
     if todo:
         print(f"Next: replace TODO(kavosh) markers in {len(todo)} files, make `make check` pass, then run install-agent-guards.sh")
-    return 1 if conflicts and not adopt else 0
+    return 1 if blocked_review or (conflicts and not adopt) else 0
 
 
 if __name__ == "__main__":

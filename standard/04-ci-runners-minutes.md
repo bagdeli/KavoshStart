@@ -6,6 +6,10 @@
 
 Reusable KavoshStart governance, main-guard, health, release-gate and RC-gate logic must not assume that a consumer runner has GitHub CLI installed. Core GitHub API access uses Python standard library plus the workflow-scoped `GITHUB_TOKEN`/`GITHUB_API_URL`; git remains the only repository CLI assumption. A project may install `gh` for its own tooling, but KavoshStart conformance cannot depend on that hidden host prerequisite.
 
+## مرز نتیجهٔ CI و آزمون انتخابی
+
+در خود مخزن KavoshStart، `required` فقط برای بررسی PR یا main و اجرای دستیِ **واقعاً جامع** / تأیید head نسخهٔ Release منتشر می‌شود. اجرای دستی `core-only` که Conformance را عمداً `NOT_RUN` ثبت می‌کند، یک Check با نام جداگانهٔ `core-only (non-gating)` دارد؛ هرگز نباید `required` را سبز کند یا جای آزمون مرتبط پیش از ادغام را بگیرد. تست‌های پایه برای هر اجرای CI حاضر اجرا می‌شوند و تغییر سورس، قالب، Workflow یا Diff نامعلوم همچنان Full است؛ تغییر محدود مستنداتیِ تأییدشده از ابزارهای خارجی غیرمرتبط معاف می‌شود.
+
 ## Runner و هزینه (CI-1…3 — ADR-0018 جایگزین تصمیم private در ADR-0015)
 
 | ریپو و mode | اجرای GitHub Actions | مجوز و مرز |
@@ -51,6 +55,12 @@ CI-2 یک **هدف امنیتی** است، نه الزام ساخت VM، JIT run
 **فایروال به‌تنهایی مرز امنیتی host نیست**: کد اجراشده ممکن است به فایل‌ها، Docker socket، UID مشترک یا حافظه و دادهٔ موجود روی همان میزبان دسترسی پیدا کند. PR متعلق به همان ریپو لزوماً trusted نیست. برای کد نامطمئن، مجوز ممتاز، کلید signing، دادهٔ مشتری یا دسترسی به Test/Production باید مرز مناسب جداگانه‌ای برقرار شود؛ اگر در میزبان موجود ممکن نیست، مسیر ناامن نباید PASS شود. در صورت نیاز واقعی به محیط ephemeral می‌توان آن را به‌عنوان تصمیم همان پروژه انتخاب کرد، نه تحمیل عمومی.
 
 تصمیم کوتاه مالک در Project/Issue یا Trust ADR **اختیاری** می‌تواند ریسک باقی‌مانده و کنترل‌های جبرانی را برای دامنهٔ محدود ثبت کند؛ Status پیشنهادی (proposed) به معنای پذیرش نیست. درصدهای فرضی ۹۸/۹۹ بدون مدل تهدید و سنجش ادعای اثبات‌شده نیستند. هزینهٔ کنترل با احتمال و پیامد تهدید مقایسه شود، نه با میل به صفرکردن ذهنی همهٔ ریسک‌ها. کنترل‌های واقعی فقط هنگام تغییر Trust Boundary یا عملیات حساس دوباره بررسی شوند. مبنا: GitHub Secure Use و NIST SP 800-39.
+
+### حالت خصوصی تک‌مالک و TEST قابل دورریختن
+
+در `review.teamProcess=false` روی مخزن خصوصی، Runner **واقعاً ثبت‌شدهٔ موجود** می‌تواند فقط با labelهای بومی `self-hosted`, `linux`, `x64` انتخاب شود؛ اضافه‌کردن label اختصاصی، VM دوم، Trust ADR جدا یا حسابرسی هر PR شرط پیش‌فرض نیست. این انتخاب در Schema، Scaffold و Governance یکسان است. هویت repository، دامنهٔ واقعی دسترسی حساب Runner و اینکه کدام job می‌تواند روی همان Host اجرا شود با خود مالک است؛ برچسب‌ها هیچ‌کدام را اثبات نمی‌کنند. اگر همین Host به credentialهای قابل نوشتن main، توکن انتشار، امضای نسخه، اسرار Production یا دادهٔ حساس دسترسی دارد، TEST نامیدن آن مجوز این دسترسی‌ها نیست؛ Job نامطمئن باید از آن مرز دور بماند. حذف dataی واقعاً disposable پذیرفتنی است، اما ادعای PASS بدون اجرای تست یا ادعای Production بدون evidence پذیرفتنی نیست.
+
+بستن پروسهٔ Runner داخل VM/Container تازه تنها یک راه‌حل است؛ اگر با حساب یا دسترسی موجود مرز لازم برقرار می‌شود، زیرساخت جدید الزام ندارد. برای مخزن public یا `review.teamProcess=true` selector اختصاصی و کنترل دامنهٔ اعتماد همچنان برقرار است.
 
 ### Private self-hosted: اجرای مجاز با جداسازی واقعی
 

@@ -4,8 +4,7 @@
 name: kavosh-portfolio
 
 on:
-  schedule:
-    - cron: "0 4 * * *"   # daily 07:30 Tehran; standard hosted jobs on public repos are free
+  # Explicit portfolio audit only; the repository already has weekly health.
   workflow_dispatch:
 
 concurrency:

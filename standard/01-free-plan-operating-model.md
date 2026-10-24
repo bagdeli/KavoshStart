@@ -50,14 +50,14 @@ KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/is
    [O] portfolio ── public control surface only
 ```
 
-**مرز مهم:** لایه‌های A/P/M/G/H کیفیت repository و release candidate را کنترل می‌کنند؛ آن‌ها ثابت نمی‌کنند canonical Test/Production واقعاً همان artifact را اجرا می‌کند. این وظیفه‌ی **E** است. یک Compose موقت، runner proof یا localhost smoke حتی با CI سبز، تا وقتی `ENVIRONMENT_CONFORMANCE=PASS` ندهد environment رسمی نیست.
+**مرز مهم:** لایه‌های A/P/M/G/H کیفیت repository و release candidate را کنترل می‌کنند؛ آن‌ها ثابت نمی‌کنند canonical Test/Production واقعاً همان artifact را اجرا می‌کند. این وظیفه‌ی **E** است. یک smoke موقت جای هویت و سلامت محیط واقعی را نمی‌گیرد. نام خروجی `ENVIRONMENT_CONFORMANCE=PASS` و service/timer مربوط به adapter استانداردِ انتخاب‌شده است؛ native/custom adapter هویت و سلامت معادل واقعی را با ابزار خودش بررسی می‌کند و سیستم دوم لازم نیست.
 
 - **A** خطاهای متداول عامل را قبل از GitHub می‌گیرد؛ bypass مجاز نیست.
 - **P** ساختار PR/repo و ruleهای قابل مشاهده از GitHub را می‌سنجد.
 - **M** merge ناسالم یا direct push را پس از وقوع آشکار می‌کند و release gate را می‌بندد.
 - **G** فقط release از exact current `main` با checkهای required سبز می‌سازد.
 - **H** سلامت repository را دوره‌ای گزارش می‌کند؛ H جای E را نمی‌گیرد.
-- **E** توسط deployer استاندارد روی همان host اجرا می‌شود و fail-closed است. اگر `current`، service/timer، target، exact SHA/version، health یا canonical proxy با انتظار سازگار نباشند، environment پذیرفته نیست.
+- **E** برای محیط persistent منتخبِ adapter استاندارد، توسط همان deployer روی host اجرا می‌شود و fail-closed است. اگر `current`، service/timer، target، exact SHA/version، health یا canonical proxy با انتظار سازگار نباشند، environment پذیرفته نیست.
 - **O** فقط repoهای public را از بیرون می‌بیند؛ metadata پروژه‌ی private وارد سطح عمومی نمی‌شود.
 - **R** برای تصمیم‌هایی که نیازمند judgment انسانی‌اند باقی می‌ماند؛ وجود R مجوز نداشتن check ارزان و قابل‌اتکا نیست.
 
@@ -75,13 +75,13 @@ KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/is
 
 هیچ ریپویی نمی‌تواند حذف شدن محافظ خودش را به‌طور قابل‌اتکا گزارش کند. برای repoهای **public**، KavoshStart یک ناظر بیرونی عمومی دارد:
 
-- `scripts/portfolio_guard.py` و workflow روزانه‌ی `kavosh-portfolio` فقط repoهای public را بررسی می‌کنند.
+- `scripts/portfolio_guard.py` و workflow دستیِ `kavosh-portfolio` فقط repoهای public را بررسی می‌کنند.
 - اگر credential به اشتباه repoهای private را هم ببیند، script آن‌ها را **پیش از inspection و report** نادیده می‌گیرد (SEC-5).
 - نتیجه فقط درباره‌ی repoهای public در Issue عمومی `kavosh:portfolio` نوشته می‌شود.
 - Layer O با `GITHUB_TOKEN` محدود به همان مخزن و مجوزهای حداقلی اجرا می‌شود؛ PAT مشترک یا secret حساب لازم نیست.
 - نام، URL، هدف، audit، plan، finding یا runtime metadata پروژه‌ی private نباید وارد file، Issue، PR، commit message، Release یا log عمومی شود.
 
-برای repoهای **private**، ناظر بیرونی در یک control surface private مستقل اجرا می‌شود. Reference implementation آن `scripts/private_portfolio_guard.py` و قرارداد کاملش [14-private-portfolio-supervisor.md](14-private-portfolio-supervisor.md) است. KavoshStart عمومی inventory خصوصی را نگه نمی‌دارد: target inventory، token و report فقط در سطح private می‌مانند. supervisor pin/freshness، enforce wiring، main/health، acceptance profile و disabled/missing controlها را از بیرون بررسی می‌کند؛ stale stable pin هشدار برای delta classification است و کنترل غایب/غیرفعال failure.
+برای repoهای **private**، ناظر بیرونی فقط در صورت انتخاب واقعی مالک در یک control surface private مستقل اجرا می‌شود؛ سرویس تازه پیش‌فرض نیست. Reference implementation آن `scripts/private_portfolio_guard.py` و قرارداد کاملش [14-private-portfolio-supervisor.md](14-private-portfolio-supervisor.md) است. KavoshStart عمومی inventory خصوصی را نگه نمی‌دارد: target inventory، token و report فقط در سطح private می‌مانند. supervisor pin/freshness، enforce wiring، main/health، acceptance profile و disabled/missing controlها را از بیرون بررسی می‌کند؛ stale stable pin هشدار برای delta classification است و کنترل غایب/غیرفعال failure.
 
 **مرز اعتماد:** Layer O عمومی به همین repo و GitHub Actions وابسته است. اگر خودش از کار بیفتد، فقط انسان متوجه می‌شود که Issue پرتفوی عمومی دیگر به‌روز نشده است. این لایه هیچ ادعایی درباره‌ی مشاهده یا سلامت پروژه‌های private ندارد.
 

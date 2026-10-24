@@ -1,48 +1,22 @@
 # 02 — منبع حقیقت و مدیریت کار
 
-قواعد: SRC-1…6، WK-1…6
+قواعد: SRC-1…7، WK-1…6. اصل ثابت، یک مرجع قابل‌اعتماد برای هر نوع حقیقت است؛ نه یک فرم یا برد اجباری برای هر کار.
 
-## چه چیزی کجا زندگی می‌کند
-| اطلاعات | تنها محل | ممنوع در |
-|---|---|---|
-| کارهای باز، اولویت، مسئول | Issue + GitHub Project «Kavosh Delivery» | فایل‌های STATUS/HANDOFF/tasks |
-| جزئیات و معیار پذیرش یک کار | **بدنه‌ی** Issue | کامنت‌های پراکنده، فایل |
-| تغییر پیشنهادی و شواهد | PR + Checks | Issue |
-| نسخه‌ی منتشرشده | tag + Release + `CHANGELOG.md` | Issue «closure record» |
-| چرایی تصمیم | ADR (`docs/decisions/`) | کامنت Issue |
-| «چه باید ساخته شود» برای یک Feature | `specs/<n>-<slug>/spec.md` | یک سند مرکزی چندصد KB |
-| مشخصات ثابت پروژه | `kavosh.project.json` + `PROJECT.md` | README پراکنده |
-| دستورالعمل عامل | `AGENTS.md` | Issue «handoff» |
-| انتقال کار بین جلسات عامل | بدنه‌ی PR (Done / Remaining / Decisions) | Issue با 100 کامنت |
+| اطلاعات | مرجع مناسب |
+|---|---|
+| هدف و محدودهٔ کار جاری | درخواست مصوب و سپس همان Issue یا PR موجود؛ بدون tracker موازی |
+| تغییر و نتیجهٔ بررسی | PR و Checks واقعی، با توضیح NOT_RUN و ریسک باقی‌مانده |
+| قرارداد و معماری پایدار | manifest/PROJECT و تصمیم مرتبط؛ Spec/ADR مستقل فقط هنگام فایده |
+| نسخهٔ منتشرشده | tag/Release immutable و CHANGELOG، نه ادعای داخل یک Issue |
+| دستور عامل | AGENTS و bridgeهای کوتاه |
+| کار ناتمام | همان مرجع کار با وضعیت واقعی؛ Issue تازه فقط برای پیگیری مستقلِ مفید |
 
-## سلسله‌مراتب کار
-```text
-Milestone  vX.Y.Z                 (T1, T2)
-└─ type:epic      1–6 هفته         (T2)
-   └─ type:feature  2–10 روز + spec (T1, T2)
-      └─ type:task   معمولاً ≤ 1 روز؛ مرز PR بر اساس coherence، risk، testability و reviewability
-type:bug · type:decision (→ ADR) · type:chore
-```
-- رابطه‌ی والد/فرزند با **sub-issue بومی** GitHub، نه متن «parent #192».
-- Issue Types در حساب شخصی وجود ندارد؛ برچسب `type:*` جایگزین است و فرم‌های Issue آن را خودکار می‌گذارند.
+## انضباط بدون تکثیر کار
 
-## GitHub Project «Kavosh Delivery» (یکی برای همه‌ی ریپوها)
-فیلدها: `Status` (Backlog, Ready, In Progress, In Review, Blocked, Done) · `Priority` (P0–P3) · `Size` (XS, S, M, L) · `Iteration` (دوهفته‌ای) · `Agent` (human, claude, codex, copilot, gemini) · `Repo`.
-نماها: Board، Current iteration، By repo، Blocked، Roadmap by milestone.
-خودکارسازی‌های بومی: Item closed → Done · PR merged → Done · auto-archive بعد از 14 روز.
+یک کار باید نتیجهٔ مشخص، مرز و روش بررسی داشته باشد. قابلیت بزرگ به برش‌های مستقل و قابل‌آزمون تقسیم می‌شود، نه یک Issue یا PR برای هر پاسخ intake. اگر تغییر API، داده و UI جدایی‌ناپذیر است، همان تغییر منسجم یکجا بررسی می‌شود. ساخت مفهوم، سرویس یا مسیر نو بدون بررسی مالک فعلی مجاز نیست.
 
-**WIP:** حداکثر 3 آیتم In Progress در کل پرتفوی — ظرفیت بازبینی شما گلوگاه است، نه سرعت عامل.
+Milestone، Epic، Spec و GitHub Project ابزار اختیاری هماهنگی‌اند. برای تک‌مالک، استفاده از Issue/PR ساده کافی است؛ نبود برد، برچسب یا سلسله‌مراتب نباید کار معتبر را متوقف کند. در `review.teamProcess=true`، برچسب type و قراردادهای تیم اجرا می‌شوند. WIP متناسب با ظرفیت بازبینی تنظیم شود؛ هدف پایان‌دادن کار است نه انباشتن شاخه‌ها.
 
-## چرا
-در یک پروژه‌ی بزرگ، «مرجع فعلی» چند بار عوض شده و در فایل‌های متعدد کپی شده بود؛ عاملی که از `main` شروع می‌کرد ممکن بود به Issue بسته هدایت شود. وضعیت در GitHub همیشه زنده است و با `gh` قابل خواندن.
 ## Immutable provenance versus live state
 
-Source-of-truth rules distinguish evidence that must remain frozen from operational state that must stay live:
-
-- exact source commit identifiers are valid in immutable release notes, audits and ADRs because they prove what was reviewed or released;
-- ordinary explanatory Markdown must not freeze current repository state with a commit SHA;
-- `AGENTS.md` must not depend on a specific current Issue/PR or status date;
-- a standards citation such as `UTS #39`, RFC/section numbering or other non-GitHub citation is not a live Issue/PR reference;
-- if an agent/contributor rule truly depends on a GitHub work item, put that state in GitHub and keep AGENTS generic.
-
-
+SHA دقیق، خروجی تست و تصمیم نسخه‌دار سابقهٔ بررسی‌اند؛ این‌ها را نباید پاک یا به نسخهٔ دیگری نسبت داد. مدارک قدیمی وضعیت زندهٔ امروز را ثابت نمی‌کنند. وضعیت فعلی باید از GitHub و محیط واقعی خوانده شود. یادداشت محلی یا فایل تاریخی خودبه‌خود ممنوع نیست؛ مسئله، منبع موازیِ متناقض یا پنهان‌کردن کار ناتمام است. AGENTS نباید برای کار روزانه به یک Issue یا تاریخ منقضی وابسته شود.

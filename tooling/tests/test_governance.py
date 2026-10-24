@@ -365,6 +365,15 @@ class TestStagingManifestSchema(unittest.TestCase):
             "prerequisites": {key: {"acceptanceId": "AC-001", "assertion": "backup::restore"}
                               for key in ("full", "originals", "recovery", "capacity")}}
 
+    def test_manifest_schema_enforces_declared_unique_items_and_max_items(self):
+        self.assertTrue(g.validate(["server", "server"], {
+            "type": "array", "uniqueItems": True, "items": {"type": "string"}}))
+        self.assertTrue(g.validate(["a", "b", "c"], {
+            "type": "array", "maxItems": 2, "items": {"type": "string"}}))
+        self.assertEqual(g.validate(["a", "b"], {
+            "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": True,
+            "items": {"type": "string"}}), [])
+
     def test_REL7_positive_staging_contract_schema(self):
         self.assertEqual(g.validate(self.manifest, g.SCHEMA), [])
 

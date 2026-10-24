@@ -15,7 +15,7 @@ on:
         required: false
         type: string
       ci-full:
-        description: Compatibility input with the common CI dispatch contract
+        description: Run cross-domain conformance in addition to required core checks
         required: false
         default: false
         type: boolean
@@ -32,7 +32,9 @@ permissions:
 
 jobs:
   required:
-    name: required
+    # Manual core-only checks must not satisfy the required branch/release gate.
+    # PRs and main always keep the stable `required` check identity.
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs['ci-full'] != true && inputs['pr-number'] == '' && 'core-only (non-gating)' || 'required' }}
     if: >-
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
@@ -43,20 +45,28 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      - name: Select verification scope
+        id: scope
+        run: python3 tooling/ci_scope.py
       - run: pip install --quiet pyyaml && make check
-      - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"
+      - run: python3 -c "import json,pathlib,yaml; roots=[pathlib.Path('.github'),pathlib.Path('intake'),pathlib.Path('templates/rulesets')]; ys=[p for r in roots for p in r.rglob('*') if p.is_file() and p.suffix in ('.yml','.yaml')]; js=[p for r in roots for p in r.rglob('*.json') if p.is_file()]+[p for p in pathlib.Path('.').glob('*.json') if p.is_file()]; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in ys]; [json.loads(p.read_text(encoding='utf-8')) for p in js]"
       - name: Exercise the pinned Node setup action
+        if: steps.scope.outputs.full == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           package-manager-cache: false
       - name: Prepare isolated cross-domain fixture dependencies
+        if: steps.scope.outputs.full == 'true'
         env:
           KAVOSH_CONFORMANCE_DEPS: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           pip install --quiet -r tooling/conformance-requirements.txt
           bash tooling/prepare_conformance.sh
       - name: Exercise real capability boundaries and seeded regressions
+        id: conformance
+        if: steps.scope.outputs.full == 'true'
         env:
           KAVOSH_TERRAFORM: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}/terraform
           KAVOSH_WORDPRESS_ROOT: ${{ runner.temp }}/conformance-${{ github.run_id }}-${{ github.run_attempt }}/wordpress
@@ -64,7 +74,7 @@ jobs:
         run: make conformance
       - name: Retain actual conformance result
         id: conformance-artifact
-        if: always()
+        if: always() && steps.scope.outputs.full == 'true' && steps.conformance.outcome != 'skipped'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cross-domain-${{ github.run_id }}-${{ github.run_attempt }}
@@ -72,19 +82,20 @@ jobs:
           retention-days: 7
           if-no-files-found: error
       - name: Verify live artifact transport and tamper rejection
+        if: steps.scope.outputs.full == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           KAVOSH_ARTIFACT_ID: ${{ steps.conformance-artifact.outputs.artifact-id }}
         run: python3 tooling/receipt_transport_smoke.py
       - name: Capture exact verified public source
-        if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
+        if: steps.scope.outputs.full == 'true' && github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
         run: |
           mkdir -p "$RUNNER_TEMP/kavosh-verification"
           git archive --format=tar HEAD > "$RUNNER_TEMP/kavosh-verification/source.tar"
           git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/kavosh-verification/source-identity.txt"
           sha256sum "$RUNNER_TEMP/kavosh-verification/source.tar" > "$RUNNER_TEMP/kavosh-verification/source-sha256.txt"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
+        if: steps.scope.outputs.full == 'true' && github.repository == 'bagdeli/KavoshStart' && github.event.repository.private == false
         with:
           name: kavosh-verified-source-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/kavosh-verification/

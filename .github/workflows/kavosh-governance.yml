@@ -107,7 +107,7 @@ jobs:
           import time
           from pathlib import Path
 
-          _SCHEMA_SRC = r"""{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json","title":"Kavosh project manifest","description":"Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.","type":"object","additionalProperties":false,"required":["kavoshStart","name","repo","summary","visibility","tier","runtime","capabilities","users","data","size","ui","stack","deploy","ci","agents"],"properties":{"$schema":{"type":"string"},"kavoshStart":{"type":"string","pattern":"^(self|v[0-9]+[.][0-9]+[.][0-9]+)$","description":"Exact KavoshStart release tag (vX.Y.Z) for consumer repositories. Reserved value 'self' is valid only for the canonical bagdeli/KavoshStart repository, which executes its checked-out source directly."},"name":{"type":"string","minLength":2},"repo":{"type":"string","pattern":"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},"summary":{"type":"string","minLength":10,"maxLength":300},"visibility":{"enum":["private","public"],"description":"Actual repository visibility. Private repositories may use an available isolated, repository-scoped GitHub Actions self-hosted runner under CI-2. Standard GitHub-hosted Actions in private are prohibited unless the designated human billing owner (the user, not another administrator or agent) explicitly approves each exact proposed run before manual dispatch, even within included free minutes. Public standard GitHub-hosted is allowed under current public-repository terms; isolated public self-hosted requires CI-2. An independent CI worker outside GitHub Actions is a separate execution mechanism. Other metered/billable GitHub services in private repositories require this person's specific prior approval (ADR-0019)."},"owner":{"type":"string"},"tier":{"enum":["T0","T1","T2"]},"tierOverride":{"type":"string","description":"ADR path if tier differs from CLASSIFICATION.md result"},"runtime":{"enum":["none","static","server","desktop"]},"projectKind":{"enum":["application","library","tool"],"description":"library = consumed by other Kavosh repositories (classifies at least T1)"},"adoptionPhase":{"type":"boolean","description":"Deprecated legacy migration marker. Consumers of the current standard must not set this to true; it never authorizes enforce:false."},"firstRelease":{"type":"array","items":{"type":"string"}},"outOfScope":{"type":"array","items":{"type":"string"}},"users":{"type":"object","additionalProperties":false,"required":["audience","scale"],"properties":{"audience":{"enum":["internal","customers","public"]},"scale":{"enum":["1-10","10-100","100-1000","1000+"]}}},"data":{"type":"object","additionalProperties":false,"required":["sensitivity","regulatedIntegrations","multiTenant"],"properties":{"sensitivity":{"enum":["none","internal","personal","financial"]},"regulatedIntegrations":{"type":"array","items":{"type":"string"}},"multiTenant":{"type":"boolean"}}},"size":{"type":"object","additionalProperties":false,"required":["domains","lifetime","parallelStreams"],"properties":{"domains":{"type":"integer","minimum":1},"lifetime":{"enum":["weeks","months","years"]},"parallelStreams":{"type":"integer","minimum":1}}},"ui":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"enum":["none","web","admin","desktop"]},"locales":{"type":"array","items":{"type":"string"}},"exceptionADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Approved custom UI without a pinned design-system package; includes RTL, accessibility, ownership, scope and tests."},"designSystem":{"type":["object","null"],"additionalProperties":false,"required":["package","version"],"properties":{"package":{"type":"string","minLength":2,"maxLength":160,"description":"Design-system package selected by the consuming project. Never publish private provider identifiers in the public standard."},"version":{"type":"string","pattern":"^v?[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?$","description":"Exact package release version; no floating ranges."}},"description":"Consumer-owned provider and exact pin; null requires an approved exception for UI projects."}}},"stack":{"type":"object","additionalProperties":false,"required":["languages"],"properties":{"languages":{"type":"array","items":{"type":"string"},"minItems":1},"frameworks":{"type":"array","items":{"type":"string"}},"database":{"enum":["postgresql","sqlite","mysql","none"]}}},"deploy":{"type":"object","additionalProperties":false,"required":["method","environments"],"properties":{"method":{"enum":["none","release-artifact","pull-build","pull-image","custom"]},"location":{"enum":["iran","abroad","both"]},"environments":{"type":"array","items":{"enum":["test","production"]}},"urls":{"type":"object","additionalProperties":{"type":"string"}},"authorizationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for method=custom; proves equivalent release/security gates."},"migrationMode":{"enum":["expand-contract","maintenance-window"],"description":"Defaults to expand-contract for real product schema migrations. T1/T2 server may explicitly select maintenance-window with an accepted existing migration/recovery ADR, bounded downtime and exact-tag owner authorization. Routine upstream maintenance without a product migration requires no new migration-mode gate."},"migrationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"ci":{"type":"object","additionalProperties":false,"required":["runner","monthlyMinutesBudget"],"properties":{"runner":{"enum":["self-hosted","github-hosted","none"],"description":"Private GitHub Actions: self-hosted on an existing approved non-root host may run when safe; standard GitHub-hosted is prohibited without one prior explicit authorization by the designated human billing owner for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."},"runnerLabels":{"type":"array","items":{"type":"string"},"minItems":1,"description":"Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector, exact manifest/workflow/reusable-caller match and real operational validation of effective scope/credentials. A separate Trust ADR and physical second host are optional. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first. Default for all workflow jobs unless one exact job declares an optional ci.runnerJobLabels override."},"runners":{"type":"integer","minimum":1,"maximum":20,"description":"Self-hosted capacity hint; does not provision a runner or certify its isolation. Size by queue/SLO."},"monthlyMinutesBudget":{"type":"integer","minimum":0,"maximum":2000,"description":"Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution. In private it never substitutes for the designated human billing owner's prior metered-use authorization (ADR-0019)."},"trustModelADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Optional self-hosted trust ADR for large teams or material control changes; a solo-owned project can record the owner-approved existing-host/least-privilege profile in its existing project decision instead. Not an unconditional CI-2 gate. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary. A bounded, owner-accepted risk profile on an existing independent host may combine unprivileged service users, local file/socket isolation and firewall controls; disposable VMs are optional, firewall-only is not host isolation."},"requiredWorkflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."},"runnerJobLabels":{"type":"object","description":"Optional per-job explicit self-hosted labels. Keys use '.github/workflows/<file>.yml#<job-id>'; each value is a complete static self-hosted selector for that exact job only. Unlisted jobs retain ci.runnerLabels. Does not provision runners, authorize privileged jobs, or permit private hosted minutes.","additionalProperties":{"type":"array","minItems":4,"maxItems":12,"items":{"type":"string","minLength":1,"maxLength":64}}}}},"limits":{"type":"object","additionalProperties":false,"properties":{"prMaxLines":{"type":"integer","minimum":100,"maximum":2000,"description":"Deprecated compatibility field. KavoshStart v2 does not use line/file counts as a merge gate; remove on normal upgrade."},"maxOpenReadyPRs":{"type":"integer","minimum":1,"maximum":10},"branchMaxAgeDays":{"type":"integer","minimum":1,"maximum":14}}},"agents":{"type":"array","items":{"enum":["claude","codex","copilot","gemini","human-only"]},"minItems":1},"review":{"type":"object","additionalProperties":false,"properties":{"independentHumanReview":{"type":"boolean","default":false,"description":"Optional explicit owner-selected second-person GitHub UI reviewer, only for a sizeable team (at least two real contributors and four domains). Missing/false means the sole owner reviews directly and no second-person visual gate is created."}},"description":"Optional team review, not inferred from tier, runtime or risk. Never creates a human or paid reviewer automatically."},"dependsOn":{"type":"array","items":{"type":"string"}},"acceptance":{"type":"object","additionalProperties":false,"required":["mode"],"properties":{"mode":{"enum":["none","continuous"],"description":"Optional owner-selected release-scope continuous acceptance. Mode none is allowed at any tier, including T2 solo-owner projects. Choosing continuous activates separate review/evidence obligations: disclose actual producer/App costs before selection."},"assurance":{"enum":["attested","risk-based"],"description":"For explicitly selected continuous acceptance only: choose risk-based or attested at intake; the independent App/decision protocol is needed for specialist/high-risk items. Do not choose this for a solo-owner project merely because of tier."}},"description":"Acceptance is optional even for T2; absent or mode none needs no independent publisher. Explicit continuous requires an intentional assurance selection and real producers when its high/specialist contract applies. Old pinned consumers remain unchanged."},"release":{"type":"object","additionalProperties":false,"required":["strategy"],"properties":{"strategy":{"enum":["release-please","changesets","custom"],"description":"Release implementation strategy. This is an adapter choice, not the release safety contract; all strategies must preserve REL-1/2/5/6."},"strategyADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for changesets/custom strategies; proves equivalent SemVer, vX.Y.Z immutable tag, exact-source provenance and release gating."},"workflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."},"artifact":{"type":"object","additionalProperties":false,"required":["command","paths"],"properties":{"command":{"type":"string","minLength":1,"maxLength":1000,"description":"Repository-owned shell command that prepares and builds release assets. Required for release-please artifact packaging when automation.interface is not make; Make consumers may use the default make setup + make package adapter."},"paths":{"type":"array","minItems":1,"items":{"type":"string","minLength":1,"pattern":"^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+","description":"Relative glob under the repository checkout. Absolute paths and parent traversal are forbidden."},"description":"One or more relative globs whose regular files are attached to the GitHub Release."}},"description":"Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."},"testStaging":{"type":"object","additionalProperties":false,"required":["schemaVersion","target","callerWorkflow","prerequisites"],"properties":{"schemaVersion":{"type":"integer","const":1},"target":{"type":"string","const":"test"},"callerWorkflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$"},"prerequisites":{"type":"object","additionalProperties":false,"required":["full","originals","recovery","capacity"],"properties":{"full":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}},"originals":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}},"recovery":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}},"capacity":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}}}}},"description":"Opt-in owner-dispatched Test staging contract. Presence activates exact-manifest actor, receipt and CI guards; it does not complete ACC-3 or authorize Production."}}},"automation":{"type":"object","additionalProperties":false,"required":["interface"],"properties":{"interface":{"enum":["make","package-scripts","task-runner","custom"],"description":"Adapter exposing semantic setup/lint/test/build/check operations. The underlying language/tool is not a KavoshStart invariant."},"customADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"capabilities":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["control-plane","package","server","browser-ui","desktop","persistent-data","migration","infrastructure","release-artifact","regulated","cms-wordpress"]},"description":"Composable project capabilities. Tier controls assurance/process; runtime controls execution shape; capabilities control domain-specific applicability/evidence. Technology names are not capabilities."}},"allOf":[{"if":{"properties":{"visibility":{"const":"private"}},"required":["visibility"]},"then":{"properties":{"ci":{"type":"object","required":["runner"],"if":{"properties":{"runner":{"enum":["github-hosted","none"]}},"required":["runner"]},"then":{"type":"object","additionalProperties":false,"properties":{"runner":{"enum":["github-hosted","none"]},"monthlyMinutesBudget":{},"requiredWorkflow":{}},"description":"Private GitHub-hosted or no-Actions modes cannot declare self-hosted runner metadata; GitHub-hosted requires explicit designated human billing owner's consent before each exact run."},"description":"Private self-hosted is allowed with CI-2 trust verification; hosted remains consent-gated."}},"required":["ci"]}},{"if":{"properties":{"ci":{"properties":{"runner":{"const":"none"}},"required":["runner"]}},"required":["ci"]},"then":{"properties":{"tier":{"const":"T1"},"runtime":{"const":"static"}},"required":["tier","runtime"]}}]}"""
+          _SCHEMA_SRC = r"""{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/bagdeli/KavoshStart/intake/kavosh.project.schema.json","title":"Kavosh project manifest","description":"Machine-readable project profile. Read by KavoshStart workflows and agents. Stable facts only — no status.","type":"object","additionalProperties":false,"required":["kavoshStart","name","repo","summary","visibility","tier","runtime","capabilities","users","data","size","ui","stack","deploy","ci","agents"],"properties":{"$schema":{"type":"string"},"kavoshStart":{"type":"string","pattern":"^(self|v[0-9]+[.][0-9]+[.][0-9]+)$","description":"Exact KavoshStart release tag (vX.Y.Z) for consumer repositories. Reserved value 'self' is valid only for the canonical bagdeli/KavoshStart repository, which executes its checked-out source directly."},"name":{"type":"string","minLength":2},"repo":{"type":"string","pattern":"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},"summary":{"type":"string","minLength":10,"maxLength":300},"visibility":{"enum":["private","public"],"description":"Actual repository visibility. Private repositories may use an available isolated, repository-scoped GitHub Actions self-hosted runner under CI-2. Standard GitHub-hosted Actions in private are prohibited unless the designated human billing owner (the user, not another administrator or agent) explicitly approves each exact proposed run before manual dispatch, even within included free minutes. Public standard GitHub-hosted is allowed under current public-repository terms; isolated public self-hosted requires CI-2. An independent CI worker outside GitHub Actions is a separate execution mechanism. Other metered/billable GitHub services in private repositories require this person's specific prior approval (ADR-0019)."},"owner":{"type":"string"},"tier":{"enum":["T0","T1","T2"]},"tierOverride":{"type":"string","description":"ADR path if tier differs from CLASSIFICATION.md result"},"runtime":{"enum":["none","static","server","desktop"]},"projectKind":{"enum":["application","library","tool"],"description":"library = consumed by other Kavosh repositories (classifies at least T1)"},"adoptionPhase":{"type":"boolean","description":"Deprecated legacy migration marker. Consumers of the current standard must not set this to true; it never authorizes enforce:false."},"firstRelease":{"type":"array","items":{"type":"string"}},"outOfScope":{"type":"array","items":{"type":"string"}},"users":{"type":"object","additionalProperties":false,"required":["audience","scale"],"properties":{"audience":{"enum":["internal","customers","public"]},"scale":{"enum":["1-10","10-100","100-1000","1000+"]}}},"data":{"type":"object","additionalProperties":false,"required":["sensitivity","regulatedIntegrations","multiTenant"],"properties":{"sensitivity":{"enum":["none","internal","personal","financial"]},"regulatedIntegrations":{"type":"array","items":{"type":"string"}},"multiTenant":{"type":"boolean"}}},"size":{"type":"object","additionalProperties":false,"required":["domains","lifetime","parallelStreams"],"properties":{"domains":{"type":"integer","minimum":1},"lifetime":{"enum":["weeks","months","years"]},"parallelStreams":{"type":"integer","minimum":1}}},"ui":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"enum":["none","web","admin","desktop"]},"locales":{"type":"array","items":{"type":"string"}},"exceptionADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Approved custom UI without a pinned design-system package; includes RTL, accessibility, ownership, scope and tests."},"designSystem":{"type":["object","null"],"additionalProperties":false,"required":["package","version"],"properties":{"package":{"type":"string","minLength":2,"maxLength":160,"description":"Design-system package selected by the consuming project. Never publish private provider identifiers in the public standard."},"version":{"type":"string","pattern":"^v?[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?$","description":"Exact package release version; no floating ranges."}},"description":"Consumer-owned provider and exact pin; null requires an approved exception for UI projects."}}},"stack":{"type":"object","additionalProperties":false,"required":["languages"],"properties":{"languages":{"type":"array","items":{"type":"string"},"minItems":1},"frameworks":{"type":"array","items":{"type":"string"}},"database":{"enum":["postgresql","sqlite","mysql","none"]}}},"deploy":{"type":"object","additionalProperties":false,"required":["method","environments"],"properties":{"method":{"enum":["none","release-artifact","pull-build","pull-image","custom"]},"location":{"enum":["iran","abroad","both"]},"environments":{"type":"array","items":{"enum":["test","production"]}},"urls":{"type":"object","additionalProperties":{"type":"string"}},"authorizationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for method=custom; proves equivalent release/security gates."},"migrationMode":{"enum":["expand-contract","maintenance-window"],"description":"Defaults to expand-contract for real product schema migrations. T1/T2 server may explicitly select maintenance-window with an accepted existing migration/recovery ADR, bounded downtime and exact-tag owner authorization. Routine upstream maintenance without a product migration requires no new migration-mode gate."},"migrationADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"ci":{"type":"object","additionalProperties":false,"required":["runner","monthlyMinutesBudget"],"properties":{"runner":{"enum":["self-hosted","github-hosted","none"],"description":"Private GitHub Actions: self-hosted on an existing approved non-root host may run when safe; standard GitHub-hosted is prohibited without one prior explicit authorization by the designated human billing owner for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."},"runnerLabels":{"type":"array","items":{"type":"string"},"minItems":1,"description":"Exact registered runner labels. For private owner-operated projects, built-in [self-hosted, linux, x64] labels are sufficient with no new custom label/host/ADR; public or explicitly structured teams retain a dedicated custom selector. Match caller/job labels literally. Physical repo scope, untrusted code and credential reach must be checked at the existing host; labels do not prove isolation."},"runners":{"type":"integer","minimum":1,"maximum":20,"description":"Self-hosted capacity hint; does not provision a runner or certify its isolation. Size by queue/SLO."},"monthlyMinutesBudget":{"type":"integer","minimum":0,"maximum":2000,"description":"Portfolio/account planning hint only. It is not a core engineering gate and never grants billable execution. In private it never substitutes for the designated human billing owner's prior metered-use authorization (ADR-0019)."},"trustModelADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Optional selected runner trust ADR; no second host, new custom label, separate ADR or multi-layer isolation is imposed on an existing private disposable TEST host. Check what that runner can actually access, and keep untrusted CI separate from real secrets, main/release write scope and Production. A selected ADR must be accepted; firewall alone does not protect local host resources."},"requiredWorkflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Optional path of the workflow that exposes the stable `required` aggregate job. Defaults to .github/workflows/ci.yml (or self-check.yml for KavoshStart itself)."},"runnerJobLabels":{"type":"object","description":"Optional per-job explicit self-hosted labels. Keys use '.github/workflows/<file>.yml#<job-id>'; each value is a complete static self-hosted selector for that exact job only. Unlisted jobs retain ci.runnerLabels. Does not provision runners, authorize privileged jobs, or permit private hosted minutes.","additionalProperties":{"type":"array","minItems":3,"maxItems":12,"items":{"type":"string","minLength":1,"maxLength":64}}}}},"limits":{"type":"object","additionalProperties":false,"properties":{"prMaxLines":{"type":"integer","minimum":100,"maximum":2000,"description":"Deprecated compatibility field. KavoshStart v2 does not use line/file counts as a merge gate; remove on normal upgrade."},"maxOpenReadyPRs":{"type":"integer","minimum":1,"maximum":10},"branchMaxAgeDays":{"type":"integer","minimum":1,"maximum":14}}},"agents":{"type":"array","items":{"enum":["claude","codex","copilot","gemini","human-only"]},"minItems":1},"review":{"type":"object","additionalProperties":false,"properties":{"independentHumanReview":{"type":"boolean","default":false,"description":"Optional explicit owner-selected second-person GitHub UI reviewer, only for a sizeable team (at least two real contributors and four domains). Missing/false means the sole owner reviews directly and no second-person visual gate is created."},"teamProcess":{"type":"boolean","default":false,"description":"Optional formal team PR process. True enforces issue links, branch and title conventions, risk/AI metadata, stack shaping, and breaking ADR. Missing/false leaves those as advice for owner-operated projects, independent of visibility/Tier. Real CI/release/security checks remain enforced."}},"description":"Optional team process and independent review choices. Missing teamProcess/false never forces issue links, PR template fields or branch naming, even in T2; true opts into the original structured team gates. Real source/release checks remain required."},"dependsOn":{"type":"array","items":{"type":"string"}},"acceptance":{"type":"object","additionalProperties":false,"required":["mode"],"properties":{"mode":{"enum":["none","continuous"],"description":"Optional owner-selected release-scope continuous acceptance. Mode none is allowed at any tier, including T2 solo-owner projects. Choosing continuous activates separate review/evidence obligations: disclose actual producer/App costs before selection."},"assurance":{"enum":["attested","risk-based"],"description":"For explicitly selected continuous acceptance only: choose risk-based or attested at intake; the independent App/decision protocol is needed for specialist/high-risk items. Do not choose this for a solo-owner project merely because of tier."}},"description":"Acceptance is optional even for T2; absent or mode none needs no independent publisher. Explicit continuous requires an intentional assurance selection and real producers when its high/specialist contract applies. Old pinned consumers remain unchanged."},"release":{"type":"object","additionalProperties":false,"required":["strategy"],"properties":{"strategy":{"enum":["release-please","changesets","custom"],"description":"Release implementation strategy. This is an adapter choice, not the release safety contract; all strategies must preserve REL-1/2/5/6."},"strategyADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$","description":"Required for changesets/custom strategies; proves equivalent SemVer, vX.Y.Z immutable tag, exact-source provenance and release gating."},"workflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$","description":"Release workflow adapter. Defaults to .github/workflows/release.yml for release-please; required for non-default release strategies."},"artifact":{"type":"object","additionalProperties":false,"required":["command","paths"],"properties":{"command":{"type":"string","minLength":1,"maxLength":1000,"description":"Repository-owned shell command that prepares and builds release assets. Required for release-please artifact packaging when automation.interface is not make; Make consumers may use the default make setup + make package adapter."},"paths":{"type":"array","minItems":1,"items":{"type":"string","minLength":1,"pattern":"^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+","description":"Relative glob under the repository checkout. Absolute paths and parent traversal are forbidden."},"description":"One or more relative globs whose regular files are attached to the GitHub Release."}},"description":"Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."},"testStaging":{"type":"object","additionalProperties":false,"required":["schemaVersion","target","callerWorkflow","prerequisites"],"properties":{"schemaVersion":{"type":"integer","const":1},"target":{"type":"string","const":"test"},"callerWorkflow":{"type":"string","pattern":"^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$"},"prerequisites":{"type":"object","additionalProperties":false,"required":["full","originals","recovery","capacity"],"properties":{"full":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}},"originals":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}},"recovery":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}},"capacity":{"type":"object","additionalProperties":false,"required":["acceptanceId","assertion"],"properties":{"acceptanceId":{"type":"string","minLength":1},"assertion":{"type":"string","minLength":1}}}}}},"description":"Opt-in owner-dispatched Test staging contract. Presence activates exact-manifest actor, receipt and CI guards; it does not complete ACC-3 or authorize Production."}}},"automation":{"type":"object","additionalProperties":false,"required":["interface"],"properties":{"interface":{"enum":["make","package-scripts","task-runner","custom"],"description":"Adapter exposing semantic setup/lint/test/build/check operations. The underlying language/tool is not a KavoshStart invariant."},"customADR":{"type":"string","pattern":"^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$"}}},"capabilities":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["control-plane","package","server","browser-ui","desktop","persistent-data","migration","infrastructure","release-artifact","regulated","cms-wordpress"]},"description":"Composable project capabilities. Tier controls assurance/process; runtime controls execution shape; capabilities control domain-specific applicability/evidence. Technology names are not capabilities."}},"allOf":[{"if":{"properties":{"visibility":{"const":"private"}},"required":["visibility"]},"then":{"properties":{"ci":{"type":"object","required":["runner"],"if":{"properties":{"runner":{"enum":["github-hosted","none"]}},"required":["runner"]},"then":{"type":"object","additionalProperties":false,"properties":{"runner":{"enum":["github-hosted","none"]},"monthlyMinutesBudget":{},"requiredWorkflow":{}},"description":"Private GitHub-hosted or no-Actions modes cannot declare self-hosted runner metadata; GitHub-hosted requires explicit designated human billing owner's consent before each exact run."},"description":"Private self-hosted is allowed with CI-2 trust verification; hosted remains consent-gated."}},"required":["ci"]}},{"if":{"properties":{"ci":{"properties":{"runner":{"const":"none"}},"required":["runner"]}},"required":["ci"]},"then":{"properties":{"tier":{"const":"T1"},"runtime":{"const":"static"}},"required":["tier","runtime"]}}]}"""
           # Embedded by build_workflows.py; when imported from the repo (tests) read the schema file instead.
           SCHEMA = (json.loads(_SCHEMA_SRC) if not _SCHEMA_SRC.startswith("__") else
                     json.loads((Path(__file__).resolve().parents[2] / "intake" / "kavosh.project.schema.json").read_text(encoding="utf-8")))
@@ -173,6 +173,12 @@ jobs:
               if isinstance(node, list):
                   if len(node) < schema.get("minItems", 0):
                       errs.append(f"{path}: needs at least {schema['minItems']} item(s)")
+                  if len(node) > schema.get("maxItems", float("inf")):
+                      errs.append(f"{path}: at most {schema['maxItems']} item(s) allowed")
+                  if schema.get("uniqueItems"):
+                      for i, v in enumerate(node):
+                          if v in node[:i]:
+                              errs.append(f"{path}[{i}]: duplicate item")
                   for i, v in enumerate(node):
                       errs += validate(v, schema.get("items", {}), f"{path}[{i}]")
               if isinstance(node, str):
@@ -224,6 +230,11 @@ jobs:
                   return [("fail", "STD-1", "Consumer KavoshStart exact pin",
                            f"expected vX.Y.Z, got {pin!r}")]
               return [("ok", "STD-1", "Consumer KavoshStart exact pin", pin)]
+
+
+          def team_process(m):
+              """Optional team-only process gate; visibility, Tier and risk never imply a team."""
+              return (m.get("review") or {}).get("teamProcess") is True
 
 
           def standard_lifecycle_problems(m):
@@ -348,8 +359,11 @@ jobs:
               elif method == "custom":
                   problem = decision_adr_problem(m.get("deploy", {}).get("authorizationADR"),
                                                  ("safety and release gates", "rel-5", "least privilege", "tag", "rollback", "database"))
-                  add("fail" if problem else "ok", "DEP-1", "Custom deploy preserves equivalent gates",
-                      problem or m["deploy"]["authorizationADR"])
+                  selected = m.get("deploy", {}).get("authorizationADR")
+                  persistent_production = "production" in (m.get("deploy", {}).get("environments") or [])
+                  level = ("fail" if selected or team_process(m) or persistent_production else "warn") if problem else "ok"
+                  add(level, "DEP-1", "Custom deploy preserves equivalent gates",
+                      problem if level == "fail" else ("owner-selected adapter: prove real release identity, health and rollback when used" if problem else selected))
               else:
                   add("ok", "DEP-1", "Deploy method fits runtime", f"{rt} → {method}")
               migration_mode = m.get("deploy", {}).get("migrationMode", "expand-contract")
@@ -366,8 +380,10 @@ jobs:
               if ui.get("kind") != "none" and not ui.get("designSystem"):
                   problem = decision_adr_problem(ui.get("exceptionADR"),
                                                  ("ui exception", "scope", "rtl", "accessibility", "tests"))
-                  add("fail" if problem else "ok", "UI-1", "Selected design-system pin or approved exception ADR",
-                      problem or ui["exceptionADR"])
+                  selected = ui.get("exceptionADR")
+                  level = ("fail" if selected or team_process(m) else "warn") if problem else "ok"
+                  add(level, "UI-1", "Selected design-system pin or approved exception ADR",
+                      problem if level == "fail" else ("owner-selected custom UI: verify actual accessibility/licensing as applicable" if problem else selected))
               budget = m.get("ci", {}).get("monthlyMinutesBudget")
               if budget not in (None, 0):
                   add("warn", "CI-3", "Portfolio budget hint is not a core authorization",
@@ -469,13 +485,19 @@ jobs:
               """Use actual manifest labels, otherwise retain the safe legacy default."""
               slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "x/x").split("/")[-1].lower()).strip("-")
               ci = m.get("ci", {})
-              return ci["runnerLabels"] if "runnerLabels" in ci else ["self-hosted", "linux", "x64", slug]
+              if "runnerLabels" in ci:
+                  return ci["runnerLabels"]
+              if m.get("visibility") == "private" and not team_process(m):
+                  # Native GitHub labels already exist on registered runners: no extra label setup.
+                  return ["self-hosted", "linux", "x64"]
+              return ["self-hosted", "linux", "x64", slug]
 
 
-          def runner_label_problem(labels, slug):
+          def runner_label_problem(labels, slug, allow_private_existing=False):
               """Validate deterministic routing, not the existence/isolation of a physical runner."""
-              if not slug or not isinstance(labels, list) or not 4 <= len(labels) <= 12:
-                  return "select 4-12 explicit labels including OS, architecture and a dedicated custom selector"
+              minimum = 3 if allow_private_existing else 4
+              if not slug or not isinstance(labels, list) or not minimum <= len(labels) <= 12:
+                  return f"select {minimum}-12 static labels including OS and architecture"
               if any(not isinstance(label, str) or
                      not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", label) for label in labels):
                   return "labels must be bounded literal names (no expressions, groups or YAML syntax)"
@@ -492,8 +514,10 @@ jobs:
               if not any(label in normalized for label in ("x64", "arm", "arm64")):
                   return "self-hosted labels need a physical architecture selector"
               custom = [label for label in normalized if label not in base_labels]
-              if not custom or any(label in {"shared", "default", "generic", "pool", "common"} for label in custom):
-                  return "a non-generic, consumer-declared, dedicated custom runner selector is required"
+              if any(label in {"shared", "default", "generic", "pool", "common"} for label in custom):
+                  return "unsafe/generic custom runner selector"
+              if not custom and not allow_private_existing:
+                  return "a dedicated custom selector is required for public/team runners"
               return None
 
 
@@ -549,13 +573,15 @@ jobs:
                                   "No separate ADR required; verify effective privileges, fork exclusions and sensitive credentials on the actual host"))
                   labels = runner_labels(m)
                   slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
-                  label_problem = runner_label_problem(labels, slug)
+                  allow_existing = vis == "private" and not team_process(m)
+                  label_problem = runner_label_problem(labels, slug, allow_existing)
                   if label_problem:
                       out.append(("fail", "CI-2", "Self-hosted runner labels are scoped and explicit",
                                   f"{label_problem}; got {labels!r}"))
                   else:
-                      out.append(("ok", "CI-2", "Self-hosted runner profile",
-                                  f"labels exactly {labels}; physical registration/isolation requires owner verification"))
+                      level = "warn" if allow_existing and len(labels) == 3 else "ok"
+                      out.append((level, "CI-2", "Self-hosted runner profile",
+                                  f"labels exactly {labels}; physical repo scope, credential reach and untrusted-code exposure require owner verification"))
                   overrides = m.get("ci", {}).get("runnerJobLabels", {})
                   if not isinstance(overrides, dict):
                       out.append(("fail", "CI-2", "Per-job selectors are a mapping", "runnerJobLabels must be an object"))
@@ -563,7 +589,7 @@ jobs:
                       for route, alternate in overrides.items():
                           valid_route = isinstance(route, str) and re.fullmatch(
                               r"[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml#[A-Za-z0-9_-]+", route)
-                          why = runner_label_problem(alternate, slug)
+                          why = runner_label_problem(alternate, slug, allow_existing)
                           if not valid_route or why:
                               out.append(("fail", "CI-2", "Per-job runner selector", 
                                           "requires a literal .github/workflows/file.yml#job path and safe complete labels"
@@ -797,6 +823,7 @@ jobs:
 
           def check_files(m, actual_repo=None):
               files = git_files()
+              style_level = "fail" if team_process(m) else "warn"
               md = [f for f in files if f.lower().endswith(".md")]
 
               if "AGENTS.md" not in files:
@@ -804,9 +831,9 @@ jobs:
               for f in [x for x in files if Path(x).name == "AGENTS.md"]:
                   t = read(f)
                   n, b = t.count("\n") + 1, len(t.encode("utf-8"))
-                  add("fail" if (f == "AGENTS.md" and (n > 150 or b > 12288)) else "ok", "AI-1", f"{f} size", f"{n} lines / {b} bytes (limit 150 / 12288)")
+                  add(style_level if (f == "AGENTS.md" and (n > 150 or b > 12288)) else "ok", "AI-1", f"{f} size", f"{n} lines / {b} bytes (limit 150 / 12288)")
                   if SHA_RE.search(t):
-                      add("fail", "SRC-2", f"{f} has no commit SHAs", f"{len(SHA_RE.findall(t))} found")
+                      add(style_level, "SRC-2", f"{f} has no commit SHAs", f"{len(SHA_RE.findall(t))} found")
                   refs = sorted(set(ISSUE_REF_RE.findall(t)))
                   dates = sorted(set(DATE_RE.findall(t)))
                   if refs or dates:
@@ -816,7 +843,7 @@ jobs:
                       add("warn", "AI-1", f"{bridge} points to AGENTS.md", "should import/reference AGENTS.md, not duplicate it")
 
               bad = [f for f in files if FORBIDDEN_RE.search(f)]
-              add("fail" if bad else "ok", "SRC-3", "No status-tracker files or archive/", ", ".join(bad[:10]) or "none")
+              add(style_level if bad else "ok", "SRC-3", "No status-tracker files or archive/", ", ".join(bad[:10]) or "none")
 
               for level, rule, title, detail in acceptance_scope_problems(m):
                   add(level, rule, title, detail)
@@ -828,11 +855,11 @@ jobs:
                   c = len(SHA_RE.findall(read(f)))
                   if c:
                       offenders.append(f"{f} ({c})")
-              add("fail" if offenders else "ok", "SRC-2", "No commit SHAs in Markdown", ", ".join(offenders[:10]) or "none")
+              add(style_level if offenders else "ok", "SRC-2", "No commit SHAs in Markdown", ", ".join(offenders[:10]) or "none")
 
               big = [f"{f} ({Path(f).stat().st_size // 1024}KB)" for f in md
                      if not f.endswith("CHANGELOG.md") and Path(f).exists() and Path(f).stat().st_size > 61440]
-              add("fail" if big else "ok", "DOC-1", "Markdown files ≤ 60KB", ", ".join(big) or "none")
+              add(style_level if big else "ok", "DOC-1", "Markdown files ≤ 60KB", ", ".join(big) or "none")
 
               add("ok" if ".githooks/pre-push" in files else "fail", "AI-4", "Agent guard hook committed", ".githooks/pre-push")
               claude = read(".claude/settings.json")
@@ -1235,7 +1262,7 @@ jobs:
           ADR_PATH_RE = re.compile(r"^docs/decisions/[0-9]{4}-[a-z0-9-]+\.md$", re.I)
 
 
-          def architectural_decision_problems(title, files):
+          def architectural_decision_problems(title, files, structured=True):
               """DOC-2: a breaking control-plane Conventional Commit must carry its ADR in the same PR."""
               names = [item.get("filename", "") if isinstance(item, dict) else str(item) for item in files]
               breaking = bool(BREAKING_CC_RE.match(title or ""))
@@ -1244,34 +1271,36 @@ jobs:
                   return [("ok", "DOC-2", "Breaking control-plane ADR", "not required for this PR shape")]
               adrs = [name for name in names if ADR_PATH_RE.fullmatch(name)]
               if not adrs:
-                  return [("fail", "DOC-2", "Breaking control-plane ADR",
+                  return [("fail" if structured else "warn", "DOC-2", "Breaking control-plane ADR",
                            f"breaking control-plane change requires a changed docs/decisions ADR; paths: {', '.join(control[:5])}")]
               return [("ok", "DOC-2", "Breaking control-plane ADR", ", ".join(adrs[:3]))]
 
 
-          def change_risk_problems(body, files, bot=False):
-              """CR-1/2: declare change risk independently of diff size; sensitive paths impose a high-risk floor."""
-              if bot:
-                  return [("ok", "CR-1", "Automated dependency/change risk", "bot PR uses its automation policy")], "medium"
+          def change_risk_problems(body, files, bot=False, structured=True):
+              """CR-1/2: optional forms never waive a detected risk or permit false claims."""
+              names = [item.get("filename", "") if isinstance(item, dict) else str(item) for item in files]
+              sensitive = [name for name in names if HIGH_RISK_PATH_RE.search(name)
+                           or CONTROL_PLANE_ARCH_RE.search(name)
+                           or re.search(r"^tooling/(?:src/(?:rc_gate|receipts)\.py|build_workflows\.py|templates/)", name)]
               risk_match = re.search(r"(?im)^Risk:\s*(low|medium|high|critical)\s*$", body or "")
               cap_match = re.search(r"(?im)^Capabilities:\s*(\S.+)$", body or "")
-              if not risk_match or not cap_match:
-                  return [("fail", "CR-1", "Declared change risk and capabilities",
-                           "add Risk: low|medium|high|critical and a non-empty Capabilities: line")], None
-              risk = risk_match.group(1).lower()
-              out = [("ok", "CR-1", "Declared change risk and capabilities",
-                      f"{risk}; {cap_match.group(1).strip()}")]
-              sensitive = []
-              for item in files:
-                  name = item.get("filename", "") if isinstance(item, dict) else str(item)
-                  if HIGH_RISK_PATH_RE.search(name):
-                      sensitive.append(name)
-              if sensitive and RISK_ORDER[risk] < RISK_ORDER["high"]:
-                  out.append(("fail", "CR-2", "Sensitive/control-plane change risk floor",
-                              f"{risk} is below high for {', '.join(sensitive[:5])}"))
+              declared = risk_match.group(1).lower() if risk_match else None
+              if bot:
+                  out = [("ok", "CR-1", "Automated change metadata", "automation policy; source risk still applies")]
+              elif not declared or not cap_match:
+                  out = [("fail" if structured else "warn", "CR-1", "Declared change risk and capabilities",
+                          "formal fields required only for teamProcess; explain actual intent, checks and risk in the PR")]
               else:
-                  out.append(("ok", "CR-2", "Risk floor", "high-sensitive paths respected" if sensitive else "no machine-detected high-risk path"))
-              return out, risk
+                  out = [("ok", "CR-1", "Declared change risk and capabilities", f"{declared}; {cap_match.group(1).strip()}")]
+              effective = declared or ("medium" if bot else None)
+              if sensitive:
+                  effective = "critical" if declared == "critical" else "high"
+                  understated = declared is not None and RISK_ORDER[declared] < RISK_ORDER["high"]
+                  out.append(("fail" if understated else "warn", "CR-2", "Sensitive/control-plane change risk floor",
+                              f"effective risk={effective}; {', '.join(sensitive[:5])}; actual owner decision and focused checks required, not a second reviewer"))
+              else:
+                  out.append(("ok", "CR-2", "Risk floor", "no machine-detected high-risk path; review behavioral risks too"))
+              return out, effective
 
 
           def immediately_mergeable_parent(repo, parents, branch, default, api):
@@ -1290,26 +1319,37 @@ jobs:
               pr = event["pull_request"]
               default = event["repository"]["default_branch"]
               head, base = pr["head"]["ref"], pr["base"]["ref"]
-              title, body = pr["title"] or "", pr.get("body") or ""
+              # PR templates often contain examples inside HTML comments; these are not
+              # claimed evidence, risk declarations, or real agent attribution.
+              title, body = pr["title"] or "", re.sub(r"<!--.*?-->", "", pr.get("body") or "", flags=re.S)
               limits = m.get("limits", {}) if m else {}
               max_ready = int(limits.get("maxOpenReadyPRs", 3))
               bot = pr["user"]["type"] == "Bot" or bool(EXEMPT_BRANCH_RE.search(head))
+              structured = team_process(m)
 
               actual = "private" if event["repository"].get("private") else "public"
               if m.get("visibility") and m["visibility"] != actual:
                   add("fail", "CI-1", "Manifest visibility matches the repository",
                       f"repository is {actual}, manifest says {m['visibility']} — actual visibility determines runner policy")
-              add("ok" if CC_RE.match(title) else "fail", "PR-2", "Title is a Conventional Commit", title)
-              add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
-              add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")
+              convention_level = "fail" if structured else "warn"
+              add("ok" if CC_RE.match(title) else convention_level, "PR-2", "Title is a Conventional Commit", title)
+              add("ok" if bot or BRANCH_RE.match(head) else convention_level, "BR-2", "Branch name <type>/<issue>-<slug>", head)
+              add("ok" if bot or LINK_RE.search(body) else convention_level, "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "not required for owner-operated work")
+
+              # A template containing only headings/comments is not a description of work.
+              # Presence is machine-checkable; adequacy of scope/evidence remains owner review.
+              context = re.sub(r"(?m)^\s*#{1,6}\s.*$", "", body).strip()
+              if not bot and not context:
+                  add("warn" if pr.get("draft") else "fail", "PR-1", "Change context is present",
+                      "describe the intended change and actual verification, or reference the existing task; no special form or new Issue")
 
               files = pull_request_files(repo, pr["number"])
               counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]
               lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
-              risk_results, _declared_risk = change_risk_problems(body, files, bot)
+              risk_results, _declared_risk = change_risk_problems(body, files, bot, structured=structured)
               for level, rule, t, d in risk_results:
                   add(level, rule, t, d)
-              for level, rule, t, d in architectural_decision_problems(title, files):
+              for level, rule, t, d in architectural_decision_problems(title, files, structured=structured):
                   add(level, rule, t, d)
               visual_files = ui_render_files(files)
               if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
@@ -1338,13 +1378,16 @@ jobs:
                   elif immediately_mergeable_parent(repo, parents, base, default, gh):
                       add("warn", "BR-4", "Ready PR has an immediately mergeable parent", f"stacked on {base}")
                   else:
-                      add("fail", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent")
+                      add("fail" if structured else "warn", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent; verify exact intended merge target")
 
               if bot:
                   add("ok", "PR-4", "AI involvement section", "bot PR")
               else:
                   for level, rule, t, d in ai_section_problems(body):
-                      add(level, rule, t, d)
+                      # No forced PR-body attestation in owner-operated work; explicit fake
+                      # identity/trailer claims remain failures, not waived paperwork.
+                      fake_claim = rule == "AI-3" and ("placeholder" in t.lower() or ("Co-Authored-By:" in body and "trailer" in t.lower()))
+                      add(level if structured or fake_claim else ("warn" if level == "fail" else level), rule, t, d)
               for level, rule, t, d in acceptance_mapping_problems(m, body, bot):
                   add(level, rule, t, d)
 

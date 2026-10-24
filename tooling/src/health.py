@@ -95,8 +95,10 @@ def non_version_tags(tags):
 AUTOMATION_LABELS = {"kavosh:health", "kavosh:violation", "kavosh:portfolio"}
 
 
-def type_label_problems(issues):
-    """WK-1: exactly one type:* label; issues maintained by KavoshStart automation are exempt."""
+def type_label_problems(issues, structured=True):
+    """WK-1: selected team labels only; automation issues remain exempt."""
+    if not structured:
+        return []
     out = []
     for i in issues:
         names = {l["name"] for l in i.get("labels", [])}
@@ -288,10 +290,11 @@ def main():
 
     # Issues
     issues = [i for i in paged(f"repos/{repo}/issues?state=open") if "pull_request" not in i]
-    mistyped = type_label_problems(issues)
+    structured = (manifest.get("review") or {}).get("teamProcess") is True
+    mistyped = type_label_problems(issues, structured)
     noisy = [f"#{i['number']} ({i['comments']})" for i in issues if i["comments"] > 30]
     viol = [f"#{i['number']}" for i in issues if any(l["name"] == "kavosh:violation" for l in i["labels"])]
-    add(not mistyped, "WK-1", "Open issues with exactly one type:* label", ", ".join(mistyped[:12]) or "all", "all")
+    add(not mistyped, "WK-1", "Issue type labels (team opt-in)", (", ".join(mistyped[:12]) or "all") if structured else "not selected", "all when selected")
     add(not noisy, "WK-2", "Issues with > 30 comments", ", ".join(noisy) or 0, "0")
     add(not viol, "PR-7", "Open violation issues", ", ".join(viol) or 0, "0")
 
@@ -391,7 +394,7 @@ def main():
 
     fails = sum(r[0] == "❌" for r in rows)
     body = [f"# Repository health — {NOW:%Y-%m-%d}", "",
-            f"Generated weekly by KavoshStart `kavosh-health`. **{fails} failing.** Every ❌ should become a task.", "",
+            f"Generated weekly by KavoshStart `kavosh-health`. **{fails} failing.** Review failures in existing work; create a new task only for an actionable uncovered defect. Warnings are not new release gates.", "",
             "| | Rule | Metric | Value | Target |", "|---|---|---|---|---|"]
     body += [f"| {s} | {r} | {m} | {v} | {t} |" for s, r, m, v, t in rows]
     text = "\n".join(body) + "\n"
