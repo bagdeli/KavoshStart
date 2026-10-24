@@ -1,6 +1,7 @@
 # KavoshStart governance check (layer P). Embedded into .github/workflows/kavosh-governance.yml
 # by tooling/build_workflows.py — edit this file, then run `python3 tooling/build_workflows.py`.
 # Runs in the product repository checkout. Needs python3 stdlib and git only; GitHub API access uses GITHUB_TOKEN.
+import http.client
 import json
 import os
 import re
@@ -1029,7 +1030,7 @@ def github_api(path, method="GET", payload=None, allow_missing=False):
                 time.sleep(delay)
                 continue
             raise RuntimeError(f"GitHub API {method} {path}: HTTP {exc.code}") from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
+        except (urllib.error.URLError, TimeoutError, http.client.IncompleteRead, json.JSONDecodeError) as exc:
             if method == "GET" and attempt < 2:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -1041,6 +1042,23 @@ def gh(*args):
     if len(args) == 2 and args[0] == "api":
         return github_api(args[1])
     raise RuntimeError(f"unsupported GitHub API compatibility call: {args!r}")
+
+
+def pull_request_files(repo, number, fetch=None):
+    """Page GitHub PR files completely; incomplete/malformed lists cannot pass governance."""
+    # Resolve the compatibility seam at call time so mocked/offline callers stay isolated.
+    if fetch is None:
+        fetch = gh
+    page_size = 20
+    files = []
+    for page in range(1, 3000 // page_size + 1):
+        batch = fetch("api", f"repos/{repo}/pulls/{number}/files?per_page={page_size}&page={page}")
+        if not isinstance(batch, list) or len(batch) > page_size:
+            raise RuntimeError("GitHub PR file page is malformed")
+        files.extend(batch)
+        if len(batch) < page_size:
+            return files
+    raise RuntimeError("GitHub PR file list reached the 3000-file API limit")
 
 
 def ui_render_files(files):
@@ -1190,13 +1208,7 @@ def check_pr(m, event, repo):
     add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
     add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")
 
-    files, page = [], 1
-    while True:
-        batch = gh("api", f"repos/{repo}/pulls/{pr['number']}/files?per_page=100&page={page}") or []
-        files += batch
-        if len(batch) < 100 or page >= 30:
-            break
-        page += 1
+    files = pull_request_files(repo, pr["number"])
     counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]
     lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
     risk_results, _declared_risk = change_risk_problems(body, files, bot)
