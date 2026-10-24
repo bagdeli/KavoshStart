@@ -84,7 +84,7 @@ class IntakeArchitectureContract(unittest.TestCase):
     def test_receipt_rollout_is_planned_without_fabricating_a_producer(self):
         self.assertIn("real availability of separate evidence/decision Apps", self.protocol)
         self.assertIn("Missing elected producers block only the elected protocol", self.protocol)
-        self.assertIn("not permission to invent receipts or build a new App by default", self.questionnaire)
+        self.assertIn("کار/Workflow/credential/receipt/Issue جدید ایجاد نمی‌کند", self.questionnaire)
         self.assertNotIn("unless the owner explicitly chooses a documented phased adoption", self.protocol)
 
     def test_runner_instruction_distinguishes_self_hosted_from_hosted_private_quota(self):
