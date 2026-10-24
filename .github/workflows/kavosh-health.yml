@@ -481,9 +481,14 @@ jobs:
                       if not RECEIPT_DIGEST.fullmatch(receipt.get("externalEvidenceDigest") or ""):
                           raise ValueError("manual receipt needs immutable external evidence digest")
                       return
-                  if mode != "actions":
+                  if mode not in ("actions", "actions-external"):
                       raise ValueError("unsupported evidence producer mode")
-                  for field in ("runId", "runAttempt", "jobId", "artifactId"):
+                  if mode == "actions-external":
+                      if kind != "ci" or not RECEIPT_DIGEST.fullmatch(receipt.get("externalEvidenceDigest") or ""):
+                          raise ValueError("actions-external CI receipt needs immutable external evidence digest")
+                  fields = ("runId", "runAttempt", "jobId") if mode == "actions-external" else (
+                      "runId", "runAttempt", "jobId", "artifactId")
+                  for field in fields:
                       if not receipt_positive(receipt.get(field)):
                           raise ValueError(f"invalid receipt {field}")
                   run_id, attempt = receipt["runId"], receipt["runAttempt"]
@@ -504,6 +509,10 @@ jobs:
                           or job.get("name") != producer.get("job") or not producer.get("job")
                           or job.get("status") != "completed" or job.get("conclusion") != "success"):
                       raise ValueError("receipt job/source/attempt/result mismatch")
+                  if mode == "actions-external":
+                      if receipt_time(run.get("run_started_at")) > receipt_time(job.get("completed_at")) or receipt_time(job.get("completed_at")) > issued:
+                          raise ValueError("job/receipt chronology mismatch")
+                      return
                   artifact = self.get(f"actions/artifacts/{receipt['artifactId']}")
                   if (artifact.get("id") != receipt["artifactId"] or artifact.get("expired") is not False
                           or not receipt_positive(artifact.get("size_in_bytes"))

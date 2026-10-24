@@ -10,10 +10,17 @@ Some products need a bounded Test rehearsal before they can finish the final
 acceptance process. A release candidate must not be treated as final acceptance:
 the existing ACC-3 UI and independent owner-approval requirements remain
 unchanged. Staging must be opt-in, bound to exact current main, and use the
-existing REL-7 caller and receipt verifier rather than a parallel workflow or
-weaker acceptance path.
+existing REL-7 RC engine and receipt verifier rather than a parallel release
+lifecycle or weaker acceptance path.
 
 ## Decision
+
+Projects explicitly update their existing dispatchable RC caller to the
+`kavosh-test-staging.yml` reusable wrapper at a reviewed exact release tag,
+adding `actions: read` and `issues: read` to that caller. Both reusable wrappers
+embed the same RC engine. The legacy wrapper retains its original permissions
+and rejects staging opt-ins; the staging wrapper requires the opt-in contract.
+The default scaffold remains unchanged, and no additional dispatcher is needed.
 
 An optional `release.testStaging` object in the exact main manifest activates the
 staging checks. Its versioned schema fixes `target` to `test`, declares the
@@ -22,6 +29,12 @@ declared `test` assertions by acceptance ID. One integrated assertion may cover
 all four only when its actual test contract checks all four conditions;
 repeating one ID in the map does not create coverage. Invalid mappings and
 deferred items fail closed.
+
+The initial supported profile is deliberately bounded: the same manifest must
+declare `acceptance.mode=continuous`, `release.strategy=release-please`, and a
+Test-capable server deployment using `deploy.method=pull-build` or
+`pull-image`. Other profiles fail with `NOT_SUPPORTED`; staging does not infer
+compatibility for custom acceptance, release, or deployment adapters.
 
 The gate verifies the live workflow-dispatch run and attempt through the GitHub
 API. The run must be on `main`, use the declared caller, and have both actor and
