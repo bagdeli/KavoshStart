@@ -38,8 +38,7 @@
 
 ## T2 و continuous acceptance
 
-هر T2 که این نسخه یا جدیدتر را می‌پذیرد باید `acceptance.mode=continuous` داشته باشد.
-این الزام به معنی E2E سنگین برای هر PR نیست. هدف بستن حلقهٔ زیر است:
+Tier برابر تعداد انسان‌ها نیست. پروژهٔ T2 تک‌مالک به‌طور پیش‌فرض `acceptance.mode=none` دارد؛ خود مالک مستقیماً دربارهٔ شواهد واقعی Source CI، Test لازم و Release تصمیم می‌گیرد، **بدون دو GitHub App یا reviewer دوم**. فقط با انتخاب آشکارِ مالک برای تیم بزرگ، `continuous` و هزینه/assurance موردنیاز آن فعال می‌شوند. در حالت انتخاب‌شده، هدف بستن حلقهٔ زیر است:
 
 ```text
 approved scope → implementation → risk-sized evidence → owner acceptance → promotion
@@ -48,7 +47,7 @@ approved scope → implementation → risk-sized evidence → owner acceptance �
 قواعد تست همچنان هرم ریسک را حفظ می‌کنند: focused/unit زیاد، integration به‌اندازهٔ invariant، و تعداد محدود
 journey/end-to-end روی مرز مناسب. چیزی که ممنوع است انتقال نامرئی acceptance debt به انتهای پروژه است.
 
-برای پروژهٔ T2 موجود هنگام upgrade:
+**فقط اگر continuous انتخاب شده باشد**، برای پروژهٔ T2 موجود هنگام upgrade:
 
 1. scope نسخهٔ هدف را در `acceptance/scope.json` تعریف کنید؛
 2. acceptance item را بر اساس واحد قابل‌پذیرش release بسازید، نه لزوماً یک ردیف برای هر requirement داخلی؛
@@ -57,7 +56,7 @@ journey/end-to-end روی مرز مناسب. چیزی که ممنوع است ا�
 4. بدهی موجود را واقعی ثبت کنید؛ mergeهای قدیمی را صرفاً به‌خاطر وجود کد accepted اعلام نکنید؛
 5. Health نسبت closure و سن قدیمی‌ترین debt را نشان می‌دهد؛ debt قدیمی باید قبل از feature expansion جدید کاهش یابد
    یا با تصمیم owner به gate بعدی/defer مشخص منتقل شود؛
-6. Release همچنان 100٪ scope in-release را طبق ACC-3 لازم دارد.
+6. فقط در mode=continuous، Release همچنان 100٪ scope انتخابی in-release را طبق ACC-3 لازم دارد. تغییر یک profile تاریخی باید با تصمیم واقعی مالک و بدون جعل شواهد باشد.
 
 ## پیش‌پرواز هر جلسهٔ عامل
 

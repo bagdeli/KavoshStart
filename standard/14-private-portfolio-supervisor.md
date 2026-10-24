@@ -43,7 +43,7 @@ Reference implementation همان detectorهای Layer O عمومی را برا�
 - stale/missing health؛
 - guard/dependabot/project files و repository merge settings؛
 - open `kavosh:violation`؛
-- T2 → `acceptance.mode=continuous` و scope غیرخالی.
+- فقط T2 با `acceptance.mode=continuous` منتخب → scope غیرخالی؛ T2 تک‌مالک با `mode=none` سالم و فاقد الزام App/دفتر AC است.
 
 ## Freshness
 

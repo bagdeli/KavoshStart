@@ -170,11 +170,11 @@ class GovernanceFiles(unittest.TestCase):
         self.assertEqual(g.runner_manifest_problems(m)[0][0], "ok")
         self.assertEqual(fails_for("CI-1", manifest=m), [])
 
-    def test_CI2_negative_public_self_hosted_without_trust_ADR(self):
+    def test_CI2_positive_public_self_hosted_without_unnecessary_ADR(self):
         m = json.loads(json.dumps(EXAMPLE))
         m["visibility"] = "public"
         m["ci"] = {"runner": "self-hosted", "runnerLabels": ["self-hosted", "linux", "x64", "example"], "monthlyMinutesBudget": 0}
-        self.assertEqual(g.runner_manifest_problems(m)[1][0], "fail")
+        self.assertEqual(g.runner_manifest_problems(m)[1][0], "warn")  # real on-host verification remains required
 
     def test_CI1_positive_local_only_T1_static(self):
         self.assertEqual(fails_for("CI-1", manifest=local_only_static_manifest()), [])
@@ -376,10 +376,12 @@ def fake_gh(lines=100, parent_base=None, filename="src/a.py"):
 
 def run_pr(visibility="private", **kw):
     gh_kw = {k: kw.pop(k) for k in ("lines", "parent_base", "filename") if k in kw}
+    independent = kw.pop("independentHumanReview", False)
     g.results.clear()
     original, g.gh = g.gh, fake_gh(**gh_kw)
     try:
         g.check_pr({"limits": {"prMaxLines": 400}, "visibility": visibility,
+                    "review": {"independentHumanReview": independent},
                     "ui": {"kind": "admin", "designSystem": {"package": "@example/ui-kit", "version": "1.0.0"}}}, pr_event(**kw), "o/r")
     finally:
         g.gh = original
@@ -405,12 +407,17 @@ class PullRequest(unittest.TestCase):
     def test_UI2_positive_no_visual_change_needs_no_evidence(self):
         self.assertEqual(run_pr().get("UI-2"), "ok")
 
-    def test_UI2_negative_visual_change_needs_render_evidence(self):
-        self.assertEqual(run_pr(filename="src/components/button.tsx").get("UI-2"), "fail")
+    def test_UI2_positive_owner_render_change_not_blocked_by_second_person(self):
+        self.assertEqual(run_pr(filename="src/components/button.tsx").get("UI-2"), "warn")
 
-    def test_UI2_unaudited_screenshot_is_not_evidence(self):
+    def test_UI2_negative_team_opt_in_visual_change_needs_real_evidence(self):
+        self.assertEqual(run_pr(filename="src/components/button.tsx",
+                                independentHumanReview=True).get("UI-2"), "fail")
+
+    def test_UI2_unaudited_screenshot_is_not_team_evidence(self):
         body = "Closes #12\n\n## Change risk\nRisk: medium\nCapabilities: ui\nRationale: rendered component change\n\nUI evidence: https://example.test/rendered.png"
-        self.assertEqual(run_pr(filename="src/components/button.tsx", body=body).get("UI-2"), "fail")
+        self.assertEqual(run_pr(filename="src/components/button.tsx", body=body,
+                                independentHumanReview=True).get("UI-2"), "fail")
 
     def test_BR2_negative_branch_name(self):
         self.assertEqual(run_pr(head="agent/lccg-reconcile-20260925")["BR-2"], "fail")

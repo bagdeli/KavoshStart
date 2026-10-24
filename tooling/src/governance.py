@@ -131,15 +131,25 @@ def standard_pin_problems(m, actual_repo=None):
 
 
 def standard_lifecycle_problems(m):
-    """STD-2 / ACC-1: normal operation cannot remain in legacy adoption and T2 uses continuous acceptance."""
+    """STD-2 / ACC-1: explicit opt-in, never silently mandate attestors from tier."""
     out = []
     adoption = m.get("adoptionPhase") is True
     out.append(("fail" if adoption else "ok", "STD-2", "Legacy adoption mode is closed",
                 "remove adoptionPhase: true; record bounded exceptions instead" if adoption else "normal enforcing operation"))
-    if m.get("tier") == "T2":
-        mode = m.get("acceptance", {}).get("mode", "none")
-        out.append(("ok" if mode == "continuous" else "fail", "ACC-1", "T2 uses continuous acceptance",
-                    mode if mode == "continuous" else "set acceptance.mode=continuous and bootstrap acceptance/scope.json"))
+    mode = (m.get("acceptance") or {}).get("mode", "none")
+    if mode not in ("none", "continuous"):
+        out.append(("fail", "ACC-1", "Selected acceptance profile", "mode must be none or continuous"))
+    else:
+        out.append(("ok", "ACC-1", "Selected acceptance profile",
+                    "owner-operated: no continuous acceptance or independent Apps" if mode == "none"
+                    else "continuous explicitly selected; release-scope evidence applies"))
+    if (m.get("review") or {}).get("independentHumanReview") is True:
+        size = m.get("size") or {}
+        if size.get("parallelStreams", 0) < 2 or size.get("domains", 0) < 4:
+            out.append(("fail", "UI-2", "Second-person review opt-in",
+                        "reserve independent-human PR review for an explicitly selected sizeable team"))
+        else:
+            out.append(("ok", "UI-2", "Second-person review opt-in", "selected by the owner for a sizeable team"))
     return out
 
 
@@ -431,9 +441,16 @@ def runner_manifest_problems(m):
         out.append(("ok", "CI-3", "Private hosted run is authorization-gated",
                     "workflow_dispatch must name an open PR and its exact current head SHA"))
     if runner == "self-hosted":
-        problem = runner_trust_adr_problem(m.get("ci", {}).get("trustModelADR"), vis)
-        out.append(("fail" if problem else "ok", "CI-2", "Self-hosted runner has an isolated trust model",
-                    problem or m["ci"]["trustModelADR"]))
+        ref = m.get("ci", {}).get("trustModelADR")
+        if ref:
+            problem = runner_trust_adr_problem(ref, vis)
+            out.append(("fail" if problem else "ok", "CI-2", "Owner-selected runner trust ADR",
+                        problem or ref))
+        else:
+            # Real non-root/fork/credential/capacity checks remain the owner's responsibility.
+            # An ADR or physically separate runner is no longer a blanket gate.
+            out.append(("warn", "CI-2", "Owner-operated self-hosted trust boundary",
+                        "No separate ADR required; verify effective privileges, fork exclusions and sensitive credentials on the actual host"))
         labels = runner_labels(m)
         slug = re.sub(r"[^a-z0-9]+", "-", m.get("repo", "").split("/")[-1].lower()).strip("-")
         label_problem = runner_label_problem(labels, slug)
@@ -891,9 +908,9 @@ def acceptance_scope_problems(m):
     problems = []
     if scope.get("schemaVersion") != 1:
         problems.append("schemaVersion must be 1")
-    assurance = (m.get("acceptance") or {}).get("assurance", "attested")
+    assurance = (m.get("acceptance") or {}).get("assurance")
     if assurance not in ("attested", "risk-based"):
-        problems.append("acceptance.assurance must be attested or risk-based")
+        problems.append("continuous acceptance requires an explicit attested or risk-based assurance choice; ask the owner before introducing independent Apps")
     target = scope.get("targetRelease")
     tm = ACCEPTANCE_RELEASE_RE.fullmatch(target or "")
     if not tm:
@@ -1189,11 +1206,15 @@ def check_pr(m, event, repo):
         add(level, rule, t, d)
     visual_files = ui_render_files(files)
     if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
-        try:
-            level, info = verified_visual_review(repo, pr, body, gh)
-        except (RuntimeError, ValueError, TypeError, KeyError) as exc:
-            level, info = "fail", f"visual evidence unavailable ({type(exc).__name__}); no approval"
-        add(level, "UI-2", "Observed visual verification", info)
+        if (m.get("review") or {}).get("independentHumanReview") is True:
+            try:
+                level, info = verified_visual_review(repo, pr, body, gh)
+            except (RuntimeError, ValueError, TypeError, KeyError) as exc:
+                level, info = "fail", f"visual evidence unavailable ({type(exc).__name__}); no approval"
+            add(level, "UI-2", "Opted-in independent visual verification", info)
+        else:
+            add("warn", "UI-2", "Owner-led visual review (human responsibility)",
+                "This change may render differently. One genuine owner's visual decision when applicable; no second human, App or screenshot workflow required by governance. NOT a machine-attested visual PASS.")
     else:
         add("ok", "UI-2", "No render evidence needed", "PR has no visual UI changes")
 

@@ -1,18 +1,23 @@
-# Acceptance receipts — producer contract v1 (attested items)
+# OPTIONAL team continuous acceptance — receipt producer contract v1
 
-New future-standard consumers may select `acceptance.assurance=risk-based` to verify low/medium CI-only scoped items through exact-source GitHub Actions without independent publisher services. The accepted owner marker is only a declared identity, **not independent human verification**. High/critical, deferred or specialist evidence still uses this full attested contract. Omitting assurance retains strict attested behavior.
+This guide is **NOT a default T2 requirement**. The scaffold installs its scope/policy files only after a project owner explicitly selects `acceptance.mode=continuous` during intake. Solo ownership uses `acceptance.mode=none`: normal source CI and honest owner decisions, **no second human, no separate GitHub Apps and no AC register**. Explicit attested mode means real technical App administration; it is not automatically selected from Tier/risk/AGPL. Project-specific security and legal duties remain applicable.
+
+**If continuous is explicitly enabled**, the owner must also explicitly choose `acceptance.assurance=risk-based` or `attested`, knowing the dependency cost. Risk-based uses real exact-source CI for low/medium CI-only items with no dedicated publisher. High/critical, deferred or specialist items within the chosen continuous contract still require attested proof; omitting assurance is no longer silently interpreted as consent to build Apps. The source-only `Accepted-By` marker is not proof that a human personally authenticated.
 
 `scope.json` declares release intent only. It never stores acceptance status.
 `security/receipt-policy.json` is a reviewed trust policy, not a status ledger.
-The scaffold deliberately has **no trusted producers**. It cannot release a
-continuous-acceptance project until real producer identities and receipts exist.
+The opt-in scaffold deliberately has **no trusted producers**. It cannot claim a successfully attested release until the owner actually selects, installs and admits its needed producers; do not create services simply to classify the project as T2.
 Do not invent App IDs, authentication, artifacts, assertions, or accepted states.
+
+## Admission decision before enabling
+
+Record once in the existing project intake decision: owner-managed or genuine multi-person team, yes/no independent technical attestation, yes/no second human reviewer, estimated App credential/hosting cost and who can administer them. If the owner says no, leave the entire advanced protocol off. Do not reinterpret a missing App as a request for a second employee or paid service.
 
 ## Trust and operating boundary
 
 The reference adapter accepts digest-pinned JSON in a dedicated GitHub App check's
 `output.text`. Product Actions tokens and agent connector identities are not
-independent publishers. The decision publisher is separate from evidence publishers.
+independent publishers. The decision publisher is a **separate technical App identity** from evidence publishers for explicitly opted-in attested outcomes; this is **not a requirement for a second person**.
 An owner must select/install and review the real services; this template does not
 install an App or grant it credentials. Never put the attestor's private key/token
 in product jobs or an agent-accessible workspace.

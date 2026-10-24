@@ -51,19 +51,25 @@ make check    # lint + test + build — run before your single push
 - Keep focused regression evidence for changed non-trivial owned logic. At handoff state what was verified, what was not checked, and residual risk.
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
-- Before adopting a material third-party library, image, font, service or data set, follow KavoshStart TP-1/2. Record risk-sized licence/NOTICE/SBOM evidence within **this** repository, not the public standards repository.
-- Private GitHub Actions may run on an available **self-hosted runner on an isolated server** with repository-scoped labels and a CI-2 trust ADR. An optional `ci.runnerJobLabels` entry may select a different approved self-hosted runner for one exact workflow#job; other jobs keep the default. Untrusted PR code must not gain privileged release/deploy credentials. Private GitHub-hosted jobs (including free allowance) are forbidden before explicit prior approval directly from the designated human billing owner (not another admin or an agent) for that exact workflow/PR/ref/SHA, then manual dispatch only. Other metered/paid GitHub features in private repositories require the same person's specifically scoped approval before use. Public standard GitHub-hosted minutes are free; protect all self-hosted from untrusted fork code and separate CI/release/deploy credential domains. T1/static 'none' has no Actions.
+- For a third-party component with real applicable distribution/network obligations, follow TP-1/2 and record the minimum version/license/NOTICE/source evidence in this repository. An external lawyer, separate signatory or new inventory file is not the default for unchanged/low-risk use.
+- Private GitHub Actions may run on an existing **self-hosted runner using a restricted account on an owner-approved host**, without a second server or mandatory trust ADR. An optional `ci.runnerJobLabels` entry may select a different approved self-hosted runner for one exact workflow#job; other jobs keep the default. Untrusted PR code must not gain privileged release/deploy credentials. Private GitHub-hosted jobs (including free allowance) are forbidden before explicit prior approval directly from the designated human billing owner (not another admin or an agent) for that exact workflow/PR/ref/SHA, then manual dispatch only. Other metered/paid GitHub features in private repositories require the same person's specifically scoped approval before use. Public standard GitHub-hosted minutes are free; protect all self-hosted from untrusted fork code and separate CI/release/deploy credential domains. T1/static 'none' has no Actions.
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI
 TODO(kavosh): if `ui.kind` is not `none`, consume the exact pinned Design System {{DESIGN_SYSTEM}} through its **actually selected and released consumer profile** (framework-specific or framework-neutral). Verify changed product integration, locale/RTL, accessibility and licensing without rerunning the provider's whole internal test suite. Help Center is optional unless explicitly selected. Do not copy upstream components or publish private provider/consumer identifiers in public KavoshStart. Otherwise delete this section.
+
+## Optional team governance (only when selected at intake)
+- `acceptance.mode=none` for a single-owner project: no independent App, AC register or second human. The owner still makes real release decisions; CI failures remain failures.
+- If `acceptance.mode=continuous`, use the explicitly selected assurance and its real receipt/App contract, without inventing producers.
+- If `review.independentHumanReview=true` for a sizeable team, use the independent visual reviewer/check; otherwise the owner's genuine UI judgement is enough when relevant.
+- External legal specialists and separate physical test capacity are opt-in, not generated requirements. Real applicable license obligations and protection against privileged untrusted code remain.
 
 ## Definition of Done
 - [ ] Acceptance criteria of the issue met and listed in the PR body
 - [ ] Only affected necessary tests added/updated (or existing valid evidence/N/A cited); actual `check` and required CI are green
 - [ ] Docs / ADR / runbook updated if behaviour changed
 - [ ] If `acceptance.mode=continuous`: PR maps affected AC-* IDs (or justified not-applicable); live evidence/approval stays on the canonical GitHub Issue
-- [ ] Persistent server/static environments pass exact release identity + independent health + canonical route via `--verify-environment` (DEP-7/8)
+- [ ] If a persistent Test/Production environment is claimed: verify exact release identity, actual health and canonical route there (DEP-7/8); no separate VM or extra Test environment is inferred
 - [ ] No TODO without a linked issue
 
 ## Boundaries

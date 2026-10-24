@@ -38,7 +38,7 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 |---|---|---|---|---|
 | D1 | R | تقریباً چند ماژول/حوزه‌ی کسب‌وکاری مستقل دارد؟ | `size.domains` | e.g. CRM + Finance + HR = 3 |
 | D2 | R | عمر مورد انتظار؟ | `size.lifetime` | `weeks` / `months` / `years` |
-| D3 | R | چند عامل/نفر هم‌زمان روی آن کار می‌کنند؟ | `size.parallelStreams` | 1 = only you + one agent at a time |
+| D3 | R | پروژه را یک مالک انسانی مدیریت می‌کند یا یک تیم واقعی؟ چند جریان کاری هم‌زمان دارید؟ | `size.parallelStreams` | 1 = یک مالک + عامل‌ها؛ **هیچ تأییدکنندهٔ دوم یا زیرساخت مستقل با این پاسخ فعال نمی‌شود** |
 
 ## E. Interface
 | # | R | Question (FA) | Field | Notes / default |
@@ -70,7 +70,18 @@ Review these subjects at initial intake for every project. **R** here means an e
 | G6 | R | کدام روش پیاده‌سازی مصوب مناسب است و چه بخش‌هایی نباید دوباره ساخته شوند؟ | `PROJECT.md#architecture-decisions` | Reference `stack` and approved engineering decisions; prefer native, maintained and pinned upstream solutions when their real TCO, risk and TP-1/TP-2 terms fit. Identify the actual contract owner, source/version, integration seam and which upstream internals must not be rebuilt or retested. Product licensing is separate; no universal framework, duplicate vendor test suite or extra tracking form is required. |
 | G7 | R | رابط روی چه دستگاه‌ها و با چه زبان، تقویم و هویت بصری استفاده می‌شود؟ چاپ یا خروجی خاص لازم است؟ | `PROJECT.md#architecture-decisions` | If `ui.kind=none`, record not-needed and do not create UI tasks. Otherwise reuse `ui` choices; select supported typography, density, accessibility and responsive needs from the selected design system. Ask Help/search/print/export needs conditionally, not as universal product features. Known font licence administration remains with its recorded owner; do not ask it again. |
 | G8 | R | محدودیت اجرا، هزینه، کارایی و مسئول نگهداری چیست؟ | `PROJECT.md#architecture-decisions` | Reference `deploy` and `ci`; decide relevant availability, recovery, observability and capacity expectations. Reuse approved operational profiles. A recorded budget or environment is not execution/credential/Production authorization. |
-| G9 | R | اولین خروجی با چه معیار و شاهدی پذیرفته می‌شود و کدام تصمیم‌ها با مالک می‌ماند؟ | `PROJECT.md#architecture-decisions` | Reference `firstRelease`, approved scope and authority. For each material outcome give the user/safety reason, source/version and native/upstream versus product/integration evidence owner. Select the smallest meaningful check at the actual decision point; don't retest upstream internals, but do validate unique integration, auth, accessibility and user journeys. For continuous acceptance, identify the existing admitted evidence/decision producer and its availability before promising delivery; a missing producer is an explicit prerequisite, not permission to invent receipts or build a new App by default. |
+| G9 | R | معیار پذیرش نسخه چیست و آیا **به‌صورت اختیاری** کنترل تیمیِ اضافه می‌خواهید؟ | `PROJECT.md#architecture-decisions` و اگر واقعاً انتخاب شد `acceptance`, `review` | پیش‌فرض تک‌مالک: پذیرش مستقیم مالک با CI/test واقعی و بدون App/نفر دوم/محیط اضافه. فقط اگر مالک به‌روشنی Continuous Acceptance را انتخاب کرد، نوع `assurance` و هزینهٔ App/رسید را **قبل از فعال‌سازی** مشخص کنید. دامنهٔ High/حقوقی/تست واقعی را با PASS ساختگی دور نزنید. |
+
+## سؤال‌های اختیاری اولیه — بدون فرم یا سرویس جدید
+
+در همان گفت‌وگوی اولیه و **پس از D3** فقط این گزینه‌ها را روشن کنید؛ پاسخ پیش‌فرض در پروژهٔ تک‌مالک **«خیر / لازم نیست»** است و از Tier/AGPL/اندازهٔ کد حدس زده نمی‌شود. پاسخ‌های قبلی را دوباره نپرسید و هر انتخاب را در تصمیم G9 همان `PROJECT.md` نگه دارید:
+
+- **تأیید انسان دوم؟** تنها برای تیم بزرگ با جریان‌های واقعی موازی؛ اگر «بله»، `review.independentHumanReview=true` و شخص/دامنه را مشخص کنید. AI دوم انسان دوم نیست.
+- **GitHub App و رسید فنی مستقل؟** «خیر» یعنی `acceptance.mode=none`، بدون App و دفتر AC؛ اگر «بله»، `continuous` و نوع `risk-based`/`attested`، ناشران واقعی و هزینه را **قبل از تعهد** انتخاب کنید. `risk-based` برای آزمون تخصصی/high هنوز App می‌خواهد.
+- **مشاور مستقل مجوز/AGPL؟** «خیر» برای استفادهٔ روشن و بی‌تعارض؛ الزام‌های واقعی مجوز برقرارند. ابهام جدیِ حل‌نشده فقط **همان استفاده یا انتشار** را متوقف می‌کند تا با شواهد/تغییر انتخاب یا مشاوره حل شود.
+- **میزبان/VM اختصاصی Test؟** «خیر» یعنی استفاده از محیط موجودِ مجاز و کم‌دسترسی؛ از این پاسخ اجازهٔ اجرای کد نامطمئن با دسترسی root/Prod نتیجه نگیرید.
+
+هر گزینهٔ «خیر» **کار/Workflow/credential/receipt/Issue جدید ایجاد نمی‌کند**. برای تیم خیلی بزرگ، امکانات چندتأییدی قابل انتخاب‌اند، نه اجباری.
 
 ## Recording choices without a second source of truth
 

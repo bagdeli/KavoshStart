@@ -333,9 +333,26 @@ class StandardLifecycle(unittest.TestCase):
         out = g.standard_lifecycle_problems({"tier": "T2", "acceptance": {"mode": "continuous"}})
         self.assertEqual([r for r in fails(out) if r[1] == "ACC-1"], [])
 
-    def test_ACC1_negative_T2_without_continuous_profile(self):
-        out = g.standard_lifecycle_problems({"tier": "T2"})
-        self.assertTrue(any(r[1] == "ACC-1" for r in fails(out)))
+    def test_ACC1_positive_T2_owner_led_without_continuous_profile(self):
+        out = g.standard_lifecycle_problems({"tier": "T2", "acceptance": {"mode": "none"}})
+        self.assertFalse(any(r[1] == "ACC-1" for r in fails(out)))
+        self.assertTrue(any("owner-operated" in r[3] for r in out))
+
+    def test_ACC1_negative_continuous_without_explicit_assurance(self):
+        old = g.acceptance_scope
+        g.acceptance_scope = lambda: {"schemaVersion": 1, "targetRelease": "v1.0.0", "items": []}
+        try:
+            out = g.acceptance_scope_problems({"tier": "T2", "acceptance": {"mode": "continuous"}})
+            self.assertTrue(any("explicit" in r[3] for r in fails(out)))
+        finally:
+            g.acceptance_scope = old
+
+    def test_UI2_negative_second_person_for_small_owner_team(self):
+        m = {"tier": "T2", "size": {"domains": 1, "parallelStreams": 1},
+             "review": {"independentHumanReview": True}}
+        self.assertTrue(any(r[1] == "UI-2" for r in fails(g.standard_lifecycle_problems(m))))
+        m["review"]["independentHumanReview"] = False
+        self.assertFalse(any(r[1] == "UI-2" for r in fails(g.standard_lifecycle_problems(m))))
 
 
 class TestStagingManifestSchema(unittest.TestCase):
@@ -376,7 +393,7 @@ class ContinuousAcceptance(unittest.TestCase):
             "items": [{"id": "AC-001", "issue": 12, "owner": "bagdeli", "risk": "high",
                        "evidence": ["ci", "test"]}],
         }
-        self.manifest = {"acceptance": {"mode": "continuous"}}
+        self.manifest = {"acceptance": {"mode": "continuous", "assurance": "risk-based"}}
 
     def tearDown(self):
         g.acceptance_scope = self.original
