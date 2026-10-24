@@ -28,7 +28,7 @@ make check    # lint + test + build — run before your single push
 ```
 
 ## Where to find work
-- Start every session with KavoshStart `START.md §0`: verify repo/scope, compare this manifest's exact KavoshStart pin with the latest stable release, and read the CHANGELOG delta before new feature/gate work when behind.
+- Start every session with KavoshStart `START.md §0`: verify repo/scope and exact pinned standard version. Newer KavoshStart releases are advisory, **not automatic blockers** for routine work; read the relevant delta only when a scoped upgrade/security change matters.
 - Your task is exactly one issue: `gh issue view <n>`; read its parent issue too.
 - Priorities: GitHub Project "Kavosh Delivery". Never rely on a file for status.
 - Decisions: `docs/decisions/`. Feature intent: `specs/<n>-<slug>/spec.md`.
@@ -69,7 +69,7 @@ TODO(kavosh): if `ui.kind` is not `none`, consume the exact pinned Design System
 - [ ] Only affected necessary tests added/updated (or existing valid evidence/N/A cited); actual `check` and required CI are green
 - [ ] Docs / ADR / runbook updated if behaviour changed
 - [ ] If `acceptance.mode=continuous`: PR maps affected AC-* IDs (or justified not-applicable); live evidence/approval stays on the canonical GitHub Issue
-- [ ] If a persistent Test/Production environment is claimed: verify exact release identity, actual health and canonical route there (DEP-7/8); no separate VM or extra Test environment is inferred
+- [ ] If a product release is installed in a selected persistent Test/Production environment: verify its actual version/source identity and health using the **declared adapter**; an upstream-only maintenance action must instead verify the native component version/health and changed user behavior. No second VM, timer or Test deployment is inferred.
 - [ ] No TODO without a linked issue
 
 ## Boundaries

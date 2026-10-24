@@ -13,7 +13,13 @@ source reviewed
   → persistent environment admitted
 ```
 
-سبز بودن CI یا Compose موقت فقط candidate را اثبات می‌کند. Test/Production رسمی فقط وقتی پذیرفته می‌شود که **لایه E (Environment)** روی همان host و canonical route قرارداد deployment را پاس کند.
+سبز بودن CI یا Compose موقت فقط candidate را اثبات می‌کند. فقط **محیط persistentِ انتخاب‌شده** هنگام ادعای استقرار محصول باید از لایهٔ E یا verifier بومیِ معادل همان adapter هویت و health واقعی بگیرد؛ هیچ Test دوم یا استقرار جدید به‌صورت خودکار ساخته نمی‌شود.
+
+## مرز اول: نگهداری معمول upstream در برابر Release محصول
+
+این راهنما **فقط** هنگامی قرارداد استقرار نسخهٔ محصول را تحمیل می‌کند که سورس/بستهٔ محصول واقعاً تغییر و Release/Deploy محصول انجام شود. برای نمونهٔ عمومی، به‌روزرسانی WordPress Core/Plugin با updater رسمی خود WordPress و بدون تغییر سورس محصول، **به‌خودی‌خود** به PR انتشار Kavosh، RC، GitHub App مستقل، Test host/VM دوم، اسکن کامل WordPress یا نصب سیستم استقرار جدید نیاز ندارد. ابزار بومی باید نسخهٔ واقعی را گزارش دهد و رفتارهای یکپارچه‌سازیِ واقعاً متاثر به اندازهٔ ریسک بررسی شوند. اگر Core واقعاً نیازمند به‌روزرسانی پایگاه داده باشد، ریسک و backup موجودِ قابل‌بازیابی در همان مرز سنجیده می‌شوند؛ اجرای migration محصول/دادهٔ حساس را با نگهداری بدون تغییر داده یکی نگیرید.
+
+طبق [راهنمای رسمی WordPress](https://wordpress.org/documentation/article/updating-wordpress/)، بک‌آپ سایت قبل از به‌روزرسانی اقدام احتیاطی مناسبی است و minor/security updateهای زیادی به‌صورت بومی انجام می‌شوند. این راهنما **اجبار به Snapshot دوم یا تمرین Restore تازه در هر patch** را تعریف نمی‌کند. Product changes به مسیر Release خود محصول و کنترل‌های معتبر آن بازمی‌گردند. هیچ مرحله‌ای بدون اجرای واقعی PASS محسوب نمی‌شود.
 
 ## pull-based
 
@@ -56,7 +62,7 @@ main → gated release → vX.Y.Z[-rc.N]    project-scoped systemd timer
 - branch، working tree، label موقت و `v0.0.0` جایگزین release نیستند.
 - نبود RC رسمی به معنی اجازهٔ deploy مستقیم `main` نیست.
 
-در پروژه‌ای که manifest تگ RC کلید `release.testStaging` دارد، adapter استاندارد سرور آن RC را روی `CHANNEL=production` پیش از تغییر pin یا runtime رد می‌کند (REL-7). `--verify-environment` نیز چنین نصب Production را نمی‌پذیرد. dry-run فقط policy موجود در mirror محلی را بررسی می‌کند و در نبود آن نتیجه را بررسی‌نشده گزارش می‌دهد. نبودن این کلید، رفتار RC قبلی را حفظ می‌کند؛ تغییر adapter و فعال‌سازی این قرارداد باید در rollout همان پروژه بازبینی شوند.
+فقط برای RC محصول و در پروژه‌ای که manifest تگ RC کلید `release.testStaging` دارد، adapter استاندارد سرور آن RC را روی `CHANNEL=production` پیش از تغییر pin یا runtime رد می‌کند (REL-7). `--verify-environment` نیز چنین نصب Production را نمی‌پذیرد. dry-run فقط policy موجود در mirror محلی را بررسی می‌کند و در نبود آن نتیجه را بررسی‌نشده گزارش می‌دهد. نبودن این کلید، رفتار RC قبلی را حفظ می‌کند؛ تغییر adapter و فعال‌سازی این قرارداد باید در rollout همان پروژه بازبینی شوند.
 
 ## identity و health دو قرارداد جدا هستند (DEP-3/4/8)
 
@@ -68,7 +74,7 @@ main → gated release → vX.Y.Z[-rc.N]    project-scoped systemd timer
 
 ## Layer E — Server Admission (DEP-7)
 
-یک server استاندارد قبل از اینکه Test/Production رسمی نامیده شود باید حداقل این‌ها را machine-check کند:
+یک server که **adapter pull-based استاندارد Kavosh** را انتخاب کرده، قبل از ادعای نصب در **محیط canonical از قبل انتخاب‌شده** باید حداقل این‌ها را machine-check کند؛ این فهرست به updater بومی یا host انتخاب‌نشده تعمیم ندارد:
 
 - mirror/release/shared/current layout زیر `/opt/kavosh/<project>`;
 - `shared/.env` بیرون release؛
@@ -152,9 +158,9 @@ python3 <KavoshStart>/scripts/check_migration_revision.py \
 برای جلوگیری از سوءاستفاده از آرگومان‌های فرمان، helper تنها `alembic heads` و `alembic current` (و تنظیمات محلیِ محدود) را می‌پذیرد؛ اجرای `upgrade`، `stamp` و shell را رد می‌کند. بااین‌حال اجرای `alembic current` می‌تواند `env.py` محصول را وارد کند؛ ابزار sandbox امنیتی نیست و محیط و credentialها باید مستقل بررسی شوند. این گزینه برای ابزارهای مهاجرت دیگر فقط با adapter رسمی و قابل بازبینی همان پروژه مناسب است؛ نه اینکه خروجی `echo PASS` یا فایل دست‌نویس را «اثبات سورس» بدانیم. داشتن چند Head ممکن است در بعضی پروژه‌ها عمداً پذیرفته شده باشد؛ در چنین معماری‌ای کنترل تک-Head **قابل اعمال نیست** و باید به‌جای ادعای PASS، قرارداد اختصاصی graph/merge migration با تست واقعی تعریف شود. نصب ابزار مهاجرت، اتصال به DB و اجرای migration به‌صورت خودکار توسط KavoshStart انجام نمی‌شود.
 
 
-- migrationهای T2 production expand/contract هستند.
-- قبل از migration، continuous recovery/PITR و restore rehearsal تازه fail-closed بررسی می‌شوند.
-- high-risk/destructive rewrite snapshot تازه لازم دارد.
+- برای migration واقعیِ Product، expand/contract پیش‌فرض است؛ در T1/T2 مسیر maintenance-window با تصمیم مالک و downtime پذیرفته‌شده و runbook بازیابی مجاز است.
+- اگر updater بومی به دادهٔ پایدار دست نمی‌زند، migration gate اصلاً فعال نیست؛ اگر migration کم‌ریسک دارد، سلامت backup موجود کافی است و تمرین Restore تازه تحمیل نمی‌شود.
+- فقط high-risk/destructive/irreversible نیازمند مشاهدهٔ Restore متناسب و Snapshot تازه هستند؛ اگر بازیابی نامعتبر است، همان عملیات متوقف می‌شود.
 - application rollback خودکار می‌تواند مجاز باشد؛ database restore هرگز خودکار نیست.
 - maintenance-window فقط در دامنهٔ مجاز rule و با ADR/authorization همان run.
 

@@ -21,7 +21,7 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 | B1 | R | آیا برنامه باید روی سرور همیشه روشن اجرا شود؟ | `runtime` | No → `none` (library/CLI/script) or `desktop`; only static files → `static`; yes → `server` |
 | B2 | R* | سرور کجاست؟ ایران / خارج / هر دو؟ | `deploy.location` | *if runtime=server |
 | B3 | R* | آیا محیط اجرا می‌تواند به مقصدهای لازم برای دریافت/ارسال فایل متصل شود؟ اگر نه، محدودیت شبکه چیست؟ | `deploy.method` و تصمیم مستندِ اتصال | از `pull-image` یا `pull-build` فقط وقتی مسیر آن قابل اجراست استفاده شود. ابزار انتقال، proxy یا mirror خاصی به‌صورت عمومی اجباری نیست. شکست تکراری دانلود/آپلود با پروتکل گزارش URL/DNS/IP در `START.md` ثبت شود؛ مسیر جایگزین تنها با انتخاب مالک |
-| B4 | R* | چه محیط‌هایی لازم است؟ | `deploy.environments` | default T1: `["test","production"]`; T0: `[]` |
+| B4 | R* | **واقعاً کدام محیط‌ها موجود و لازم‌اند؟** | `deploy.environments` | هیچ محیط یا VM Test دومی از Tier نتیجه نمی‌شود؛ فقط `["production"]` یا `["test"]` یا هر دو را با تأیید مالک انتخاب کنید. محصول هنوز deploy نشده؟ `[]` و برنامهٔ بعدی قابل‌قبول است؛ داشتن هر دو پیش‌فرض نیست. |
 | B5 |   | دامنه/آدرس هر محیط؟ | `deploy.urls` | never put credentials here |
 | B6 | R* | اگر static: کجا منتشر شود؟ | `deploy.method` | GitHub Pages is **not** available for private repos on Free → own server (`pull-build`) or make the repo public |
 
