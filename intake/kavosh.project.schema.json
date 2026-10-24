@@ -496,6 +496,56 @@
             }
           },
           "description": "Optional default-release artifact adapter. Non-default release strategies own their artifact process in their declared workflow/ADR."
+        },
+        "testStaging": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schemaVersion", "target", "callerWorkflow", "prerequisites"],
+          "properties": {
+            "schemaVersion": {"type": "integer", "const": 1},
+            "target": {"type": "string", "const": "test"},
+            "callerWorkflow": {"type": "string", "pattern": "^[.]github/workflows/[A-Za-z0-9._-]+[.]ya?ml$"},
+            "prerequisites": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["full", "originals", "recovery", "capacity"],
+              "properties": {
+                "full": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["acceptanceId", "assertion"],
+                  "properties": {
+                    "acceptanceId": {"type": "string", "minLength": 1},
+                    "assertion": {"type": "string", "minLength": 1}
+                  }
+                },
+                "originals": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["acceptanceId", "assertion"],
+                  "properties": {
+                    "acceptanceId": {"type": "string", "minLength": 1},
+                    "assertion": {"type": "string", "minLength": 1}
+                  }
+                },
+                "recovery": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["acceptanceId", "assertion"],
+                  "properties": {
+                    "acceptanceId": {"type": "string", "minLength": 1},
+                    "assertion": {"type": "string", "minLength": 1}
+                  }
+                },
+                "capacity": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["acceptanceId", "assertion"],
+                  "properties": {
+                    "acceptanceId": {"type": "string", "minLength": 1},
+                    "assertion": {"type": "string", "minLength": 1}
+                  }
+                }
+              }
+            }
+          },
+          "description": "Opt-in owner-dispatched Test staging contract. Presence activates exact-manifest actor, receipt and CI guards; it does not complete ACC-3 or authorize Production."
         }
       }
     },

@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import receipts as rv
 import release_gate as rg
 import health
+import rc_gate as rc
 
 SOURCE, CANDIDATE, TREE, NEW_TREE = "b" * 40, "a" * 40, "c" * 40, "d" * 40
 
@@ -128,6 +129,144 @@ class Receipts(unittest.TestCase):
         if text:
             self.assertIn(text, "; ".join(errors))
 
+    def staging_api(self, manifest=None, body=None, jobs=None, scope=None):
+        manifest = manifest or {"owner": "owner", "runtime": "server",
+            "acceptance": {"mode": "continuous"},
+            "deploy": {"method": "pull-build", "environments": ["test"]},
+            "ci": {"requiredWorkflow": ".github/workflows/ci.yml"},
+            "release": {"strategy": "release-please", "testStaging": {"schemaVersion": 1, "target": "test",
+              "callerWorkflow": ".github/workflows/rc.yml", "prerequisites": {
+                category: {"acceptanceId": "AC-001", "assertion": self.f.item["assertions"]["test"][0]}
+                for category in ("full", "originals", "recovery", "capacity")}}}}
+        body = body or (f"Staging-Merged-SHA: {SOURCE}\n"
+            "Staging-CI-Run: https://github.com/o/r/actions/runs/99\n" +
+            "\n".join(f"Staging-{kind.title()}-Evidence: {self.f.links[kind]}"
+                      for kind in ("test", "security", "migration")))
+        self.f.body = body
+        jobs = jobs or [{"id": 100, "run_id": 99, "run_attempt": 1, "head_sha": SOURCE, "name": "required",
+                         "status": "completed", "conclusion": "success"}]
+        dispatch = {"id": 7, "run_attempt": 1, "event": "workflow_dispatch", "status": "in_progress",
+            "head_branch": "main", "head_sha": SOURCE, "repository": {"full_name": "o/r"},
+            "head_repository": {"full_name": "o/r"}, "path": ".github/workflows/rc.yml@refs/heads/main",
+            "actor": {"login": "owner", "type": "User"},
+            "triggering_actor": {"login": "owner", "type": "User"}}
+        self.f.objects["actions/runs/99"].setdefault("head_branch", "main")
+        self.f.objects["actions/runs/99"].setdefault("event", "push")
+        def api(path):
+            if path == "repos/o/r/contents/kavosh.project.json?ref=" + SOURCE:
+                return {"content": base64.b64encode(json.dumps(manifest).encode()).decode()}
+            if path == "repos/o/r/contents/acceptance/scope.json?ref=" + SOURCE:
+                return {"content": base64.b64encode(json.dumps(scope if scope is not None else self.f.scope).encode()).decode()}
+            if path == f"repos/o/r/contents/{rv.RECEIPT_POLICY}?ref=" + SOURCE:
+                return {"content": base64.b64encode(json.dumps(self.f.policy).encode()).decode()}
+            if path == "repos/o/r/actions/runs/7/attempts/1":
+                return dispatch
+            if path == "repos/o/r/issues/12":
+                return {"state": "open", "body": body}
+            if path.startswith("repos/o/r/actions/runs/99/attempts/") and "/jobs?" in path:
+                return {"jobs": jobs}
+            return self.f.api(path)
+        return api
+
+    def test_REL7_negative_staging_rejects_unsupported_profiles_and_malformed_scope(self):
+        env = {"TAG": "v1.0.0-rc.1", "GITHUB_REF": "refs/heads/main",
+               "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "1", "KAVOSH_RC_REQUIRE_TEST_STAGING": "1"}
+        base = self.staging_api()
+        raw_manifest = base("repos/o/r/contents/kavosh.project.json?ref=" + SOURCE)
+        manifest = json.loads(base64.b64decode(raw_manifest["content"]))
+        for change, expected in (
+            (lambda m: m.pop("acceptance"), "acceptance.mode is continuous"),
+            (lambda m: m["release"].update(strategy="custom"), "release.strategy is release-please"),
+            (lambda m: m["deploy"].update(method="custom"), "deploy.method is pull-build or pull-image"),
+        ):
+            candidate = copy.deepcopy(manifest)
+            change(candidate)
+            reasons = rc.staging_reasons("o/r", SOURCE, self.staging_api(manifest=candidate),
+                                          7, 1, "v1.0.0-rc.1", env)
+            self.assertTrue(any(expected in reason for reason in reasons), reasons)
+
+    def test_REL7_staging_wrapper_opt_in_is_required_and_legacy_rejects_opt_in(self):
+        env = {"TAG": "v1.0.0-rc.1", "GITHUB_REF": "refs/heads/main",
+               "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "1"}
+        api = self.staging_api()
+        self.assertTrue(any("requires kavosh-test-staging" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, api, 7, 1, "v1.0.0-rc.1", env)))
+        env["KAVOSH_RC_REQUIRE_TEST_STAGING"] = "1"
+        manifest_data = api("repos/o/r/contents/kavosh.project.json?ref=" + SOURCE)
+        manifest = json.loads(base64.b64decode(manifest_data["content"]))
+        manifest["release"].pop("testStaging")
+        unconfigured = self.staging_api(manifest=manifest)
+        self.assertTrue(any("requires release.testStaging" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, unconfigured, 7, 1, "v1.0.0-rc.1", env)))
+
+        for mutate, expected in (
+            (lambda s: s.update(schemaVersion=True), "schemaVersion must be integer 1"),
+            (lambda s: s["items"][0].update(owner=""), "nonempty owner and valid risk"),
+            (lambda s: s["items"][0].update(risk="unknown"), "nonempty owner and valid risk"),
+        ):
+            scope = copy.deepcopy(self.f.scope)
+            mutate(scope)
+            reasons = rc.staging_reasons("o/r", SOURCE, self.staging_api(scope=scope),
+                                          7, 1, "v1.0.0-rc.1", env)
+            self.assertTrue(any(expected in reason for reason in reasons), reasons)
+
+    def test_REL7_positive_staging_checks_real_typed_receipts_and_open_issue(self):
+        api = self.staging_api()
+        env = {"TAG": "v1.0.0-rc.1", "GITHUB_REF": "refs/heads/main",
+               "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "1", "KAVOSH_RC_REQUIRE_TEST_STAGING": "1"}
+        self.assertEqual(rc.staging_reasons("o/r", SOURCE, api, 7, 1, "v1.0.0-rc.1", env), [])
+        final_body = (f"Accepted-By: @owner\nAcceptance-Merged-SHA: {SOURCE}\n"
+                      "Acceptance-Evidence-Run: https://github.com/o/r/actions/runs/99\n" +
+                      "\n".join(f"{rv.RECEIPT_MARKERS[kind]}: {self.f.links[kind]}"
+                                for kind in self.f.item["evidence"] if kind != "ui"))
+        self.f.body = final_body
+        final = self.f.report()
+        self.assertEqual(final["verified"], [])
+        final_errors = "; ".join(final["problems"])
+        self.assertIn("missing Acceptance-UI-Evidence", final_errors)
+        self.assertIn("approval: same-repository check-run URL", final_errors)
+
+    def test_REL7_negative_staging_rejects_forged_app_wrong_source_and_skipped_required_job(self):
+        api = self.staging_api()
+        env = {"TAG": "v1.0.0-rc.1", "GITHUB_REF": "refs/heads/main",
+               "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "1", "KAVOSH_RC_REQUIRE_TEST_STAGING": "1"}
+        self.f.policy["producers"]["test"]["appId"] = 15368
+        self.assertTrue(any("dedicated" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, api, 7, 1, "v1.0.0-rc.1", env)))
+        self.f.policy["producers"]["test"]["appId"] = 200001
+        wrong_body = (f"Staging-Merged-SHA: {CANDIDATE}\n"
+            "Staging-CI-Run: https://github.com/o/r/actions/runs/99\n" +
+            "\n".join(f"Staging-{kind.title()}-Evidence: {self.f.links[kind]}"
+                      for kind in ("test", "security", "migration")))
+        self.assertTrue(any("exact staging candidate" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, self.staging_api(body=wrong_body), 7, 1, "v1.0.0-rc.1", env)))
+        missing_test = (f"Staging-Merged-SHA: {SOURCE}\n"
+            "Staging-CI-Run: https://github.com/o/r/actions/runs/99\n" +
+            "\n".join(f"Staging-{kind.title()}-Evidence: {self.f.links[kind]}"
+                      for kind in ("security", "migration")))
+        self.assertTrue(any("same-repository check-run" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, self.staging_api(body=missing_test), 7, 1, "v1.0.0-rc.1", env)))
+        skipped = [{"id": 100, "run_id": 99, "head_sha": SOURCE, "name": "required",
+                    "status": "completed", "conclusion": "skipped"}]
+        self.assertTrue(any("required job" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, self.staging_api(jobs=skipped), 7, 1, "v1.0.0-rc.1", env)))
+        self.f.objects["actions/runs/99"]["run_attempt"] = 2
+        self.assertTrue(any("required job" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, self.staging_api(), 7, 1, "v1.0.0-rc.1", env)))
+        self.f.objects["actions/runs/99"]["run_attempt"] = 1
+        wrong_event_api = self.staging_api()
+        self.f.objects["actions/runs/99"]["event"] = "pull_request"
+        self.assertTrue(any("successful required-workflow evidence" in reason for reason in
+                            rc.staging_reasons("o/r", SOURCE, wrong_event_api, 7, 1, "v1.0.0-rc.1", env)))
+
+    def test_REL7_negative_staging_rechecks_receipt_expiry_with_fresh_clock(self):
+        api = self.staging_api()
+        env = {"TAG": "v1.0.0-rc.1", "GITHUB_REF": "refs/heads/main",
+               "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "1", "KAVOSH_RC_REQUIRE_TEST_STAGING": "1"}
+        ticks = iter((self.f.now, self.f.now + timedelta(hours=2)))
+        reasons = rc.staging_reasons("o/r", SOURCE, api, 7, 1, "v1.0.0-rc.1", env, now_fn=lambda: next(ticks))
+        self.assertIn("staging receipts expired during verification", reasons)
+
     def test_ACC3_positive_all_evidence_and_independent_decision(self):
         self.assertEqual(self.f.report(), {"verified": ["AC-001"], "deferred": [], "problems": []})
         self.assertEqual(rg.acceptance_reasons("o/r", SOURCE, self.f.api), [])
@@ -240,6 +379,29 @@ class Receipts(unittest.TestCase):
         self.f.seal()
         self.assertEqual(self.f.report()["problems"], [])
         self.assertFalse(any("actions/artifacts/1002" in path for path in self.f.calls))
+
+    def test_ACC3_positive_actions_external_CI_keeps_run_job_and_digest_bindings(self):
+        self.f.policy["producers"]["ci"]["mode"] = "actions-external"
+        receipt = self.f.receipts["ci"]
+        receipt.pop("artifactId")
+        receipt.pop("artifactDigest")
+        receipt["externalEvidenceDigest"] = "sha256:" + "f" * 64
+        self.f.seal()
+        verifier = rv.ReceiptVerifier("o/r", SOURCE, self.f.policy, self.f.api, self.f.now)
+        verifier.verify(self.f.item, "v1.0.0", "ci", self.f.links["ci"], {"mergedSha": SOURCE})
+        self.assertTrue(any(path.endswith("actions/runs/99/attempts/1") for path in self.f.calls))
+        self.assertTrue(any(path.endswith("actions/jobs/100") for path in self.f.calls))
+        self.assertFalse(any(path.startswith("actions/artifacts/") for path in self.f.calls))
+
+    def test_ACC3_negative_actions_external_requires_digest_and_CI_only(self):
+        self.f.policy["producers"]["ci"]["mode"] = "actions-external"
+        self.f.receipts["ci"].pop("artifactId")
+        self.f.receipts["ci"].pop("artifactDigest")
+        self.f.receipts["ci"].pop("externalEvidenceDigest", None)
+        self.f.seal()
+        verifier = rv.ReceiptVerifier("o/r", SOURCE, self.f.policy, self.f.api, self.f.now)
+        with self.assertRaisesRegex(ValueError, "external evidence digest"):
+            verifier.verify(self.f.item, "v1.0.0", "ci", self.f.links["ci"], {"mergedSha": SOURCE})
 
     def test_ACC3_negative_manual_digest_missing(self):
         self.f.policy["producers"]["ui"]["mode"] = "manual"

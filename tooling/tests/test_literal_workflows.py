@@ -14,6 +14,19 @@ class LiteralEmbeddedWorkflows(unittest.TestCase):
             with self.subTest(template=template):
                 builder.build(template, source)
 
+    def test_rc_wrappers_keep_legacy_permissions_and_isolate_staging_permissions(self):
+        legacy = builder.build("kavosh-rc.yml", "rc_gate.py")
+        staging = builder.build("kavosh-test-staging.yml", "rc_gate.py")
+        self.assertIn("name: kavosh-rc", legacy)
+        self.assertIn("  checks: read", legacy)
+        self.assertNotIn("  actions: read", legacy)
+        self.assertNotIn("  issues: read", legacy)
+        self.assertIn("name: kavosh-test-staging", staging)
+        self.assertIn("  actions: read", staging)
+        self.assertIn("  issues: read", staging)
+        self.assertIn('KAVOSH_RC_REQUIRE_TEST_STAGING: "1"', staging)
+        self.assertNotIn('KAVOSH_RC_REQUIRE_TEST_STAGING: "1"', legacy)
+
     def test_positive_context_in_env_not_in_script(self):
         template = '''      - env:
           BRANCH: ${{ github.event.repository.default_branch }}

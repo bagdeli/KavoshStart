@@ -1,5 +1,7 @@
 """Offline tests for layer P checks added in #6 (tooling/src/governance.py)."""
 import os
+import copy
+import json
 import sys
 import tempfile
 import unittest
@@ -334,6 +336,35 @@ class StandardLifecycle(unittest.TestCase):
     def test_ACC1_negative_T2_without_continuous_profile(self):
         out = g.standard_lifecycle_problems({"tier": "T2"})
         self.assertTrue(any(r[1] == "ACC-1" for r in fails(out)))
+
+
+class TestStagingManifestSchema(unittest.TestCase):
+    def setUp(self):
+        self.manifest = json.loads((Path(__file__).resolve().parents[2] / "intake/kavosh.project.example.json").read_text(encoding="utf-8"))
+        self.manifest["kavoshStart"] = "v1.2.3"
+        self.manifest["runtime"] = "server"
+        self.manifest["release"]["testStaging"] = {
+            "schemaVersion": 1, "target": "test", "callerWorkflow": ".github/workflows/rc.yml",
+            "prerequisites": {key: {"acceptanceId": "AC-001", "assertion": "backup::restore"}
+                              for key in ("full", "originals", "recovery", "capacity")}}
+
+    def test_REL7_positive_staging_contract_schema(self):
+        self.assertEqual(g.validate(self.manifest, g.SCHEMA), [])
+
+    def test_REL7_negative_staging_contract_malformed_values_are_rejected(self):
+        cases = [
+            (lambda m: m["release"].update(testStaging=None), "expected object"),
+            (lambda m: m["release"]["testStaging"].update(schemaVersion=True), "expected integer"),
+            (lambda m: m["release"]["testStaging"].update(target="production"), "does not equal"),
+            (lambda m: m["release"]["testStaging"].update(prerequisites=[]), "expected object"),
+            (lambda m: m["release"]["testStaging"]["prerequisites"]["full"].pop("assertion"), "required"),
+            (lambda m: m["release"]["testStaging"]["prerequisites"]["full"].update(extra=True), "unknown field"),
+        ]
+        for mutate, expected in cases:
+            with self.subTest(expected=expected):
+                candidate = copy.deepcopy(self.manifest)
+                mutate(candidate)
+                self.assertIn(expected, "; ".join(g.validate(candidate, g.SCHEMA)))
 
 
 class ContinuousAcceptance(unittest.TestCase):

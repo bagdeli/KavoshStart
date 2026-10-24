@@ -29,6 +29,73 @@ Policy edits require security/control-plane review. A maintainer who can bypass
 that review can replace the trust policy; this protocol is not a substitute for
 protecting repository administration, the merge path, and attestor credentials.
 
+## Optional Test staging
+
+An owner may opt into the guarded REL-7 Test staging path by declaring
+`release.testStaging` in the exact main manifest. Presence activates the guard;
+there is no dispatch input that can disable it. The caller must be the exact
+workflow declared by the manifest, and the live dispatch actor and
+`triggering_actor` must both match the manifest owner. The target is fixed to
+Test. Prerequisites refer to existing scope assertions, for example:
+
+The supported profile also requires `acceptance.mode=continuous`,
+`release.strategy=release-please`, and a Test-capable server deployment with
+`deploy.method` set to `pull-build` or `pull-image`. Other profiles fail as
+`NOT_SUPPORTED`; custom adapters are not implicitly covered.
+
+To opt in, change the caller's reusable workflow reference to
+`kavosh-test-staging.yml` and grant that caller `actions: read` and `issues: read`
+alongside its existing `contents: write` and `checks: read`. The default
+`kavosh-rc.yml` keeps its original permission contract and rejects a manifest
+that opts into staging; the Test-staging wrapper requires the manifest opt-in.
+This is an explicit caller change, not a default scaffold change.
+Update the existing dispatchable `.github/workflows/rc.yml` in the same reviewed
+opt-in change. Preserve its `workflow_dispatch` inputs and job `with` arguments;
+the fragment below shows only the permissions and reusable-reference changes.
+Replace `<reviewed-ref>` with an exact released version before consumption.
+
+```yaml
+permissions:
+  contents: write
+  checks: read
+  actions: read
+  issues: read
+
+jobs:
+  rc:
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-test-staging.yml@<reviewed-ref>
+```
+
+```json
+{
+  "release": {
+    "strategy": "release-please",
+    "testStaging": {
+      "schemaVersion": 1,
+      "target": "test",
+      "callerWorkflow": ".github/workflows/rc.yml",
+      "prerequisites": {
+        "full": {"acceptanceId": "AC-001", "assertion": "runtime::staging-readiness"},
+        "originals": {"acceptanceId": "AC-001", "assertion": "runtime::staging-readiness"},
+        "recovery": {"acceptanceId": "AC-001", "assertion": "runtime::staging-readiness"},
+        "capacity": {"acceptanceId": "AC-001", "assertion": "runtime::staging-readiness"}
+      }
+    }
+  }
+}
+```
+
+Each referenced assertion must be declared under that item's `assertions.test`
+in `acceptance/scope.json`, and its actual test contract must check each mapped
+prerequisite. Repeating an integrated assertion ID does not itself prove
+coverage. For every scope item, the gate also verifies all
+declared test/security/migration receipts and a successful required CI run on
+the exact staging SHA. Issues may remain open and use `Staging-Merged-SHA`,
+`Staging-CI-Run`, `Staging-Test-Evidence`, `Staging-Security-Evidence`, and
+`Staging-Migration-Evidence` markers. Staging rejects deferred scope items.
+It does not complete final acceptance: UI and independent owner approval remain
+pending, and the existing ACC-3 gate stays unchanged.
+
 ## Policy
 
 Each `producers` key is `ci`, `test`, `ui`, `security`, `migration`, `approval` or
@@ -36,9 +103,17 @@ Each `producers` key is `ci`, `test`, `ui`, `security`, `migration`, `approval` 
 
 - `appId`: the real dedicated GitHub App's numeric ID, never a user ID;
 - `checkName`: the exact check name published by that App;
-- `mode`: `actions`, `manual`, or `decision`;
+- `mode`: `actions`, `actions-external`, `manual`, or `decision`;
 - `workflow` and `job`: exact repository workflow path and native job name for
-  `actions`; `ci` always requires Actions evidence.
+  `actions` and `actions-external`; `ci` always requires native successful CI.
+
+The optional `actions-external` mode is CI-only. It keeps the same dedicated-App,
+exact workflow/run/attempt/job/source/status and chronology checks as `actions`,
+but replaces the Actions artifact lookup with a required immutable
+`externalEvidenceDigest`. The independent App must itself inspect the exact
+source run and attest that required artifacts and original evidence were kept
+under owner-held custody and passed readback. The verifier does not fetch a supplied
+URL. Default `actions` mode and the final ACC-3 decision flow are unchanged.
 
 `approval` and `defer` require `decision` mode and their App ID must differ from
 all evidence App IDs. `maxAgeDays` is a reviewed finite validity bound (1..365).

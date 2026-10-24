@@ -121,6 +121,38 @@ target_from_local_state() {
   esac
 }
 
+production_test_staging_gate() {
+  local version="$1" sha="$2" manifest status
+  [ "$CHANNEL" = production ] || return 0
+  [[ "$version" =~ -rc\.[0-9]+$ ]] || return 0
+
+  if ! manifest="$(git -C "$BASE/repo.git" show "$sha:kavosh.project.json" 2>/dev/null)"; then
+    echo "NOT_SUPPORTED: Production RC policy cannot be evaluated; target manifest is unavailable" >&2
+    return 1
+  fi
+  if python3 -c 'import json,sys
+try:
+ m=json.load(sys.stdin)
+ if not isinstance(m,dict): raise ValueError("manifest is not an object")
+ r=m.get("release",{})
+ if not isinstance(r,dict): raise ValueError("release is not an object")
+ sys.exit(0 if "testStaging" in r else 1)
+except (ValueError,TypeError): sys.exit(2)' <<< "$manifest"; then
+    status=0
+  else
+    status=$?
+  fi
+  case "$status" in
+    0)
+      echo "Production rejects release candidate $version because release.testStaging is present" >&2
+      return 1 ;;
+    1) return 0 ;;
+    *)
+      echo "NOT_SUPPORTED: Production RC policy cannot be evaluated; target manifest is malformed" >&2
+      return 1 ;;
+  esac
+}
+
 verify_environment() {
   local failed=0 target target_sha current_path expected_path
   verify() {
@@ -150,6 +182,7 @@ verify_environment() {
   }
   target_sha="$(git -C "$BASE/repo.git" rev-parse "refs/tags/$target^{commit}" 2>/dev/null || true)"
   [ -n "$target_sha" ] || { echo "ENVIRONMENT_CONFORMANCE=FAIL check=target-tag" >&2; return 1; }
+  production_test_staging_gate "$target" "$target_sha" || return 1
   [ -d "$BASE/releases/$target" ] || { echo "ENVIRONMENT_CONFORMANCE=FAIL check=release-dir" >&2; return 1; }
   [ -L "$BASE/current" ] || { echo "ENVIRONMENT_CONFORMANCE=FAIL check=current-symlink" >&2; return 1; }
   current_path="$(readlink -f "$BASE/current")"
@@ -172,6 +205,29 @@ fi
 
 # A dry run is pure argument/config validation: no directories, locks, network, pins, Docker or systemd changes.
 if [ "$DRY_RUN" = 1 ]; then
+  dry_run_rc_policy_unchecked=0
+  dry_run_target="${PIN_OVERRIDE:-}"
+  if [ -z "$dry_run_target" ] && [ "$CHANNEL" = production ]; then
+    dry_run_target="$(cat "$STATE_DIR/pin" 2>/dev/null || true)"
+  fi
+  if [ "$CHANNEL" = production ] && [[ "$dry_run_target" =~ -rc\.[0-9]+$ ]]; then
+    if [ -d "$BASE/repo.git" ]; then
+      dry_run_sha="$(git -C "$BASE/repo.git" rev-parse "refs/tags/$dry_run_target^{commit}" 2>/dev/null || true)"
+      if [ -n "$dry_run_sha" ]; then
+        production_test_staging_gate "$dry_run_target" "$dry_run_sha" || exit 1
+      else
+        echo "dry-run: Production RC policy not evaluated; target is not locally available"
+        dry_run_rc_policy_unchecked=1
+      fi
+    else
+      echo "dry-run: Production RC policy not evaluated; local repository is unavailable"
+      dry_run_rc_policy_unchecked=1
+    fi
+  fi
+  if [ "$dry_run_rc_policy_unchecked" = 1 ]; then
+    echo "dry-run: validation incomplete for Production RC $dry_run_target"
+    exit 0
+  fi
   if [ -n "${PIN_OVERRIDE:-}" ]; then
     echo "dry-run: would pin production to $PIN_OVERRIDE"
   else
@@ -198,6 +254,7 @@ esac
 echo "$target" | grep -Eq "$SEMVER_RE" || { log "target '$target' is not a SemVer tag"; exit 1; }
 target_sha="$(git -C "$BASE/repo.git" rev-parse "refs/tags/$target^{commit}" 2>/dev/null || true)"
 [ -n "$target_sha" ] || { log "tag $target not found"; exit 1; }
+production_test_staging_gate "$target" "$target_sha" || exit 1
 
 if [ -n "${PIN_OVERRIDE:-}" ]; then
   pin_tmp="$STATE_DIR/pin.tmp.$$"

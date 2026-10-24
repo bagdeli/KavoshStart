@@ -172,7 +172,10 @@ def browser_fixture():
     chrome = tool("google-chrome", "KAVOSH_CHROME", ("chromium", "chromium-browser"))
     with isolated("browser") as (root, env), sync_playwright() as engine:
         browser = engine.chromium.launch(executable_path=chrome, headless=True, env=env,
-                    args=["--no-sandbox", "--disable-dev-shm-usage"], timeout=20000)
+                    # Cold hosted-runner Chrome startup sometimes exceeds 20s even when the
+                    # browser itself is healthy. Keep real executable, RTL, keyboard,
+                    # injection and overflow checks mandatory; timeout remains a FAIL.
+                    args=["--no-sandbox", "--disable-dev-shm-usage"], timeout=60000)
         try:
             page = browser.new_page(viewport={"width": 320, "height": 800})
             page.route("**/*", lambda route: route.abort())
