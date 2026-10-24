@@ -1028,8 +1028,11 @@ def gh(*args):
 
 
 
-def pull_request_files(repo, number, fetch=gh):
+def pull_request_files(repo, number, fetch=None):
     """Page GitHub PR files completely; incomplete/malformed lists cannot pass governance."""
+    # Resolve the compatibility seam at call time so mocked/offline callers stay isolated.
+    if fetch is None:
+        fetch = gh
     page_size = 20
     files = []
     for page in range(1, 3000 // page_size + 1):
