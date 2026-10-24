@@ -26,8 +26,9 @@ class OwnerManagedProfile(unittest.TestCase):
         self.assertFalse(any(x[0] == "fail" for x in g.standard_lifecycle_problems(m)))
         self.assertEqual(g.acceptance_scope_problems(m), [])
         self.assertEqual(g.acceptance_mapping_problems(m, "No AC issue referenced"), [])
-        self.assertEqual(release.acceptance_reasons("demo/example", "a" * 40,
-            api=lambda path: {"acceptance": {"mode": "owner-managed"}}), [])
+        with patch.object(release, "_json_file", return_value={"acceptance": {"mode": "owner-managed"}}):
+            self.assertEqual(release.acceptance_reasons("demo/example", "a" * 40,
+                api=lambda path: self.fail("owner-managed mode must not invoke evidence APIs")), [])
 
     def test_old_continuous_profile_remains_explicit_and_strict(self):
         m = {"tier": "T2", "acceptance": {"mode": "continuous"}}
