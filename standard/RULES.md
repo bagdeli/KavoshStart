@@ -37,8 +37,8 @@
 ## CR — ریسک تغییر و شواهد
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| CR-1 | هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند. | MUST | All | P |
-| CR-2 | تغییرات control-plane/governance، auth/permission/security boundary، migration یا عملیات مخرب داده، deploy/release policy و credential/trust boundary حداقل `high` هستند مگر دلیل versioned و قابل بازبینی برای کاهش ریسک وجود داشته باشد. | MUST | All | P, R |
+| CR-1 | در profile عادی هر PR غیررباتی ریسک و قابلیت‌های تغییر را اعلام می‌کند؛ اما در `acceptance.mode=owner-managed` برچسب‌های ریسک و متن قالبی اجباری نیستند. نبود برچسب جایگزین آزمون یا مجوز مالک نمی‌شود. | MUST | All | P |
+| CR-2 | حداقل ریسک `high` برای تغییر control-plane/security/deploy فقط در profile رسمیِ چندمرحله‌ای اجباری است؛ پروژهٔ `owner-managed` بدون برچسب خودکار می‌تواند همان بررسی و آزمون واقعی را انجام دهد، نه دورزدن شکست آزمون. | MUST | All | P, R |
 | CR-3 | تست و evidence از ریسک × capability × مرحلهٔ چرخهٔ عمر **و منشأ و مالک قرارداد** انتخاب می‌شود. برای الزام/آزمون جدید یا تغییریافته، دلیل واقعیِ نتیجهٔ محصول/امنیت، source/version معتبر، پوشش native/upstream و خلأ واقعی consumer/integration به‌اختصار در همان Issue/Spec/PR روشن شود. تست internals معتبر upstream را در مصرف‌کننده کپی نکنید، اما upstream به‌تنهایی کیفیت UX، مجوز، داده و اتصال اختصاصی را اثبات نمی‌کند. A آزمون قطعی، B مقایسهٔ معتبر یا بازبینی انسانی واقعی؛ یک B کافی است مگر خطر واقعی بیشتر بخواهد. A ناموفق با B جبران نمی‌شود و high/critical به تصمیم مستقل واجد اختیار نیاز دارند. | MUST | All | A, R |
 | CR-4 | قبل از افزودن الزام، تست یا Gate تازه، invariant واقعی، منبع و نسخه، مالک رفتار، پوشش موجود و سود تشخیصی در برابر هزینه/زمان سنجیده شود. defect باید detector یا regression حداقلیِ **مالک همان رفتار** را اصلاح کند؛ نه آزمون مجدد internals پلتفرم یا Workflow عمومی. آزمون/الزام قدیمی چون یک بار نوشته شده دائمی نیست: با استدلال، مالک و ریسک مشخص در همان Issue/Spec/PR قابل `keep/narrow/merge/retire` است؛ Scope و tests متأثر همراه هم بازبینی و سابقه نگه‌داری شود. خطر امنیت/مالی/دادهٔ واقعی، تست required قرمز یا approval مستقل با PASS جعلی، حذف خاموش یا bypass حل نمی‌شوند. Rule عمومی جدید فقط با کاربرد مشترک، detector معتبر و منفعت متناسب با هزینه و تأیید مالک پذیرفته می‌شود. | MUST | T1, T2 | R |
 
@@ -63,7 +63,7 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | BR-1 | فقط `main` بلندعمر است. شاخه‌های integration/develop/vnext/rc ممنوع. | MUST | All | via BR-4, BR-8 |
-| BR-2 | نام شاخه: `<type>/<issue>-<slug>`؛ type ∈ feat fix docs refactor test ci chore perf build hotfix revert. | MUST | All | P |
+| BR-2 | نام‌گذاری قالبی شاخه `<type>/<issue>-<slug>` در profile رسمی اعمال می‌شود؛ در `owner-managed` نام امن و معتبر Git کافی است. | MUST | All | P |
 | BR-3 | عمر شاخه ≤ `limits.branchMaxAgeDays` (پیش‌فرض 3)؛ بیش از 7 روز = هشدار. | SHOULD | All | H |
 | BR-4 | Draft می‌تواند هر عمق پشته‌ای داشته باشد و سلامت آن را هشدار می‌دهد. Ready حداکثر یک والد بلافاصله قابل ادغام دارد؛ Merge فقط به `main` یا همان والد سبز و قابل ادغام. | MUST | All | P, H |
 | BR-5 | شاخه پس از ادغام خودکار حذف می‌شود. | MUST | All | S, O |
@@ -75,10 +75,10 @@
 ## PR — Pull Request
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| PR-1 | بدنه‌ی PR شامل `Closes #n` یا `Refs #n` است. | MUST | All | P |
-| PR-2 | عنوان PR یک Conventional Commit است (`type(scope): summary`). | MUST | All | P |
+| PR-1 | پیوند `Closes #n` یا `Refs #n` در profile رسمی لازم است؛ در `owner-managed` ثبت Issue برای هر PR اختیاری است. | MUST | All | P |
+| PR-2 | عنوان Conventional Commit در profile رسمی لازم است؛ در `owner-managed` عنوان روشن و قابل فهم کافی است. | MUST | All | P |
 | PR-3 | line count، file count و commit count فقط telemetry برای reviewability هستند و به‌تنهایی hard gate یا دلیل اجبار به split نیستند. تغییرهای generated/بزرگ باید منبع تولید، روش بازبینی و verification مناسب داشته باشند. | SHOULD | All | P, R |
-| PR-4 | بخش `## AI involvement` در بدنه‌ی PR. | MUST | All | P |
+| PR-4 | بخش `## AI involvement` در profile رسمی لازم است؛ در `owner-managed` این بخش اختیاری است و ادعای آزمون یا تأیید ساختگی ممنوع می‌ماند. | MUST | All | P |
 | PR-5 | فقط Squash merge؛ پیام commit = عنوان PR. | MUST | All | S, O |
 | PR-6 | merge عملیاتی از acceptance جداست: عامل می‌تواند PR با risk=low/medium را فقط روی exact current head، پس از سبز بودن همه checkهای لازم، نبود blocker/review unresolved و رعایت policy، به‌صورت Squash merge کند. risk=high/critical و تغییر control-plane/security/destructive/release-policy ابتدا تصمیم صریح انسانی برای scope فعلی می‌خواهد؛ سپس merge می‌تواند توسط عامل انجام شود. bypass/--admin ممنوع است. | MUST | All | A, R |
 | PR-7 | **PR با check قرمز/غایب `kavosh` یا `required` ادغام نمی‌شود.** برای release-please PR که GitHub به‌علت ایجاد با `GITHUB_TOKEN` اجرای `pull_request` را approval-required می‌کند، workflowهای CI/Kavosh یک مسیر محدود `pull_request_target` دارند که فقط same-repository + `github-actions[bot]` + branch استاندارد release-please را می‌پذیرد. checkهای واجد ruleset با همان contextهای `required` و `kavosh / governance` روی exact head تولید می‌شوند؛ checkout کد candidate credentialless/read-only است و مسیر target برای PRهای دیگر context required ایجاد نمی‌کند. owner click/no-op commit/bypass جزو قرارداد نیست. | MUST | All | P, G, R, M |
@@ -99,10 +99,10 @@
 ## ACC — جریان پذیرش و شواهد
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
-| ACC-1 | هر پروژهٔ T2 باید `acceptance.mode=continuous` داشته باشد. `acceptance/scope.json` فقط قرارداد scope نسخه است (نه status tracker): ID یکتا، Issue canonical، owner، risk و نوع evidence را تعریف می‌کند؛ هر PR غیررباتی باید IDهای متاثر را map کند یا `not-applicable` با دلیل واقعی بدهد. | MUST | T2 | P |
-| ACC-2 | سلامت دوره‌ای برای continuous acceptance بدهی پذیرش را از scope + وضعیت واقعی GitHub محاسبه و open/unaccepted/deferred/missing-evidence را گزارش می‌کند؛ merged code هرگز خودکار Acceptance Complete محسوب نمی‌شود. | MUST | T2 | H |
-| ACC-3 | پذیرش continuous باید به source واقعی و آزمون موفق متصل باشد: `attested` پیش‌فرض سازگار قبلی با رسید مستقل برای همهٔ itemهاست؛ `risk-based` فقط برای کم/متوسطِ CI-only اثبات native هم‌منبع بدون App اضافه را می‌پذیرد. item پرخطر، defer یا شواهد تخصصی همچنان به رسید و تصمیم مستقل نیاز دارد. هیچ marker یا اجرای stale نمی‌تواند آزمون ناموفق را PASS کند. Health و Release یک verifier مشترک دارند. | MUST | T1, T2 | G, H, R |
-| ACC-4 | status زندهٔ acceptance داخل فایل نگهداری نمی‌شود؛ source of truth وضعیت/evidence/approval همان GitHub Issue/PR/Run است و scope file فقط declaration نسخه‌دار است. | MUST | T2 | via SRC-1, ACC-1, ACC-2, ACC-3 |
+| ACC-1 | برای T2 انتخاب صریح `acceptance.mode=owner-managed` (پیش‌فرض سبک) یا `continuous` (اختیاری برای ردیابی دقیق پذیرش) کافی است. فقط profile continuous به `acceptance/scope.json` و نگاشت AC-* در PR نیاز دارد. | MUST | T2 | P |
+| ACC-2 | فقط profile اختیاری `continuous` بدهی پذیرش را از Issue و شواهد جزئی محاسبه می‌کند؛ پروژهٔ `owner-managed` نیازی به Health/Issue پذیرش مداوم ندارد. | MUST | T2 | H |
+| ACC-3 | در `owner-managed` تست واقعی و check لازم بر روی SHA دقیق و تصمیم مالک کافی است؛ App مستقل، رسید تصمیم جداگانه یا AC ledger الزامی نیست. profile اختیاری `continuous` قرارداد رسیدهای موجود را نگه می‌دارد. هر check ناموفق، skipped یا کهنه همچنان نامعتبر است. | MUST | T1, T2 | G, H, R |
+| ACC-4 | در profile continuous وضعیت واقعی پذیرش در GitHub ثبت می‌شود؛ در `owner-managed` scope.json و ledger جداگانه وجود ندارد و وضعیت CI/Release واقعی ملاک است. | MUST | T2 | via SRC-1, ACC-1, ACC-2, ACC-3 |
 
 ## CI — CI، runner و دقیقه‌ها
 | ID | قاعده | سطح | Tier | لایه |
@@ -167,7 +167,7 @@
 | ID | قاعده | سطح | Tier | لایه |
 |---|---|---|---|---|
 | UI-1 | هر پروژهٔ دارای UI بستهٔ Design System منتخب را با نام و نسخهٔ دقیق در manifest همان پروژه ثبت می‌کند؛ عدم مصرف بسته نیازمند ADR با دامنه، RTL، دسترس‌پذیری و آزمون است. هیچ ارائه‌دهندهٔ نام‌دار یا اطلاعات پروژهٔ private وارد استاندارد عمومی نمی‌شود. | MUST | All | P, R |
-| UI-2 | ارتقای بستهٔ Design System منتخب در PR مستقل و نسخه‌دار انجام می‌شود؛ برای تغییر مؤثر بر رندر/تعامل، آزمون مقایسه‌ای معتبر **یا** بازبینی انسانی واقعیِ مربوط به همان نسخه لازم است مگر ریسک هر دو را ایجاب کند. تغییر غیرنمایشی screenshot نمی‌خواهد و لینک صرف، اثبات مشاهده نیست. | MUST | All | P, R |
+| UI-2 | در profile رسمیِ محصول UI، تغییرات نمایشی به آزمون مقایسه‌ای یا بازبینی نسخه‌دار نیاز دارد؛ در `owner-managed` مالک می‌تواند مستقیماً UI را بررسی کند و سرویس ارزیاب مستقل الزامی نیست. | MUST | All | P, R |
 | UI-3 | قواعد مصرف، دسترس‌پذیری و حقوق بستهٔ Design System منتخب رعایت می‌شوند؛ بررسی شواهد و نام بسته فقط در مخزن همان مصرف‌کننده ثبت می‌شود. | MUST | All | R |
 
 ## قواعد MUST با اجرای انسانی (فقط لایه‌ی R)

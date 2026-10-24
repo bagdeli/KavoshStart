@@ -312,7 +312,7 @@
     },
     {
       "id": "CR-1",
-      "statement": "هر PR غیررباتی پیش از Ready شدن، ریسک خود تغییر را مستقل از Tier پروژه به‌صورت `low|medium|high|critical`، قابلیت‌های متاثر و دلیل کوتاه اعلام می‌کند. تعداد خط/فایل به‌تنهایی ریسک را تعیین نمی‌کند.",
+      "statement": "در profile عادی هر PR غیررباتی ریسک و قابلیت‌های تغییر را اعلام می‌کند؛ اما در `acceptance.mode=owner-managed` برچسب‌های ریسک و متن قالبی اجباری نیستند. نبود برچسب جایگزین آزمون یا مجوز مالک نمی‌شود.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -339,7 +339,7 @@
     },
     {
       "id": "CR-2",
-      "statement": "تغییرات control-plane/governance، auth/permission/security boundary، migration یا عملیات مخرب داده، deploy/release policy و credential/trust boundary حداقل `high` هستند مگر دلیل versioned و قابل بازبینی برای کاهش ریسک وجود داشته باشد.",
+      "statement": "حداقل ریسک `high` برای تغییر control-plane/security/deploy فقط در profile رسمیِ چندمرحله‌ای اجباری است؛ پروژهٔ `owner-managed` بدون برچسب خودکار می‌تواند همان بررسی و آزمون واقعی را انجام دهد، نه دورزدن شکست آزمون.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -697,7 +697,7 @@
     },
     {
       "id": "BR-2",
-      "statement": "نام شاخه: `<type>/<issue>-<slug>`؛ type ∈ feat fix docs refactor test ci chore perf build hotfix revert.",
+      "statement": "نام‌گذاری قالبی شاخه `<type>/<issue>-<slug>` در profile رسمی اعمال می‌شود؛ در `owner-managed` نام امن و معتبر Git کافی است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -917,7 +917,7 @@
     },
     {
       "id": "PR-1",
-      "statement": "بدنه‌ی PR شامل `Closes #n` یا `Refs #n` است.",
+      "statement": "پیوند `Closes #n` یا `Refs #n` در profile رسمی لازم است؛ در `owner-managed` ثبت Issue برای هر PR اختیاری است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -944,7 +944,7 @@
     },
     {
       "id": "PR-2",
-      "statement": "عنوان PR یک Conventional Commit است (`type(scope): summary`).",
+      "statement": "عنوان Conventional Commit در profile رسمی لازم است؛ در `owner-managed` عنوان روشن و قابل فهم کافی است.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -999,7 +999,7 @@
     },
     {
       "id": "PR-4",
-      "statement": "بخش `## AI involvement` در بدنه‌ی PR.",
+      "statement": "بخش `## AI involvement` در profile رسمی لازم است؛ در `owner-managed` این بخش اختیاری است و ادعای آزمون یا تأیید ساختگی ممنوع می‌ماند.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {
@@ -1362,7 +1362,7 @@
     },
     {
       "id": "ACC-1",
-      "statement": "هر پروژهٔ T2 باید `acceptance.mode=continuous` داشته باشد. `acceptance/scope.json` فقط قرارداد scope نسخه است (نه status tracker): ID یکتا، Issue canonical، owner، risk و نوع evidence را تعریف می‌کند؛ هر PR غیررباتی باید IDهای متاثر را map کند یا `not-applicable` با دلیل واقعی بدهد.",
+      "statement": "برای T2 انتخاب صریح `acceptance.mode=owner-managed` (پیش‌فرض سبک) یا `continuous` (اختیاری برای ردیابی دقیق پذیرش) کافی است. فقط profile continuous به `acceptance/scope.json` و نگاشت AC-* در PR نیاز دارد.",
       "level": "MUST",
       "tier": "T2",
       "enforcement": {
@@ -1389,7 +1389,7 @@
     },
     {
       "id": "ACC-2",
-      "statement": "سلامت دوره‌ای برای continuous acceptance بدهی پذیرش را از scope + وضعیت واقعی GitHub محاسبه و open/unaccepted/deferred/missing-evidence را گزارش می‌کند؛ merged code هرگز خودکار Acceptance Complete محسوب نمی‌شود.",
+      "statement": "فقط profile اختیاری `continuous` بدهی پذیرش را از Issue و شواهد جزئی محاسبه می‌کند؛ پروژهٔ `owner-managed` نیازی به Health/Issue پذیرش مداوم ندارد.",
       "level": "MUST",
       "tier": "T2",
       "enforcement": {
@@ -1416,7 +1416,7 @@
     },
     {
       "id": "ACC-3",
-      "statement": "پذیرش continuous باید به source واقعی و آزمون موفق متصل باشد: `attested` پیش‌فرض سازگار قبلی با رسید مستقل برای همهٔ itemهاست؛ `risk-based` فقط برای کم/متوسطِ CI-only اثبات native هم‌منبع بدون App اضافه را می‌پذیرد. item پرخطر، defer یا شواهد تخصصی همچنان به رسید و تصمیم مستقل نیاز دارد. هیچ marker یا اجرای stale نمی‌تواند آزمون ناموفق را PASS کند. Health و Release یک verifier مشترک دارند.",
+      "statement": "در `owner-managed` تست واقعی و check لازم بر روی SHA دقیق و تصمیم مالک کافی است؛ App مستقل، رسید تصمیم جداگانه یا AC ledger الزامی نیست. profile اختیاری `continuous` قرارداد رسیدهای موجود را نگه می‌دارد. هر check ناموفق، skipped یا کهنه همچنان نامعتبر است.",
       "level": "MUST",
       "tier": "T1, T2",
       "enforcement": {
@@ -1445,7 +1445,7 @@
     },
     {
       "id": "ACC-4",
-      "statement": "status زندهٔ acceptance داخل فایل نگهداری نمی‌شود؛ source of truth وضعیت/evidence/approval همان GitHub Issue/PR/Run است و scope file فقط declaration نسخه‌دار است.",
+      "statement": "در profile continuous وضعیت واقعی پذیرش در GitHub ثبت می‌شود؛ در `owner-managed` scope.json و ledger جداگانه وجود ندارد و وضعیت CI/Release واقعی ملاک است.",
       "level": "MUST",
       "tier": "T2",
       "enforcement": {
@@ -2473,7 +2473,7 @@
     },
     {
       "id": "UI-2",
-      "statement": "ارتقای بستهٔ Design System منتخب در PR مستقل و نسخه‌دار انجام می‌شود؛ برای تغییر مؤثر بر رندر/تعامل، آزمون مقایسه‌ای معتبر **یا** بازبینی انسانی واقعیِ مربوط به همان نسخه لازم است مگر ریسک هر دو را ایجاب کند. تغییر غیرنمایشی screenshot نمی‌خواهد و لینک صرف، اثبات مشاهده نیست.",
+      "statement": "در profile رسمیِ محصول UI، تغییرات نمایشی به آزمون مقایسه‌ای یا بازبینی نسخه‌دار نیاز دارد؛ در `owner-managed` مالک می‌تواند مستقیماً UI را بررسی کند و سرویس ارزیاب مستقل الزامی نیست.",
       "level": "MUST",
       "tier": "All",
       "enforcement": {

@@ -81,9 +81,9 @@ class IntakeArchitectureContract(unittest.TestCase):
         self.assertIn("Suggestions are not accepted defaults", self.protocol)
         self.assertIn("Never convert vague answers", self.questionnaire)
 
-    def test_receipt_rollout_is_planned_without_fabricating_a_producer(self):
-        self.assertIn("real admitted evidence/decision producers", self.protocol)
-        self.assertIn("before promising delivery", self.protocol)
+    def test_owner_managed_default_does_not_provision_acceptance_apps(self):
+        self.assertIn("acceptance.mode: owner-managed", self.protocol)
+        self.assertIn("Use optional `continuous` only when per-item attestations justify their overhead", self.protocol)
         self.assertIn("not permission to invent receipts or build a new App by default", self.questionnaire)
         self.assertNotIn("unless the owner explicitly chooses a documented phased adoption", self.protocol)
 

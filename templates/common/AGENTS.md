@@ -40,7 +40,7 @@ make check    # lint + test + build — run before your single push
 4. Run `make check` locally, then push **once**. Heavy CI defaults off on Draft; explicit early CI never authorizes shared quota use by itself.
    If `ci.runner` is `none`, this must be a T1/static project with no workflow files: run `make check` locally and put
    its command, exit code and summary in the PR body. A red or missing result blocks merge; never bypass a real check.
-5. Update the PR body (Done / Remaining / Decisions / How verified / AI involvement with `Co-Authored-By:`), then mark ready.
+5. Record what changed and which tests actually ran. If `acceptance.mode=owner-managed`, do not demand boilerplate AC mapping, risk labels, issue IDs, coauthor trailers or independent AI review to mark a PR ready.
 6. If `kavosh / governance` or `required` is red, fix the cause. Never work around a check.
 
 ## Code conventions
