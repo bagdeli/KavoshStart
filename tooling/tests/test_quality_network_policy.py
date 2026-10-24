@@ -35,6 +35,8 @@ class ProportionateQuality(unittest.TestCase):
         self.assertIn("به‌روزرسانی WordPress Core/Plugin", standard)
         self.assertIn("Restore تازه", standard)
         self.assertIn("فقط **محیط persistentِ انتخاب‌شده**", standard)
+        self.assertIn("Lockfile یا Image", standard)
+        self.assertIn("قابل‌بازیابی", standard)
 
     def test_network_failure_does_not_demand_mirror_or_fabricate_ip(self):
         for p in ("intake/QUESTIONNAIRE.md", "standard/04-ci-runners-minutes.md"):

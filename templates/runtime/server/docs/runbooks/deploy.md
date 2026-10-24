@@ -1,6 +1,6 @@
 # Runbook — deploy {{NAME}}
 
-**Only when the project actually chooses the Kavosh pull-based deployer:** its project-scoped timer handles immutable *product* SemVer releases. A routine native upstream component update without changed product release source does not require installing this deployer, an extra Test environment, a new project release/RC, or a new restore rehearsal. Native update paths must verify their real version, affected integration and health; durable data changes still require an adequate recoverable backup. A persistent environment is not accepted merely because CI or a disposable Compose proof is green.
+**Only when the project actually chooses the Kavosh pull-based deployer:** its project-scoped timer handles immutable *product* SemVer releases. A routine native upstream component update **only when this is already the owner's chosen deployment adapter and the component version is not pinned in product source/lock/image** does not require installing this deployer, an extra Test environment, a new project release/RC, or a new restore rehearsal. If the canonical product tracks the component, update the tracked reference and use the real product release path; do not create untracked server drift. Native update paths must verify their real version, affected integration and health; durable data changes still require an adequate recoverable backup. A persistent environment is not accepted merely because CI or a disposable Compose proof is green.
 
 ```text
 /opt/kavosh/{{SLUG}}/
