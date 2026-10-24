@@ -66,7 +66,7 @@ def manifest(tier, runtime, method, ui, envs, runner=None):
         m["stack"]["frameworks"].append("nextjs")
     if tier == "T1" and runtime == "none":
         m["projectKind"] = "library"
-    m["acceptance"] = ({"mode": "continuous", "assurance": "risk-based"} if tier == "T2" else {"mode": "none"})
+    m["acceptance"] = ({"mode": "owner-managed"} if tier == "T2" else {"mode": "none"})
     m["deploy"] = {"method": method, "environments": envs}
     m["ui"] = {"kind": ui, "designSystem": None if ui == "none" else
                {"package": "@example/ui-kit", "version": "1.0.0"}, "locales": ["fa-IR"]}

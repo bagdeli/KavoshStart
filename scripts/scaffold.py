@@ -118,6 +118,10 @@ def main() -> int:
                     rel = f.relative_to(base).as_posix()
                     if manifest.get("ci", {}).get("runner") == "none" and rel.startswith(".github/workflows/"):
                         continue
+                    if (manifest.get("acceptance") or {}).get("mode") == "owner-managed" and layer == "tier/T2" and (
+                            rel.startswith("acceptance/") or rel == ".github/workflows/ai-review.yml"):
+                        # Lean T2: no AC ledger, attestor/App policy or independent AI reviewer.
+                        continue
                     if rel == ".github/workflows/rc.yml" and "test" not in manifest.get("deploy", {}).get("environments", []):
                         continue
                     if manifest.get("deploy", {}).get("method") == "custom" and layer == "runtime/server" and rel.startswith("deploy/"):

@@ -430,9 +430,10 @@
         "mode": {
           "enum": [
             "none",
+            "owner-managed",
             "continuous"
           ],
-          "description": "Continuous release-scope acceptance/evidence flow. Required for T2 when adopting/upgrading to the current KavoshStart standard."
+          "description": "Acceptance model. owner-managed is the lean T2 default: real CI checks and owner go/no-go, no AC ledger or independent attestor. continuous remains optional for projects needing per-feature receipts."
         },
         "assurance": {
           "enum": [
@@ -442,7 +443,7 @@
           "description": "Optional future-release assurance. Missing means strict attested. Risk-based verifies CI-only low/medium scope items with native source-bound checks; high/critical, deferrals, and specialist evidence require independent attestation."
         }
       },
-      "description": "T2 continuous acceptance; attested is the legacy default if assurance is absent. Opt-in risk-based does not waive source, test or high-risk controls."
+      "description": "For T2 select owner-managed (lean default; no receipt policy or scope.json) or optional continuous (legacy per-feature receipts). Assurance applies only to continuous."
     },
     "release": {
       "type": "object",

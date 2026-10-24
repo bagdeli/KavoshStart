@@ -131,15 +131,17 @@ def standard_pin_problems(m, actual_repo=None):
 
 
 def standard_lifecycle_problems(m):
-    """STD-2 / ACC-1: normal operation cannot remain in legacy adoption and T2 uses continuous acceptance."""
+    """STD-2 / ACC-1: T2 defaults to lean owner-managed; legacy continuous is opt-in."""
     out = []
     adoption = m.get("adoptionPhase") is True
     out.append(("fail" if adoption else "ok", "STD-2", "Legacy adoption mode is closed",
                 "remove adoptionPhase: true; record bounded exceptions instead" if adoption else "normal enforcing operation"))
     if m.get("tier") == "T2":
         mode = m.get("acceptance", {}).get("mode", "none")
-        out.append(("ok" if mode == "continuous" else "fail", "ACC-1", "T2 uses continuous acceptance",
-                    mode if mode == "continuous" else "set acceptance.mode=continuous and bootstrap acceptance/scope.json"))
+        out.append(("ok" if mode in ("owner-managed", "continuous") else "fail", "ACC-1",
+                    "T2 acceptance profile explicitly selected",
+                    mode if mode in ("owner-managed", "continuous") else
+                    "set acceptance.mode=owner-managed (simple default), or continuous for optional per-feature attestations"))
     return out
 
 
@@ -1169,9 +1171,16 @@ def check_pr(m, event, repo):
     if m.get("visibility") and m["visibility"] != actual:
         add("fail", "CI-1", "Manifest visibility matches the repository",
             f"repository is {actual}, manifest says {m['visibility']} — actual visibility determines runner policy")
-    add("ok" if CC_RE.match(title) else "fail", "PR-2", "Title is a Conventional Commit", title)
-    add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
-    add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")
+    simple = (m.get("acceptance") or {}).get("mode") == "owner-managed"
+    if simple:
+        # No naming convention, issue ritual or risk boilerplate for small owner-run work.
+        add("ok", "PR-2", "Owner-managed PR title", title)
+        add("ok", "BR-2", "Owner-managed branch name", head)
+        add("ok", "PR-1", "Owner-managed issue link optional", "optional")
+    else:
+        add("ok" if CC_RE.match(title) else "fail", "PR-2", "Title is a Conventional Commit", title)
+        add("ok" if bot or BRANCH_RE.match(head) else "fail", "BR-2", "Branch name <type>/<issue>-<slug>", head)
+        add("ok" if bot or LINK_RE.search(body) else "fail", "PR-1", "Linked issue (Closes/Refs #n)", "found" if LINK_RE.search(body) else "missing")
 
     files, page = [], 1
     while True:
@@ -1182,13 +1191,18 @@ def check_pr(m, event, repo):
         page += 1
     counted = [f for f in files if not IGNORE_SIZE_RE.search(f["filename"])]
     lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in counted)
-    risk_results, _declared_risk = change_risk_problems(body, files, bot)
-    for level, rule, t, d in risk_results:
-        add(level, rule, t, d)
-    for level, rule, t, d in architectural_decision_problems(title, files):
-        add(level, rule, t, d)
+    if simple:
+        add("ok", "CR-1", "Owner-managed risk declaration", "optional; source and CI must still pass")
+    else:
+        risk_results, _declared_risk = change_risk_problems(body, files, bot)
+        for level, rule, t, d in risk_results:
+            add(level, rule, t, d)
+        for level, rule, t, d in architectural_decision_problems(title, files):
+            add(level, rule, t, d)
     visual_files = ui_render_files(files)
-    if m.get("ui", {}).get("kind", "none") != "none" and visual_files:
+    if simple:
+        add("ok", "UI-2", "Owner-managed visual review", "review actual UI changes as needed; no independent attestor required")
+    elif m.get("ui", {}).get("kind", "none") != "none" and visual_files:
         try:
             level, info = verified_visual_review(repo, pr, body, gh)
         except (RuntimeError, ValueError, TypeError, KeyError) as exc:
@@ -1212,7 +1226,9 @@ def check_pr(m, event, repo):
         else:
             add("fail", "BR-4", "Ready PR is normalized to a shallow stack", f"base {base} is not main or an immediately mergeable parent")
 
-    if bot:
+    if simple:
+        add("ok", "PR-4", "Owner-managed AI attribution", "optional; no dedicated PR section required")
+    elif bot:
         add("ok", "PR-4", "AI involvement section", "bot PR")
     else:
         for level, rule, t, d in ai_section_problems(body):

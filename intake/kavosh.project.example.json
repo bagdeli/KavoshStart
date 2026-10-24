@@ -78,8 +78,7 @@
   ],
   "dependsOn": [],
   "acceptance": {
-    "mode": "continuous",
-    "assurance": "risk-based"
+    "mode": "owner-managed"
   },
   "release": {
     "strategy": "release-please",
