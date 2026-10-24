@@ -331,7 +331,7 @@
             "github-hosted",
             "none"
           ],
-          "description": "Private GitHub Actions: self-hosted on an authorized isolated server may run automatically when available; standard GitHub-hosted is prohibited without one prior explicit authorization by the designated human billing owner for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."
+          "description": "Private GitHub Actions: self-hosted on an existing approved non-root host may run when safe; standard GitHub-hosted is prohibited without one prior explicit authorization by the designated human billing owner for the exact workflow/ref/PR/head SHA and manual dispatch. Public: standard GitHub-hosted is free for standard minutes; self-hosted requires isolation and untrusted-code controls. T1/static may use none without Actions."
         },
         "runnerLabels": {
           "type": "array",
@@ -339,7 +339,7 @@
             "type": "string"
           },
           "minItems": 1,
-          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector documented in the consumer-owned accepted CI-2 trust ADR, exact manifest/workflow/reusable-caller match and independent physical registration/scope/isolation proof. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first. Default for all workflow jobs unless one exact job declares an optional ci.runnerJobLabels override."
+          "description": "Exact registered labels of a real isolated GitHub Actions self-hosted runner; default [self-hosted, linux, x64, repo-slug]. Explicit Linux/Windows/macOS, x64/ARM/ARM64 and custom selector labels are allowed even if the dedicated custom label differs from the repository slug. Require a non-generic custom selector, exact manifest/workflow/reusable-caller match and real operational validation of effective scope/credentials. A separate Trust ADR and physical second host are optional. Static strings cannot certify a physical runner. Reject dynamic expressions and unverified shared runner groups. Workflow matching is case-insensitive and set-based, with no missing/extra/duplicate values; list the self-hosted label first. Default for all workflow jobs unless one exact job declares an optional ci.runnerJobLabels override."
         },
         "runners": {
           "type": "integer",
@@ -356,7 +356,7 @@
         "trustModelADR": {
           "type": "string",
           "pattern": "^docs/decisions/[0-9]{4}-[a-z0-9-]+\\.md$",
-          "description": "Self-hosted (private or public) trust ADR: available runner, containment/isolation, untrusted-code and credential boundaries. Required by CI-2 governance; not a special per-run billing approval. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary. A bounded, owner-accepted risk profile on an existing independent host may combine unprivileged service users, local file/socket isolation and firewall controls; disposable VMs are optional, firewall-only is not host isolation."
+          "description": "Optional self-hosted trust ADR for large teams or material control changes; a solo-owned project can record the owner-approved existing-host/least-privilege profile in its existing project decision instead. Not an unconditional CI-2 gate. Keep untrusted code separate from privileged CI, release, deploy and credentials; literal labels cannot prove real isolation. Proposed/pending ADRs cannot prove an accepted self-hosted trust boundary. A bounded, owner-accepted risk profile on an existing independent host may combine unprivileged service users, local file/socket isolation and firewall controls; disposable VMs are optional, firewall-only is not host isolation."
         },
         "requiredWorkflow": {
           "type": "string",

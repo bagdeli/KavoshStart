@@ -27,7 +27,7 @@ Before choosing NEW / ADOPT / UPGRADE / WORK:
 2. Read the project's root `AGENTS.md`, `kavosh.project.json`, `PROJECT.md` architecture decisions, and the selected Issue/Spec/plan. Reuse settled answers and their recorded scope; ask again only for a missing or materially changed decision. Treat old reports as provenance, not live status.
 3. For a consumer project, read its exact `kavoshStart: vX.Y.Z`, query the latest stable KavoshStart Release, and compare them. If behind, read the CHANGELOG between the pin and latest. The reserved value `self` is valid only when the repository is exactly `bagdeli/KavoshStart`; there it means the checked-out canonical source and is never used as a workflow ref.
 4. If the newer release changes governance, acceptance, security, release, deploy, CI or agent-control semantics, perform UPGRADE before starting a new feature/gate packet unless the owner has recorded a bounded, traceable defer. Never silently auto-upgrade a dependency in the middle of unrelated work.
-5. For T2 on this standard, `acceptance.mode=continuous` is mandatory and `adoptionPhase: true` is invalid. Do not continue ordinary feature work by treating report-only governance as success.
+5. A T2 project may be **owner-operated** with `acceptance.mode=none`; advanced continuous acceptance, attestation Apps and second-person review are separate owner opt-ins selected in intake. `adoptionPhase: true` remains invalid; no report-only bypass.
 6. Refresh only the moving facts needed for the task: current `main`, related open PRs/checks/releases and, when runtime behavior matters, exact deployed version/SHA/schema/health. Do not turn routine continuation into an unrelated full audit.
 7. Choose the mode below and complete one coherent packet. A genuine hotfix may proceed with an owner-approved bounded standard-upgrade defer, recorded in GitHub with its expiry/review trigger.
 
@@ -65,8 +65,8 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
 1. Apply [`intake/CLASSIFICATION.md`](intake/CLASSIFICATION.md) mechanically to get **Tier** (T0/T1/T2),
    **Runtime** (none/static/server/desktop), and the minimum derivable **Capabilities**. Show the owner which facts triggered the Tier/Runtime and which capabilities were derived; ask only for additional non-derivable capabilities such as infrastructure/control-plane.
 2. Explain the runner and cost boundary: in private, an existing
-   **self-hosted runner on an isolated server** registered in GitHub Actions may
-   be chosen with a CI-2 trust ADR and repository-scoped runner labels.
+   **self-hosted runner on an existing accepted, least-privileged host** registered in GitHub Actions may
+   be chosen without a second machine or mandatory trust ADR; keep actual repository labels and untrusted-code/secret protection (CI-2).
    Private **GitHub-hosted** runs require **explicit prior authorization** from the
    designated human billing owner (the person who issued the policy; not another admin or agent)
    for each exact workflow/PR/ref/head SHA, even within included free minutes.
@@ -83,7 +83,7 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
    Pin `kavoshStart` to the latest KavoshStart release tag (`gh release view -R bagdeli/KavoshStart --json tagName`). Never copy the illustrative `vX.Y.Z` from the example and never use the reserved `self` value in a consumer project.
    For a UI project, record its selected exact package and version under `ui.designSystem`, or a scoped `ui.exceptionADR`.
    Never publish consumer-private package names, URLs or evidence in public KavoshStart.
-2. For a new T2 project set `acceptance.mode: continuous` as required by ACC-1; T0/T1 may opt in. Plan source-bound assertions and the availability of real admitted evidence/decision producers from `templates/tier/T2/acceptance/README.md` before promising delivery. Missing producer setup is a visible prerequisite, not a marker-only workaround or permission to create a new service by default.
+2. For a single-owner project of **any tier**, use `acceptance.mode: none` unless the owner specifically requested `continuous` during intake G9. Do not infer it from T2, data sensitivity or multiple domains. A large team may explicitly select `continuous` plus `assurance` only after learning the cost and real availability of separate evidence/decision Apps for attested outcomes. Missing elected producers block only the elected protocol; do not invent Apps or claim a fake receipt. Existing consumers retain their pinned profile until a separate reviewed upgrade.
 3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G9 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
 4. Show both to the owner. Continue only after confirmation.
 
@@ -105,7 +105,7 @@ At G6/G9 decide whether the proposed requirement is a unique product need, actua
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
    with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
 8. **Runner (CI-1/2):** a private repository may select an available
-   **self-hosted runner on an isolated server** with a CI-2 trust ADR.
+   **self-hosted runner on an existing approved host** with non-root account/file/socket/credential containment; a second server/VM or separate ADR is not a default requirement.
    Reject untrusted fork/PR code and contain runner secrets and credentials.
    For private GitHub-hosted usage, **explicit authorization** must first be
    requested and received from the designated human billing owner for this exact run. Only after
@@ -138,7 +138,7 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §2 ADOPT an existing repository
 1. Run `bash scripts/audit-repo.sh bagdeli/<repo>` (read-only). Summarise findings against `standard/RULES.md`.
-2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed architecture decisions. Do not restart the project or re-approve unchanged choices. Examples from another product do not authorize work on that product.
+2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed decisions. Explicitly recover D3/G9 owner-versus-team choices before suggesting second-person review, separate GitHub App attestation, external legal counsel or a second Test environment; default NO for solo ownership. Do not restart the project or re-approve unchanged choices.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
    `*.kavosh-new` next to them for you to merge in a PR.
@@ -152,7 +152,7 @@ For direct migration from any older stable major, first use [the versioned compa
 1. Read the KavoshStart `CHANGELOG.md` between the pinned version and the target and classify every change that affects governance, acceptance, security, release, deploy, CI, agent controls or templates.
 2. Use one dedicated PR (usually the Dependabot PR that bumps `bagdeli/KavoshStart/...@vX.Y.Z`): set `kavosh.project.json` → `kavoshStart` to the same exact tag (REL-6), apply template changes listed in the changelog, and update all reusable workflow pins together. Title: `chore(kavosh): upgrade KavoshStart to vX.Y.Z`.
 3. Remove legacy `adoptionPhase: true`; it is not a valid long-running operating mode. Governance stays enforcing. If a specific rule cannot yet be met, record a bounded exception with owner, risk, compensating control and review/expiry instead of disabling governance.
-4. For every T2 consumer, enable `"acceptance": {"mode": "continuous"}` and migrate release-scoped assertions, source-bound receipts and real admitted producers using `templates/tier/T2/acceptance/README.md`. Identify missing prerequisites before claiming the upgrade complete. Existing requirement ledgers remain supporting traceability; do not turn every row into a new acceptance Issue or mark historical code accepted without evidence.
+4. Ask whether the owner wants **solo-owner (`acceptance.mode=none`)** or intentionally **team-managed continuous acceptance**. Only for explicitly selected continuous, map release assertions, reviewed producers and actual evidence. If opting out of a previously chosen attested contract, review the risk/scope with the owner and preserve prior records; never silently mark missing receipts or previously failed tests PASS. No automatic second App, human, lawyer or test machine.
 5. Run the repository audit/governance and `make check`; resolve new violations or explicitly disposition genuine external blockers. Do not bundle unrelated product features into the upgrade PR.
 6. Design-system package upgrades use a separate PR and exact version. Capture actual rendered/RTL/mobile evidence only for relevant render or interaction changes; do not publish private consumer details in this public standard.
 

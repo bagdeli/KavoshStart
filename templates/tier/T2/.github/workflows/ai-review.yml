@@ -1,6 +1,6 @@
-# Independent AI review on ready PRs. Comments only — never approves or merges (PR-6).
-# Setup once: run /install-github-app in Claude Code, or add ANTHROPIC_API_KEY as a repository secret.
-# Costs Actions minutes (≈2–5 per review) + API usage: included in the T2 budget.
+# OPTIONAL team-only AI comments template: not scaffolded automatically, never required for T2.
+# The owner must explicitly choose and install it after approving the exact API/Actions costs.
+# An AI reviewer is not a second human and does not independently approve/merge releases.
 name: ai-review
 
 on:

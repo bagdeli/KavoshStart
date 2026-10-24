@@ -96,7 +96,7 @@ Self-hosted عمومی با CI-2 و کنترل واقعی fork/credential/isolat
 | `kavosh.yml` | PR، push به main، هفتگی ← فراخوانی workflowهای KavoshStart با tag دقیق | All |
 | `ci.yml` | PR (غیر Draft)، push به main ← `make check` + job `required` | All به جز local-only |
 | `release.yml` | پس از موفقیت ci روی main ← `kavosh-release` (دروازه‌ی REL-5 + release-please + فایل‌های انتشار) | All |
-| `ai-review.yml` | PR ready ← بازبینی AI (نیاز به کلید API) | T2 (T1 اختیاری) |
+| `ai-review.yml` | بازبینی کمکی AI فقط پس از opt-in صریح مالک و بررسی هزینه | **همهٔ Tierها: اختیاری و هرگز scaffold نمی‌شود** |
 
 ## قرارداد فرمان (CI-8)
 CI هیچ‌وقت ابزار زبان خاصی را مستقیم صدا نمی‌زند؛ فقط `make setup` و `make check`. پس:
