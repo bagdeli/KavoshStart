@@ -1,4 +1,5 @@
 """GitHub reads have bounded retry; failed reads cannot become green, writes never replay."""
+import http.client
 import io
 import json
 import sys
@@ -58,3 +59,58 @@ class Retry(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 g.github_api("repos/o/r/pulls")
             self.assertEqual(url.call_count, 3)
+
+    def test_truncated_response_is_retried_for_get_and_never_replayed_for_post(self):
+        class Response:
+            def __init__(self, incomplete=False):
+                self.incomplete = incomplete
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self):
+                if self.incomplete:
+                    raise http.client.IncompleteRead(b'{"partial":', 42)
+                return json.dumps({"ok": True}).encode()
+
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "example"}), \
+             patch.object(g.urllib.request, "urlopen", side_effect=[
+                 Response(True), Response(True), Response()]) as url, \
+             patch.object(g.time, "sleep") as sleep:
+            self.assertEqual(g.github_api("repos/example/project/pulls"), {"ok": True})
+            self.assertEqual(url.call_count, 3)
+            self.assertEqual(sleep.call_count, 2)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "example"}), \
+             patch.object(g.urllib.request, "urlopen",
+                          side_effect=[Response(True) for _ in range(3)]) as url, \
+             patch.object(g.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "IncompleteRead"):
+                g.github_api("repos/example/project/pulls")
+            self.assertEqual(url.call_count, 3)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "example"}), \
+             patch.object(g.urllib.request, "urlopen", return_value=Response(True)) as url, \
+             patch.object(g.time, "sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "IncompleteRead"):
+                g.github_api("repos/example/project/issues", method="POST", payload={"body": "example"})
+            self.assertEqual(url.call_count, 1)
+            sleep.assert_not_called()
+
+    def test_pr_file_pagination_is_complete_and_fails_closed_at_api_boundary(self):
+        expected = [{"filename": f"src/file-{i}.py"} for i in range(81)]
+        calls = []
+        def fetch(command, path):
+            self.assertEqual(command, "api")
+            calls.append(path)
+            return expected[(len(calls) - 1) * 20:len(calls) * 20]
+
+        self.assertEqual(g.pull_request_files("example/project", 17, fetch), expected)
+        self.assertEqual(len(calls), 5)
+        self.assertEqual(calls[0], "repos/example/project/pulls/17/files?per_page=20&page=1")
+        self.assertEqual(calls[-1], "repos/example/project/pulls/17/files?per_page=20&page=5")
+        with self.assertRaisesRegex(RuntimeError, "malformed"):
+            g.pull_request_files("example/project", 17, lambda *_: None)
+        pages = []
+        def full(command, path):
+            pages.append(path)
+            return [{"filename": "example.py"}] * 20
+        with self.assertRaisesRegex(RuntimeError, "3000-file"):
+            g.pull_request_files("example/project", 17, full)
+        self.assertEqual(len(pages), 150)
