@@ -91,7 +91,10 @@ class SelectedScaffolding(unittest.TestCase):
                 self.assertFalse((root / "acceptance").exists())
                 self.assertNotIn("package-ecosystem: pip", (root / ".github/dependabot.yml").read_text())
                 self.assertNotIn("package-ecosystem: npm", (root / ".github/dependabot.yml").read_text())
-                self.assertIn("check-full: check", (root / "Makefile").read_text())
+                makefile = (root / "Makefile").read_text()
+                self.assertIn("check-full:", makefile)
+                # CI runs check first and check-full in a separate step; do not repeat native suites.
+                self.assertNotIn("check-full: check", makefile)
                 self.assertNotEqual(subprocess.run(["make", "test"], cwd=root, capture_output=True).returncode, 0)
 
     def test_per_job_selection_is_rendered_without_changing_default_runner(self):

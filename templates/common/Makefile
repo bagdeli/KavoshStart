@@ -1,4 +1,4 @@
-# Command contract (KavoshStart CI-8). CI runs only `make setup` and `make check`.
+# Command contract (KavoshStart CI-8). CI runs setup/check; selected T2 heavy checks are incremental.
 # TODO(kavosh): implement applicable targets. For a genuinely inapplicable operation,
 # print N/A with its reviewed reason; never substitute a no-op for missing tests.
 .PHONY: setup lint test build check check-full package
@@ -17,9 +17,9 @@ build:
 
 check: lint test build
 
-# Selected integration/release checks only. A Tier does not invent new test obligations.
+# Selected T2 integration/release checks only; CI already ran make check in a preceding step.
 # Implement a real suite or an explicit owner-reviewed N/A reason before first use.
-check-full: check
+check-full:
 	@echo "TODO(kavosh): relevant integration checks or justified N/A" && exit 1
 
 # runtime none/desktop only (release.yml has package: true): write release files to dist/.
