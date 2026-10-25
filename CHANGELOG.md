@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.0.1](https://github.com/bagdeli/KavoshStart/compare/v9.0.0...v9.0.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **ci:** avoid duplicate core runs in T2 heavy pipeline ([#199](https://github.com/bagdeli/KavoshStart/issues/199)) ([cf58fe0](https://github.com/bagdeli/KavoshStart/commit/cf58fe007dc1d944add54ea011110067ad292d20))
+
 ## [9.0.0](https://github.com/bagdeli/KavoshStart/compare/v8.1.0...v9.0.0) (2026-10-24)
 
 
