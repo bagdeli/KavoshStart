@@ -40,4 +40,4 @@ If the selected private-repository plan does not provide enforceable GitHub bran
 
 **Stop rules:** Do not fabricate PASS, remove an effective safety obligation without scoped owner decision, bypass an actually red required check, auto-upgrade another repository, publish a planned tag, grant secrets, create new infrastructure or dispatch paid private GitHub capacity. Historical [v5](v5-provider-neutral-and-hosted-only.md) and [v6](v6-private-runner-choice.md) migrations are provenance and context; new unreleased process changes still require their own **published tag**.
 
-Formal `review.teamProcess` and the balanced process changes are still a proposal until their own major is published. Do not confuse them with v8 acceptance defaults or adopt an unpublished version.
+Formal `review.teamProcess` and the balanced owner-operated process were published in **v9.0.0** (and retained in v9.0.1). They apply only after an explicitly selected upgrade to an actual published exact v9+ pin. v8.0.0's owner-operated acceptance defaults alone do not activate the separate v9 PR-process fast path.

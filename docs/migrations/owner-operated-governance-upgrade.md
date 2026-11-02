@@ -30,9 +30,9 @@ The team example must meet the documented significant-team predicate for the sec
 ## Out of scope
 No consumer repository changes, no retroactive migration, no built-in App service, no forced QA suite or new entitlement/legal subsystem. Historical standard decisions remain preserved by version.
 
-## Balanced process proposal (not yet a published version)
+## Balanced owner-operated process (published in v9.0.0)
 
-The later process proposal keeps one scoped outcome, existing architecture/data owners, a short plan when needed,
+The published v9.0.0 process keeps one scoped outcome, existing architecture/data owners, a short plan when needed,
 real focused tests and current-source required checks. It does not authorize unplanned development. Ready human PRs
 need actual context; false low-risk claims on sensitive paths fail. Formal team metadata, doc-size caps and Issue/Spec
 scaffolding become optional/advisory. Generated custom adapters do not acquire Compose/systemd implicitly.
