@@ -146,6 +146,22 @@ class SelectedScaffolding(unittest.TestCase):
             self.assertNotIn("actions: read", actual)
             self.assertFalse((root / ".github/workflows/rc-test-staging.yml").exists())
 
+    def test_staging_adopt_preserves_existing_caller_and_stages_review_copy(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "kavosh.project.json").write_text(json.dumps(self.staging_manifest()))
+            original = root / ".github/workflows/rc.yml"
+            original.parent.mkdir(parents=True)
+            original.write_text("owner-maintained RC caller\n", encoding="utf-8")
+            run = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp, "--adopt"],
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(original.read_text(encoding="utf-8"), "owner-maintained RC caller\n")
+            staged = original.with_name("rc.yml.kavosh-new")
+            self.assertTrue(staged.is_file())
+            self.assertIn("kavosh-test-staging.yml@v8.1.0", staged.read_text(encoding="utf-8"))
+            self.assertIn("merge by hand", run.stdout)
+
     def test_staging_opt_in_rejects_unsupported_or_conflicting_caller_before_writes(self):
         variants = ("no-continuous", "no-test", "wrong-adapter", "colliding-caller")
         for variant in variants:
