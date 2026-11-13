@@ -49,11 +49,12 @@ class IntakeArchitectureContract(unittest.TestCase):
     def test_identity_data_network_and_delivery_are_not_omitted(self):
         table = {r[0]: r for r in rows(self.questionnaire)}
         for key, expected in {"G2": "authorization", "G3": "authoritative", "G4": "offline",
-                              "G5": "recovery", "G6": "engineering", "G7": "selected design system",
+                              "G5": "recovery", "G6": "engineering", "G7": "recorded custom UI contract",
                               "G8": "observability", "G9": "assertion"}.items():
             # G9 asks for evidence planning; exact assertion detail belongs to the Spec.
             value = table[key][4] + (self.spec if key == "G9" else "")
             self.assertIn(expected, value, key)
+        self.assertIn("selected design system package", table["G7"][4])
 
     def test_no_ui_is_a_real_not_needed_path(self):
         ui = next(r for r in rows(self.questionnaire) if r[0] == "G7")[4]
