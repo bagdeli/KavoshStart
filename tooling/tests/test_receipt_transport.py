@@ -206,8 +206,9 @@ class TransportSmoke(unittest.TestCase):
                 transport.side_effect = rt.TransportError(
                     f"GitHub receipt request failed (HTTP {code})"
                 )
-                with self.assertRaisesRegex(smoke.ReadbackError, f"metadata/http-{code}"):
-                    smoke.check_artifact(transport, 1, 5, 1)
+                with patch.object(smoke.time, "sleep", return_value=None):
+                    with self.assertRaisesRegex(smoke.ReadbackError, f"metadata/http-{code}"):
+                        smoke.check_artifact(transport, 1, 5, 1)
                 transport.download.assert_not_called()
         metadata = {"id": 1, "expired": False, "name": "cross-domain-5-1",
                     "workflow_run": {"id": 5}}
@@ -221,6 +222,41 @@ class TransportSmoke(unittest.TestCase):
             smoke.check_artifact(transport, 1, 5, 1)
         self.assertNotIn(TOKEN, str(ctx.exception))
         self.assertNotIn("sig=", str(ctx.exception))
+
+    def test_artifact_metadata_404_only_is_bounded_read_retry(self):
+        metadata = {"id": 1, "expired": False, "name": "cross-domain-5-1",
+                    "workflow_run": {"id": 5}}
+        transport = Mock(repository=REPO)
+        transport.side_effect = [
+            rt.TransportError("GitHub receipt request failed (HTTP 404)"),
+            rt.TransportError("GitHub receipt request failed (HTTP 404)"),
+            metadata,
+        ]
+        delays = []
+        self.assertEqual(smoke._read_metadata(transport, 1, sleep=delays.append), metadata)
+        self.assertEqual(delays, [0.25, 0.75])
+        self.assertEqual(transport.call_count, 3)
+        self.assertEqual(transport.call_args.args[0], "repos/o/r/actions/artifacts/1")
+
+    def test_artifact_metadata_404_exhaustion_stays_red_with_no_unbounded_retry(self):
+        transport = Mock(repository=REPO,
+                         side_effect=rt.TransportError("GitHub receipt request failed (HTTP 404)"))
+        delays = []
+        with self.assertRaisesRegex(smoke.ReadbackError, "metadata/http-404"):
+            smoke._read_metadata(transport, 1, sleep=delays.append)
+        self.assertEqual(delays, [0.25, 0.75, 1.5, 3.0])
+        self.assertEqual(transport.call_count, 5)
+
+    def test_artifact_metadata_non_404_is_not_retried_or_approved(self):
+        for code in (401, 403, 409, 429, 500, 502, 503):
+            with self.subTest(code=code):
+                transport = Mock(repository=REPO, side_effect=rt.TransportError(
+                    f"GitHub receipt request failed (HTTP {code})"))
+                delays = []
+                with self.assertRaisesRegex(smoke.ReadbackError, f"metadata/http-{code}"):
+                    smoke._read_metadata(transport, 1, sleep=delays.append)
+                self.assertEqual(delays, [])
+                self.assertEqual(transport.call_count, 1)
 
     def test_missing_identity_or_expired_artifact_is_not_success(self):
         for meta in ({"id": 2, "expired": False}, {"id": 1, "expired": True}):
