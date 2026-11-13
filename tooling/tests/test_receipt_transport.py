@@ -199,6 +199,29 @@ class TransportSmoke(unittest.TestCase):
         transport.return_value["digest"] = "sha256:" + "0" * 64
         with self.assertRaises(ValueError): smoke.check_artifact(transport, 1, 5, 1)
 
+    def test_readback_transport_diagnostics_are_stage_bound_and_do_not_leak_secrets(self):
+        for code in (403, 404, 502, 503):
+            with self.subTest(code=code):
+                transport = Mock(repository=REPO)
+                transport.side_effect = rt.TransportError(
+                    f"GitHub receipt request failed (HTTP {code})"
+                )
+                with self.assertRaisesRegex(smoke.ReadbackError, f"metadata/http-{code}"):
+                    smoke.check_artifact(transport, 1, 5, 1)
+                transport.download.assert_not_called()
+        metadata = {"id": 1, "expired": False, "name": "cross-domain-5-1",
+                    "workflow_run": {"id": 5}}
+        transport = Mock(repository=REPO, return_value=metadata)
+        transport.download.side_effect = rt.TransportError(
+            "GitHub receipt request failed (HTTP 404)")
+        with self.assertRaisesRegex(smoke.ReadbackError, "archive/http-404"):
+            smoke.check_artifact(transport, 1, 5, 1)
+        transport.download.side_effect = rt.TransportError(STORAGE + TOKEN)
+        with self.assertRaisesRegex(smoke.ReadbackError, "archive/transport-unavailable") as ctx:
+            smoke.check_artifact(transport, 1, 5, 1)
+        self.assertNotIn(TOKEN, str(ctx.exception))
+        self.assertNotIn("sig=", str(ctx.exception))
+
     def test_missing_identity_or_expired_artifact_is_not_success(self):
         for meta in ({"id": 2, "expired": False}, {"id": 1, "expired": True}):
             transport = Mock(repository=REPO, return_value=meta)
