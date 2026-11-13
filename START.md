@@ -49,7 +49,7 @@ Apply only steps relevant to this task and the selected project profile. Do not 
 ### Step 1 — Intake
 1. Read [`intake/QUESTIONNAIRE.md`](intake/QUESTIONNAIRE.md).
 2. Reuse explicit project answers and approved applicable defaults from their recorded source. Review A–F facts
-   and G1–G9 architecture decisions, including product licensing, for every new project. Ask only missing
+   and G1–G10 architecture decisions (including explicit YES/NO G10 on optional GitHub-side main protection), including product licensing, for every new project. Ask only missing
    decisions in one grouped Persian message. Suggestions are not accepted defaults; internal use does not
    imply no licensing, no login or unrestricted data access.
 3. Decide applicability first: selected, explicitly not-needed, or inherited from an approved reference.
@@ -84,7 +84,7 @@ At G6/G9 first distinguish the **extent of service delivered by the project's ow
    For a UI project, pin a selected package and version under `ui.designSystem`. If the owner selects custom UI without a package, record scope, ownership and actual RTL/accessibility/licensing responsibilities in the existing project decision. UI-1 permits owner-operated custom UI without an extra ADR (with a warning); only a selected formal team process requires an approved scoped `ui.exceptionADR`. Never invent a package pin.
    Never publish consumer-private package names, URLs or evidence in public KavoshStart.
 2. For a single-owner project of **any tier**, default to `acceptance.mode: none` and omit `review.teamProcess` (or set it `false`); avoid a new Issue, PR-body form or artificial branch name solely for process. An explicitly collaborating team may opt into `review.teamProcess=true` separately from second-person review. Use `continuous` only if the owner specifically requested it during intake G9. Do not infer it from T2, data sensitivity or multiple domains. A large team may explicitly select `continuous` plus `assurance` only after learning the cost and real availability of separate evidence/decision Apps for attested outcomes. Missing elected producers block only the elected protocol; do not invent Apps or claim a fake receipt. Existing consumers retain their pinned profile until a separate reviewed upgrade.
-3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G9 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
+3. Write `PROJECT.md` from `templates/common/PROJECT.md` — compact, Persian, no live status. Its architecture-decision table records settled G1–G10 choices/source references; detailed rationale and unresolved questions stay in the existing Spec/Issue. Do not add unsupported manifest keys or a parallel decision tracker.
 4. Show both to the owner. Continue only after confirmation.
 
 ### Step 4 — Repository and scaffold
@@ -103,7 +103,7 @@ At G6/G9 first distinguish the **extent of service delivered by the project's ow
 6. First commit directly on `main` is allowed **only** for this initial scaffold of an empty repository:
    `chore: scaffold from KavoshStart <version>` with the agent `Co-Authored-By` trailer. Everything after it goes through PRs.
 7. Run `bash <KavoshStart>/scripts/bootstrap-repo.sh bagdeli/<repo>` (dry-run), show the output, and run it
-   with `--apply` only after the owner agrees. Then `bash scripts/install-agent-guards.sh` inside the repo.
+   with `--apply` only after the owner agrees. G10 explicitly asks whether GitHub-native protection for `main` is selected. Only G10=YES, actual feature eligibility and separate approval for the exact settings mutation allow `--main-ruleset --apply`. Legacy `--rulesets` also changes tag rules and needs separately scoped approval; G10=NO or unresolved never creates/changes rulesets; an existing protection is never removed automatically. Read back effective enforcement: a dry-run, requested flag, local guard or HTTP 403 is not a server-side protection receipt. BR-6/BR-7/PR-7 and real CI/release gates apply either way. Then `bash scripts/install-agent-guards.sh` inside the repo.
 8. **Runner (CI-1/2):** a private repository may select an available
    **self-hosted runner on an existing approved host** with non-root account/file/socket/credential containment; a second server/VM or separate ADR is not a default requirement.
    Reject untrusted fork/PR code and contain runner secrets and credentials.
@@ -133,7 +133,7 @@ manually (e.g. the Actions access setting). Stop.
 
 ## §2 ADOPT an existing repository
 1. Run `bash scripts/audit-repo.sh bagdeli/<repo>` (read-only). Summarise findings against `standard/RULES.md`.
-2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed decisions. Explicitly recover D3/G9 owner-versus-team choices before suggesting second-person review, separate GitHub App attestation, external legal counsel or a second Test environment; default NO for solo ownership. Do not restart the project or re-approve unchanged choices. Examples from another product do not authorize work on that product.
+2. Run the intake (§1 steps 1–3) using existing answers and actual project choices; ask only missing or changed decisions. Explicitly recover D3/G9 owner-versus-team choices and G10 YES/NO GitHub main-protection choice before suggesting second-person review, separate GitHub App attestation, external legal counsel or a second Test environment; default NO for extra team infrastructure only (never infer G10=NO). Do not restart the project or re-approve unchanged choices. Examples from another product do not authorize work on that product.
 3. Propose an adoption plan in phases using [`adoption/ADOPTION.md`](adoption/ADOPTION.md). Get owner approval per phase.
 4. Scaffold with `scaffold.py --adopt`: existing files are never overwritten; the script writes
    `*.kavosh-new` next to them for you to merge in a PR.
