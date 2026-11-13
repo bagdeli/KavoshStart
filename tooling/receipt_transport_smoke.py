@@ -33,7 +33,8 @@ def _transport_category(error):
 _METADATA_404_DELAYS = (0.25, 0.75, 1.5, 3.0)
 
 
-def _read_metadata(transport, artifact_id, sleep=time.sleep):
+def _read_metadata(transport, artifact_id, sleep=None):
+    sleep = time.sleep if sleep is None else sleep
     path = f"repos/{transport.repository}/actions/artifacts/{artifact_id}"
     for delay in (0,) + _METADATA_404_DELAYS:
         if delay:
