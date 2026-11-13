@@ -1,5 +1,14 @@
 # Changelog
 
+## [9.1.1](https://github.com/bagdeli/KavoshStart/compare/v9.1.0...v9.1.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **ci:** bound newly-uploaded artifact metadata 404 retries ([#216](https://github.com/bagdeli/KavoshStart/issues/216)) ([e0c9ad4](https://github.com/bagdeli/KavoshStart/commit/e0c9ad479bed77afc4246bdb607f433bb6c5ec5a))
+* **ci:** classify artifact readback failures without weakening evidence gates ([#215](https://github.com/bagdeli/KavoshStart/issues/215)) ([a7d1272](https://github.com/bagdeli/KavoshStart/commit/a7d12722b859778b40525e1073d8eca436235641))
+* **staging:** render exact opt-in REL-7 caller without changing legacy RC ([#214](https://github.com/bagdeli/KavoshStart/issues/214)) ([56649e0](https://github.com/bagdeli/KavoshStart/commit/56649e0199e1f5a534fe444d47edc7c526470481))
+
 ## [9.1.0](https://github.com/bagdeli/KavoshStart/compare/v9.0.1...v9.1.0) (2026-11-13)
 
 
