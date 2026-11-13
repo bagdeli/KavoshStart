@@ -63,10 +63,9 @@ journey/end-to-end روی مرز مناسب. چیزی که ممنوع است ا�
 
 1. repository، remote/default branch، scope و محیط‌های مجاز را تثبیت کن.
 2. `AGENTS.md`، `kavosh.project.json` و Issue/Spec مربوط را بخوان.
-3. pin KavoshStart را با آخرین release پایدار مقایسه کن.
-4. اگر عقب است، CHANGELOG بین pin و latest را بخوان و impact را طبقه‌بندی کن.
-5. تغییرات governance/acceptance/security/release/deploy/CI/agent-control را قبل از feature/gate جدید upgrade کن،
-   مگر owner یک defer محدود و traceable داده باشد.
+3. نسخهٔ دقیق پین‌شدهٔ KavoshStart را بررسی کن؛ استعلام آخرین انتشار فقط در NEW/ADOPT/UPGRADE، ممیزی صریح تازگی یا نگرانی امنیتی/سازگاریِ واقعاً مرتبط لازم است. WORK معمولی با همان قرارداد پین‌شده ادامه دارد.
+4. وقتی ارتقای انتخاب‌شده یا نقص مرتبط واقعاً نیاز دارد، فقط delta مؤثر CHANGELOG را بخوان و اثرش را طبقه‌بندی کن.
+5. نسخهٔ جدید به‌تنهایی مانع کار نامرتبط یا الزام به Issue/ADR/defer تازه نیست. ارتقا با تصمیم مالک در PR مستقل انجام می‌شود؛ خطر امنیتی یا ناسازگاری تأییدشده فقط اقدام وابسته را تا رفع متناسب متوقف می‌کند.
 6. وضعیت زندهٔ GitHub را تازه کن: main، PRهای باز مرتبط، checks و release؛ runtime را فقط وقتی برای task لازم است بررسی کن.
 7. mode را انتخاب کن و فقط یک packet منسجم را اجرا کن.
 
