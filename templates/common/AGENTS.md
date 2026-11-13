@@ -53,7 +53,7 @@ make check    # lint + test + build — run before review; rerun relevant checks
 - TODO(kavosh): language/style rules with one short good example.
 
 ## UI
-TODO(kavosh): if `ui.kind` is not `none`, consume the exact pinned Design System {{DESIGN_SYSTEM}} through its **actually selected and released consumer profile** (framework-specific or framework-neutral). Verify changed product integration, locale/RTL, accessibility and licensing without rerunning the provider's whole internal test suite. Help Center is optional unless explicitly selected. Do not copy upstream components or publish private provider/consumer identifiers in public KavoshStart. Otherwise delete this section.
+TODO(kavosh): if `ui.kind` is not `none`, use the selected exact Design System {{DESIGN_SYSTEM}} through its **actually released consumer profile** when a package is selected. For owner-selected custom UI without a package, follow the recorded project scope (and a scoped exception ADR only when the formal team process requires it); do not invent a provider or pin. Verify affected Product integration, locale/RTL, accessibility and licensing proportionately without rerunning the provider's whole internal test suite. Help Center is optional unless explicitly selected. Product-specific screen/task/state design stays with this repo's existing Issue/Spec/plan; a package pin is not that design. Do not publish private provider/consumer identifiers in public KavoshStart. Otherwise delete this section.
 
 ## Optional team governance (only when selected at intake)
 - `acceptance.mode=none` for a single-owner project: no independent App, AC register or second human. The owner still makes real release decisions; CI failures remain failures.
