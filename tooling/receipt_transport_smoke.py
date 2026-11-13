@@ -7,6 +7,7 @@ Only GET requests in the repository selected by the workflow are performed.
 import hashlib
 import os
 import re
+import time
 
 from artifact_receipt import artifact_assertions
 from receipt_transport import GitHubReceiptTransport, TransportError
@@ -26,11 +27,28 @@ def _transport_category(error):
 
 
 
+# GitHub can report a transient 404 for a newly finalized artifact. Only this
+# proven, read-only metadata GET is retried; every bad identity/digest/archive,
+# authorization error, other HTTP status and publication operation still fails.
+_METADATA_404_DELAYS = (0.25, 0.75, 1.5, 3.0)
+
+
+def _read_metadata(transport, artifact_id, sleep=time.sleep):
+    path = f"repos/{transport.repository}/actions/artifacts/{artifact_id}"
+    for delay in (0,) + _METADATA_404_DELAYS:
+        if delay:
+            sleep(delay)
+        try:
+            return transport(path)
+        except TransportError as error:
+            category = _transport_category(error)
+            if category == "http-404" and delay != _METADATA_404_DELAYS[-1]:
+                continue
+            raise ReadbackError("metadata/" + category) from None
+
+
 def check_artifact(transport, artifact_id, run_id, attempt):
-    try:
-        metadata = transport(f"repos/{transport.repository}/actions/artifacts/{artifact_id}")
-    except TransportError as error:
-        raise ReadbackError("metadata/" + _transport_category(error)) from None
+    metadata = _read_metadata(transport, artifact_id)
     if (metadata.get("id") != artifact_id or metadata.get("expired") is not False
             or (metadata.get("workflow_run") or {}).get("id") != run_id
             or metadata.get("name") != f"cross-domain-{run_id}-{attempt}"):
