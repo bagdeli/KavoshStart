@@ -226,7 +226,7 @@
               "description": "Exact package release version; no floating ranges."
             }
           },
-          "description": "Consumer-owned provider and exact pin; null requires an approved exception for UI projects."
+          "description": "Consumer-owned provider and exact pin. For UI with no package, owner-operated custom selection yields a UI-1 warning; formal teamProcess requires an approved exceptionADR. No UI has no package requirement."
         }
       }
     },
