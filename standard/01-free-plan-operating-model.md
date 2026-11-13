@@ -9,7 +9,7 @@ KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/is
 ## چه چیزی روی ریپوی private در پلن Free وجود ندارد
 | قابلیت | وضعیت | پیامد |
 |---|---|---|
-| Branch protection / Rulesets | ❌ (فقط public یا پلن پولی) | push مستقیم و force-push به `main` از سمت GitHub مسدود نمی‌شود |
+| Branch protection / Rulesets | ❌ در private با پلن Free؛ ✅ در public با Free و private با پلن واجدشرایط | بدون اجرای واقعی محافظت سروری، GitHub جلوی direct/force push را نمی‌گیرد؛ A/M/G جای پیشگیری سمت سرور نیستند |
 | Required status checks | ❌ | PR قرمز قابل ادغام است |
 | Required reviewers / CODEOWNERS اجباری | ❌ | CODEOWNERS فقط درخواست بازبینی است |
 | Merge queue، Environments با reviewer | ❌ | — |
@@ -19,6 +19,8 @@ KavoshStart Core کیفیت و assurance را تعریف می‌کند: trust/is
 | Issue Types | ❌ (فقط Organization) | برچسب `type:*` |
 | Reusable workflow از ریپوی private دیگر همان کاربر | ✅ با تنظیم Access | KavoshStart مرکز workflowهاست |
 | Squash-only، حذف خودکار شاخه | ✅ | لایه‌ی S |
+
+**انتخاب محافظت GitHub:** G10 در NEW/ADOPT باید صریح پرسیده شود. YES تنها با eligibility واقعی و مجوز جداگانهٔ اعمال تنظیمات، NO بدون ساخت Ruleset تازه؛ هر دو از قواعد source/PR/CI/Release مستقل‌اند. جزئیات در [مدل شاخه‌ها](03-branches-prs-releases.md) است. این سؤال الزام پرداخت یا ارتقای پلن نیست.
 
 ## لایه‌های کنترل
 
