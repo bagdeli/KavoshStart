@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.1.0](https://github.com/bagdeli/KavoshStart/compare/v9.0.1...v9.1.0) (2026-11-13)
+
+
+### Features
+
+* **intake:** opt-in verified GitHub main protection with no tag changes ([#210](https://github.com/bagdeli/KavoshStart/issues/210)) ([#211](https://github.com/bagdeli/KavoshStart/issues/211)) ([6d68f2e](https://github.com/bagdeli/KavoshStart/commit/6d68f2e23e746d3f8c06c889e9944f16e6387168))
+
 ## [9.0.1](https://github.com/bagdeli/KavoshStart/compare/v9.0.0...v9.0.1) (2026-10-25)
 
 
