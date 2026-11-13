@@ -1,0 +1,38 @@
+# Opt-in owner-dispatched Test-only candidate (REL-7, release.testStaging).
+# PRIVATE_HOSTED_DISPATCH_REQUIRED: no automatic trigger and no Production permission.
+# The reusable gate checks exact main/owner identity, source CI and original prerequisites.
+# This creates an immutable prerelease; it does NOT deploy Test, accept UI or publish final.
+name: rc
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Exact new Test RC tag (vX.Y.Z-rc.N)
+        required: true
+        type: string
+      expected-sha:
+        description: Exact current main SHA
+        required: true
+        type: string
+      authorization-confirmed:
+        description: I authorize this exact Test-only RC at the stated SHA
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  checks: read
+  actions: read
+  issues: read
+
+jobs:
+  rc:
+    if: inputs.authorization-confirmed && github.ref == 'refs/heads/main'
+    uses: bagdeli/KavoshStart/.github/workflows/kavosh-test-staging.yml@{{KAVOSHSTART}}
+    with:
+      runs-on: '{{RUNS_ON_JSON}}'
+      tag: ${{ inputs.tag }}
+      expected-sha: ${{ inputs.expected-sha }}
+      authorization-confirmed: ${{ inputs.authorization-confirmed }}

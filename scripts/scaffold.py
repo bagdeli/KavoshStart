@@ -104,6 +104,8 @@ def include_template(layer: str, rel: str, manifest: dict) -> bool:
     """Opt-in complexity only: no default App, second AI or licence ledger."""
     if rel == ".github/workflows/ai-review.yml":
         return False  # Optional team example; never auto-install a paid reviewer.
+    if layer == "runtime/server" and rel == ".github/workflows/rc-test-staging.yml":
+        return False  # Source template; installed only at the selected callerWorkflow path.
     if layer == "common" and rel == "docs/THIRD_PARTY.md":
         return False  # Optional inventory only for an actual distribution/legal use case.
     if layer == "tier/T2" and rel.startswith("acceptance/"):
@@ -188,6 +190,28 @@ def main() -> int:
                     if manifest.get("deploy", {}).get("method") == "custom" and layer == "runtime/server" and rel.startswith("deploy/"):
                         continue
                     plan[rel] = f
+
+    # The legacy Test RC caller remains byte-for-byte unchanged unless a project
+    # explicitly opts into REL-7's stricter installed-Test staging contract.
+    staging = (manifest.get("release") or {}).get("testStaging")
+    if staging is not None:
+        deploy = manifest.get("deploy") or {}
+        if (manifest.get("runtime") != "server"
+                or deploy.get("method") not in ("pull-build", "pull-image")
+                or "test" not in (deploy.get("environments") or [])
+                or (manifest.get("release") or {}).get("strategy") != "release-please"
+                or (manifest.get("acceptance") or {}).get("mode") != "continuous"):
+            raise SystemExit(
+                "REL-7 NOT_SUPPORTED: Test staging caller requires server runtime, "
+                "Test pull-build/pull-image, release-please and continuous acceptance"
+            )
+        caller = staging["callerWorkflow"]  # Already checked by canonical manifest schema.
+        if ".github/workflows/rc.yml" not in plan:
+            raise SystemExit("REL-7: Test RC caller template is unavailable")
+        if caller != ".github/workflows/rc.yml" and caller in plan:
+            raise SystemExit(f"REL-7: selected callerWorkflow conflicts with scaffold output: {caller}")
+        plan.pop(".github/workflows/rc.yml")
+        plan[caller] = TEMPLATES / "runtime/server/.github/workflows/rc-test-staging.yml"
 
     created, conflicts = [], []
     blocked_review = False

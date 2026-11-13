@@ -64,6 +64,8 @@ main → gated release → vX.Y.Z[-rc.N]    project-scoped systemd timer
 
 فقط برای RC محصول و در پروژه‌ای که manifest تگ RC کلید `release.testStaging` دارد، adapter استاندارد سرور آن RC را روی `CHANNEL=production` پیش از تغییر pin یا runtime رد می‌کند (REL-7). `--verify-environment` نیز چنین نصب Production را نمی‌پذیرد. dry-run فقط policy موجود در mirror محلی را بررسی می‌کند و در نبود آن نتیجه را بررسی‌نشده گزارش می‌دهد. نبودن این کلید، رفتار RC قبلی را حفظ می‌کند؛ تغییر adapter و فعال‌سازی این قرارداد باید در rollout همان پروژه بازبینی شوند.
 
+**Caller انتخابی Test staging:** برای پروژهٔ سروریِ دارای Test، `acceptance.mode=continuous`، `release.strategy=release-please` و `pull-build`/`pull-image`، وقتی `release.testStaging` صریحاً انتخاب شده باشد، scaffold باید فایل واقعیِ `release.testStaging.callerWorkflow` را با ارجاع نسخه‌پین‌شده به `kavosh-test-staging.yml` تولید کند و دسترسی‌های فقط-خواندنی `actions`/`issues` را برای تأیید رسیدها داشته باشد. بدون این انتخاب، `rc.yml` معمولی با `kavosh-rc.yml` دست‌نخورده باقی می‌ماند؛ پروفایل ناسازگار به‌جای تولید Caller اشتباه، `NOT_SUPPORTED` است. ساخت RC نه نصب Test، نه مشاهدهٔ UI توسط مالک، نه ACC-3 نهایی و نه مجوز Production را ثابت می‌کند. Caller موجودِ مصرف‌کننده هنگام ADOPT بدون بازبینی و رضایت جداگانه بازنویسی نمی‌شود.
+
 ## identity و health دو قرارداد جدا هستند (DEP-3/4/8)
 
 `VERSION_URL` فقط هویت runtime را ثابت می‌کند و باید exact version + SHA مورد انتظار را برگرداند.
