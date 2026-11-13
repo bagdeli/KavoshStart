@@ -97,6 +97,76 @@ class SelectedScaffolding(unittest.TestCase):
                 self.assertNotIn("check-full: check", makefile)
                 self.assertNotEqual(subprocess.run(["make", "test"], cwd=root, capture_output=True).returncode, 0)
 
+    def staging_manifest(self, caller=".github/workflows/rc.yml"):
+        m = self.manifest(method="pull-build")
+        m["acceptance"] = {"mode": "continuous", "assurance": "risk-based"}
+        m["release"]["testStaging"] = {
+            "schemaVersion": 1,
+            "target": "test",
+            "callerWorkflow": caller,
+            "prerequisites": {
+                name: {"acceptanceId": "T-1", "assertion": name + "-verified"}
+                for name in ("full", "originals", "recovery", "capacity")
+            },
+        }
+        return m
+
+    def test_staging_opt_in_generates_only_selected_owner_dispatched_caller(self):
+        # The selected manifest path, not an inferred default, is the exact actor
+        # and workflow identity checked by the reusable REL-7 staging gate.
+        for caller in (".github/workflows/rc.yml", ".github/workflows/reviewed-test-rc.yml"):
+            with self.subTest(caller=caller), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                (root / "kavosh.project.json").write_text(json.dumps(self.staging_manifest(caller)))
+                run = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp],
+                                     capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                actual = (root / caller).read_text(encoding="utf-8")
+                self.assertIn("kavosh-test-staging.yml@v8.1.0", actual)
+                self.assertIn("workflow_dispatch:", actual)
+                self.assertIn("github.ref == 'refs/heads/main'", actual)
+                self.assertIn("actions: read", actual)
+                self.assertIn("issues: read", actual)
+                self.assertIn("authorization-confirmed:", actual)
+                self.assertNotIn("kavosh-rc.yml@v8.1.0", actual)
+                self.assertFalse((root / ".github/workflows/rc-test-staging.yml").exists())
+                self.assertEqual((root / ".github/workflows/rc.yml").exists(),
+                                 caller == ".github/workflows/rc.yml")
+
+    def test_staging_legacy_consumer_unchanged_without_opt_in(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "kavosh.project.json").write_text(json.dumps(self.manifest(method="pull-build")))
+            run = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp],
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            actual = (root / ".github/workflows/rc.yml").read_text(encoding="utf-8")
+            self.assertIn("kavosh-rc.yml@v8.1.0", actual)
+            self.assertNotIn("kavosh-test-staging.yml", actual)
+            self.assertNotIn("actions: read", actual)
+            self.assertFalse((root / ".github/workflows/rc-test-staging.yml").exists())
+
+    def test_staging_opt_in_rejects_unsupported_or_conflicting_caller_before_writes(self):
+        variants = ("no-continuous", "no-test", "wrong-adapter", "colliding-caller")
+        for variant in variants:
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as temp:
+                m = self.staging_manifest()
+                if variant == "no-continuous":
+                    m["acceptance"] = {"mode": "none"}
+                elif variant == "no-test":
+                    m["deploy"]["environments"] = ["production"]
+                elif variant == "wrong-adapter":
+                    m["deploy"]["method"] = "custom"
+                else:
+                    m["release"]["testStaging"]["callerWorkflow"] = ".github/workflows/release.yml"
+                root = Path(temp)
+                (root / "kavosh.project.json").write_text(json.dumps(m))
+                run = subprocess.run([sys.executable, str(ROOT / "scripts/scaffold.py"), temp],
+                                     capture_output=True, text=True)
+                self.assertNotEqual(run.returncode, 0)
+                self.assertIn("REL-7", run.stderr)
+                self.assertEqual({p.name for p in root.iterdir()}, {"kavosh.project.json"})
+
     def test_per_job_selection_is_rendered_without_changing_default_runner(self):
         import yaml
         m = self.manifest()
