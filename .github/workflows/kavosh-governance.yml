@@ -38,13 +38,29 @@ jobs:
     # Drafts: only checked when opened (plan stage). Pushes to drafts cost nothing.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.action == 'opened'
     runs-on: ${{ fromJSON(inputs.runs-on) }}
-    timeout-minutes: 5
+    # A slow shallow clone may need the checkout action's bounded retries.
+    # Do not extend the existing hosted execution/billing budget.
+    timeout-minutes: ${{ contains(fromJSON(inputs.runs-on), 'self-hosted') && 25 || 5 }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout exact source
+        timeout-minutes: ${{ contains(fromJSON(inputs.runs-on), 'self-hosted') && 15 || 5 }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        env:
+          GIT_TERMINAL_PROMPT: "0"
+          GIT_HTTP_LOW_SPEED_LIMIT: "1"
+          GIT_HTTP_LOW_SPEED_TIME: "60"
         with:
           ref: ${{ inputs.authorization-head || github.sha }}
           fetch-depth: 1
           persist-credentials: false
+      - name: Verify exact checked-out commit
+        env:
+          EXPECTED_SOURCE: ${{ inputs.authorization-head || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse --verify HEAD)" = "$EXPECTED_SOURCE"
       - name: Validate private hosted dispatch scope
         if: github.event_name == 'workflow_dispatch' && inputs.authorization-pr != ''
         env:
