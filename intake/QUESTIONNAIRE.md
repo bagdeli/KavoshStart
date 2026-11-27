@@ -10,14 +10,14 @@ Ask in Persian. A suggested default is a proposal, never an accepted answer. Reu
 | A1 | R | نام پروژه و نام ریپو؟ | `name`, `repo` | use a project-owned repository name; public examples are synthetic |
 | A2 | R | هدف پروژه در یک جمله؟ | `summary` | Must describe the product now, not the vision |
 | A3 | R | چه کسانی از آن استفاده می‌کنند و تقریباً چند نفر؟ | `users.audience`, `users.scale` | `internal` / `customers` / `public`; `1-10`, `10-100`, `100-1000`, `1000+` |
-| A4 | R | اولین خروجی قابل‌استفاده (v0.1.0) دقیقاً چه کاری انجام می‌دهد؟ | `firstRelease` | 1–5 bullet points; becomes milestone v0.1.0 |
+| A4 | R | اولین خروجی قابل‌استفاده (v0.1.0) دقیقاً چه کاری انجام می‌دهد؟ | `firstRelease` | 1–5 bullet points; record in the existing project scope, with a release milestone only if useful (WK-3) |
 | A5 | R | چه چیزهایی عمداً در این پروژه نیست؟ | `outOfScope` | Prevents scope drift when README and AGENTS.md describe different product boundaries |
 
 ## B. Runtime and deployment
 | # | R | Question (FA) | Field | Notes / default |
 |---|---|---|---|---|
 | B0 | R | مخزن خصوصی است یا عمومی؟ Runner مستقل نصب‌شده روی سرور وجود دارد؟ | `visibility`, `ci.runner` | private → Self-hosted ایزوله در صورت وجود بلامانع؛ GitHub-hosted حتی در سهمیهٔ رایگان فقط پس از اجازهٔ قبلی و صریح شخص مالک اختیار مالی برای همان Run؛ سایر امکانات پولی/سهمیه‌ای GitHub در private نیز فقط با مجوز موردی او (ADR-0019). public → GitHub-hosted استاندارد رایگان؛ self-hosted با CI-2. T1/static → `none`. هرگز runner یا مجوز هزینه را حدس نزنید. |
-| B0b | R* | اگر Self-hosted در private یا public انتخاب شد، trust model واقعی سرور، کنترل fork/کد نامطمئن، credential و ایزولیشن چیست؟ | `ci.runnerLabels`, `ci.runners`, `ci.trustModelADR` | ADR و label واقعی اختصاصی repo طبق CI-2 (از جمله ARM64/custom)؛ تفکیک کد نامطمئن از release/deploy/secrets و راستی‌آزمایی عملیاتی Runner ضروری است؛ ADR مجوز Hosted یا خدمت پولی نیست. فقط در صورت نیاز واقعی می‌توان `ci.runnerJobLabels` را برای Job مشخص ثبت کرد؛ هیچ Runner جدا به‌طور خودکار لازم نیست. |
+| B0b | R* | اگر Self-hosted در private یا public انتخاب شد، trust model واقعی سرور، کنترل fork/کد نامطمئن، credential و ایزولیشن چیست؟ | `ci.runnerLabels`, `ci.runners`, `ci.trustModelADR` | ایزولیشن واقعی و labelهای ثبت‌شده طبق CI-2؛ Trust ADR اختیاری است. در private مالک‌محور labelهای بومی واقعی کافی‌اند اگر routing و trust درست باشد؛ public/فرایند تیمی منتخب selector اختصاصی دارند؛ تفکیک کد نامطمئن از release/deploy/secrets و راستی‌آزمایی عملیاتی Runner ضروری است؛ ADR مجوز Hosted یا خدمت پولی نیست. فقط در صورت نیاز واقعی می‌توان `ci.runnerJobLabels` را برای Job مشخص ثبت کرد؛ هیچ Runner جدا به‌طور خودکار لازم نیست. |
 | B1 | R | آیا برنامه باید روی سرور همیشه روشن اجرا شود؟ | `runtime` | No → `none` (library/CLI/script) or `desktop`; only static files → `static`; yes → `server` |
 | B2 | R* | سرور کجاست؟ ایران / خارج / هر دو؟ | `deploy.location` | *if runtime=server |
 | B3 | R* | آیا محیط اجرا می‌تواند به مقصدهای لازم برای دریافت/ارسال فایل متصل شود؟ اگر نه، محدودیت شبکه چیست؟ | `deploy.method` و تصمیم مستندِ اتصال | از `pull-image` یا `pull-build` فقط وقتی مسیر آن قابل اجراست استفاده شود. ابزار انتقال، proxy یا mirror خاصی به‌صورت عمومی اجباری نیست. شکست تکراری دانلود/آپلود با پروتکل گزارش URL/DNS/IP در `START.md` ثبت شود؛ مسیر جایگزین تنها با انتخاب مالک |

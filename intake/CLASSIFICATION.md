@@ -53,18 +53,18 @@ Other capabilities such as `control-plane` and `infrastructure` are explicit bec
 
 | | T0 Tool | T1 Application | T2 Platform |
 |---|---|---|---|
-| Planning | issues + labels | + milestone per release, Project board | + epics, **spec per feature** (`specs/`) |
+| Planning | existing task/PR or Issue; labels as applicable | same; milestone/Project board only when useful | same; Epics and scoped Specs only for genuinely complex coordination (WK-1/3/5) |
 | ADR | optional | for material architectural decisions | for material decisions, not one ADR per routine test or permission |
 | Environments | none | only declared persistent environments | only the owner's declared persistent environments; a separate Test host/VM/channel is never inferred from T2 |
 | CI on PR | semantic `check` adapter (lint+test) | semantic `check` + build | relevant contract/migration checks only when the changed capability needs them; no duplicated giant suite |
 | AI review workflow | no | only by explicit opt-in | only by explicit opt-in; never scaffolded automatically |
 | Secret scan in CI | no (local hook) | yes | yes |
 | Release | gated product release when publishing code | optional RC only for an actually selected Test channel | optional RC/UAT only when an actual product release & risk requires them; routine upstream maintenance uses native controls |
-| Runner (CI-1/2) | Private: existing isolated self-hosted allowed; hosted only with explicit per-run approval | Same; exact-head dispatch for private hosted only | Public standard GitHub-hosted minutes free; self-hosted requires CI-2 trust ADR and excludes untrusted fork code |
-| **GitHub-hosted minutes authorization by default** | **0** | **0** | **0** |
+| Runner (CI-1/2) | Private: existing isolated self-hosted allowed; private hosted only with exact-run billing-owner consent and manual dispatch | same; Trust ADR optional, actual isolation required | same; public standard GitHub-hosted minutes free, self-hosted follows CI-2 and excludes untrusted fork code |
+| **Private metered GitHub authorization by default** | **none** | **none** | **none** |
 | Max concurrent open PRs (ready) | 2 | 3 | 3 |
 
-**Collaboration is separate from Tier.** A T2 project may be managed by one person: that does not create an independent reviewer, paid AI workflow, legal adviser, two attestation Apps, or a dedicated physical Test. Ask owner preferences once at intake (D3/G9); default is none. `continuous` and `review.independentHumanReview` are explicitly selected only, never inferred from the T2 label.
+**Collaboration is separate from Tier.** A T2 project may be managed by one person: that does not create an independent reviewer, paid AI workflow, legal adviser, two attestation Apps, or a dedicated physical Test. Ask owner preferences once at intake (D3/G9); default is none. `continuous`, `review.teamProcess=true` and `review.independentHumanReview=true` are separately and explicitly selected, never inferred from Tier. WK-1 formal issue labels apply only to the selected team process.
 
 ## Budget rule (CI-3)
-Private GitHub Actions may run on an existing isolated self-hosted server runner with CI-2 trust ADR (ADR-0018). Private GitHub-hosted usage is prohibited without explicit prior owner/admin approval of **each exact run** after asking, even before free allowance is exhausted; only manual scoped dispatch may use it. Public standard GitHub-hosted minutes are free; larger runners/storage cost separately. 'monthlyMinutesBudget' is a planning hint, not spending authorization. T1/static may choose 'none' without Actions.
+Private GitHub Actions may run on an existing approved and actually isolated self-hosted runner under CI-2; a Trust ADR is optional, and an existing private owner-operated runner may use its actual native labels. Public/team self-hosted profiles retain the dedicated custom selector. Private GitHub-hosted usage (including free allowance) requires prior explicit consent of the designated human billing owner for **each exact run**, then scoped manual dispatch; other admins, agents and budgets cannot authorize it (ADR-0019). Other metered private GitHub features require that same owner's specific prior consent. Public standard GitHub-hosted minutes are free; larger runners/storage may cost separately. `monthlyMinutesBudget` is a planning hint, not spending authorization. T1/static may choose `none` without Actions. See [CI guidance](../standard/04-ci-runners-minutes.md) for the actual trust and test-selection boundaries.

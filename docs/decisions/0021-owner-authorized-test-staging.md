@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — pending owner review.
+The bounded REL-7 implementation was published in [v7.2.0](https://github.com/bagdeli/KavoshStart/releases/tag/v7.2.0); the opt-in caller/scaffold correction was published in [v9.1.1](https://github.com/bagdeli/KavoshStart/releases/tag/v9.1.1). The remaining installed-Test-to-final-acceptance evidence and any outstanding owner decision are tracked in the existing Issue #184. Publication is not proof of an installed Test, actual human UAT, final acceptance or Production authorization.
 
 ## Context
 
@@ -20,7 +20,7 @@ Projects explicitly update their existing dispatchable RC caller to the
 adding `actions: read` and `issues: read` to that caller. Both reusable wrappers
 embed the same RC engine. The legacy wrapper retains its original permissions
 and rejects staging opt-ins; the staging wrapper requires the opt-in contract.
-The default scaffold remains unchanged, and no additional dispatcher is needed.
+For non-opted-in projects the default scaffold remains unchanged. For the compatible explicit opt-in, the v9.1.1 scaffold renders the manifest-declared staging caller and preserves existing consumer-owned workflows during ADOPT for review. No additional dispatcher is needed.
 
 An optional `release.testStaging` object in the exact main manifest activates the
 staging checks. Its versioned schema fixes `target` to `test`, declares the
