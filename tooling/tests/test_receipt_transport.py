@@ -196,8 +196,25 @@ class TransportSmoke(unittest.TestCase):
         self.assertEqual(smoke.check_artifact(transport, 1, 5, 1), 6)
         transport.assert_called_once_with("repos/o/r/actions/artifacts/1")
         self.assertEqual(transport.download.call_count, 1)
+        transport.download.reset_mock()
+        transport.download.side_effect = [
+            rt.TransportError("GitHub receipt request failed (HTTP 404)"),
+            raw,
+        ]
+        with patch.object(smoke.time, "sleep", return_value=None) as sleep:
+            self.assertEqual(smoke.check_artifact(transport, 1, 5, 1), 6)
+        sleep.assert_called_once_with(0.25)
+        self.assertEqual(transport.download.call_count, 2)
+        self.assertEqual(transport.download.call_args_list[0], transport.download.call_args_list[1])
+        # Successful transport is not evidence of valid content.
+        transport.download.side_effect = None
+        transport.download.reset_mock()
         transport.return_value["digest"] = "sha256:" + "0" * 64
-        with self.assertRaises(ValueError): smoke.check_artifact(transport, 1, 5, 1)
+        with patch.object(smoke.time, "sleep", return_value=None) as sleep:
+            with self.assertRaises(ValueError):
+                smoke.check_artifact(transport, 1, 5, 1)
+        self.assertEqual(transport.download.call_count, 1)
+        sleep.assert_not_called()
 
     def test_readback_transport_diagnostics_are_stage_bound_and_do_not_leak_secrets(self):
         for code in (403, 404, 502, 503):
@@ -215,11 +232,28 @@ class TransportSmoke(unittest.TestCase):
         transport = Mock(repository=REPO, return_value=metadata)
         transport.download.side_effect = rt.TransportError(
             "GitHub receipt request failed (HTTP 404)")
-        with self.assertRaisesRegex(smoke.ReadbackError, "archive/http-404"):
-            smoke.check_artifact(transport, 1, 5, 1)
+        with patch.object(smoke.time, "sleep", return_value=None) as sleep:
+            with self.assertRaisesRegex(smoke.ReadbackError, "archive/http-404"):
+                smoke.check_artifact(transport, 1, 5, 1)
+        self.assertEqual(transport.download.call_count, 5)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [0.25, 0.75, 1.5, 3.0])
+        for code in (401, 403, 409, 429, 500, 502, 503):
+            with self.subTest(archive_code=code):
+                transport.download.reset_mock()
+                transport.download.side_effect = rt.TransportError(
+                    f"GitHub receipt request failed (HTTP {code})")
+                with patch.object(smoke.time, "sleep", return_value=None) as sleep:
+                    with self.assertRaisesRegex(smoke.ReadbackError, f"archive/http-{code}"):
+                        smoke.check_artifact(transport, 1, 5, 1)
+                self.assertEqual(transport.download.call_count, 1)
+                sleep.assert_not_called()
+        transport.download.reset_mock()
         transport.download.side_effect = rt.TransportError(STORAGE + TOKEN)
-        with self.assertRaisesRegex(smoke.ReadbackError, "archive/transport-unavailable") as ctx:
-            smoke.check_artifact(transport, 1, 5, 1)
+        with patch.object(smoke.time, "sleep", return_value=None) as sleep:
+            with self.assertRaisesRegex(smoke.ReadbackError, "archive/transport-unavailable") as ctx:
+                smoke.check_artifact(transport, 1, 5, 1)
+        self.assertEqual(transport.download.call_count, 1)
+        sleep.assert_not_called()
         self.assertNotIn(TOKEN, str(ctx.exception))
         self.assertNotIn("sig=", str(ctx.exception))
 
