@@ -1,5 +1,13 @@
 # Changelog
 
+## [9.1.2](https://github.com/bagdeli/KavoshStart/compare/v9.1.1...v9.1.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **ci:** retry finalized artifact archive HTTP 404 in live smoke check ([#224](https://github.com/bagdeli/KavoshStart/issues/224)) ([485bd73](https://github.com/bagdeli/KavoshStart/commit/485bd738a4e40d517976c19ca141349d118a22a5))
+* **docs:** align intake and historical decisions with published contracts ([#222](https://github.com/bagdeli/KavoshStart/issues/222)) ([4f3e3e7](https://github.com/bagdeli/KavoshStart/commit/4f3e3e757293583219162441c57e95f262abff16))
+
 ## [9.1.1](https://github.com/bagdeli/KavoshStart/compare/v9.1.0...v9.1.1) (2026-11-13)
 
 
