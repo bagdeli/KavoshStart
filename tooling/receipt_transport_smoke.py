@@ -27,25 +27,32 @@ def _transport_category(error):
 
 
 
-# GitHub can report a transient 404 for a newly finalized artifact. Only this
-# proven, read-only metadata GET is retried; every bad identity/digest/archive,
-# authorization error, other HTTP status and publication operation still fails.
-_METADATA_404_DELAYS = (0.25, 0.75, 1.5, 3.0)
+# GitHub can briefly return 404 after a real artifact has been finalized.
+# Only the two observed read-only stages of this live smoke check retry exact
+# HTTP 404. Each stage has five attempts and at most 5.5 seconds of delays.
+# The shared receipt transport and all identity/digest/ZIP/approval checks,
+# non-404 errors and publication operations remain unchanged and fail closed.
+_READBACK_404_DELAYS = (0.25, 0.75, 1.5, 3.0)
 
 
-def _read_metadata(transport, artifact_id, sleep=None):
+def _read_finalized_artifact(operation, stage, sleep=None):
     sleep = time.sleep if sleep is None else sleep
-    path = f"repos/{transport.repository}/actions/artifacts/{artifact_id}"
-    for delay in (0,) + _METADATA_404_DELAYS:
+    delays = (0,) + _READBACK_404_DELAYS
+    for index, delay in enumerate(delays):
         if delay:
             sleep(delay)
         try:
-            return transport(path)
+            return operation()
         except TransportError as error:
             category = _transport_category(error)
-            if category == "http-404" and delay != _METADATA_404_DELAYS[-1]:
+            if category == "http-404" and index < len(delays) - 1:
                 continue
-            raise ReadbackError("metadata/" + category) from None
+            raise ReadbackError(stage + "/" + category) from None
+
+
+def _read_metadata(transport, artifact_id, sleep=None):
+    path = f"repos/{transport.repository}/actions/artifacts/{artifact_id}"
+    return _read_finalized_artifact(lambda: transport(path), "metadata", sleep)
 
 
 def check_artifact(transport, artifact_id, run_id, attempt):
@@ -54,10 +61,10 @@ def check_artifact(transport, artifact_id, run_id, attempt):
             or (metadata.get("workflow_run") or {}).get("id") != run_id
             or metadata.get("name") != f"cross-domain-{run_id}-{attempt}"):
         raise ValueError("live conformance artifact identity or expiry invalid")
-    try:
-        raw = transport.download(transport.repository, artifact_id)
-    except TransportError as error:
-        raise ReadbackError("archive/" + _transport_category(error)) from None
+    # Each attempt starts at the verified artifact's API endpoint; the
+    # transport validates a fresh storage redirect without forwarding credentials.
+    raw = _read_finalized_artifact(
+        lambda: transport.download(transport.repository, artifact_id), "archive")
     expected = "sha256:" + hashlib.sha256(raw).hexdigest()
     if metadata.get("digest") != expected:
         raise ValueError("live conformance artifact digest mismatch")
