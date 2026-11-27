@@ -1,7 +1,8 @@
 # AGENTS.md — {{NAME}}
 
-<!-- KavoshStart {{KAVOSHSTART}} template. Keep ≤ 150 lines. Stable facts only: no SHAs, no "current issue #n",
-     no dates. Live state lives in GitHub. Add a line here whenever an agent repeats a mistake. -->
+<!-- KavoshStart {{KAVOSHSTART}} template. Follow AI-1's readability guidance; hard size caps apply only to the selected team process.
+     Stable facts only: no live SHAs, current issue numbers or live dates. Live state lives in GitHub.
+     Correct the closest relevant guidance for a material recurring mistake; do not grow a duplicate instruction set. -->
 
 ## Project
 {{SUMMARY}}
@@ -29,7 +30,7 @@ make check    # lint + test + build — run before review; rerun relevant checks
 
 ## Where to find work
 - Start with KavoshStart `START.md §0`: verify repo/scope and the exact pinned contract. Routine WORK uses that pin without a latest-release query. Look up newer releases only for NEW/ADOPT/UPGRADE, an expressly requested audit or an actual relevant security/compatibility concern; never block unrelated work for a tag.
-- Use the real assigned Issue or PR when present. Owner-operated work does **not** require manufacturing an Issue, Spec, milestone or template section for a bounded change.
+- Keep a session focused on one coherent authorized outcome (AI-2); use the real assigned Issue or PR when present. Owner-operated work does **not** require manufacturing an Issue, Spec, milestone or template section for a bounded change.
 - Work priority and open items live in GitHub, not a status file. Use Projects only if this repository actually uses one.
 - Decisions live in existing Issue/PR/PROJECT or `docs/decisions/` when a substantive architecture decision warrants it; do not start a second tracker.
 
@@ -71,7 +72,7 @@ TODO(kavosh): if `ui.kind` is not `none`, use the selected exact Design System {
 - [ ] Unfinished necessary work reported clearly; open a new Issue only when independent tracking has real value
 
 ## Boundaries
-**Always:** stay in the authorized task scope · follow the actual project contracts · report real tests and limits. Agent attribution may be added when appropriate; a formal attribution fields are enforced only with `review.teamProcess=true`; fake attribution and explicitly understated sensitive-path risk are never acceptable.
+**Always:** stay in the authorized task scope · follow the actual project contracts · report real tests and limits. Agent attribution may be added when appropriate; formal attribution fields are enforced only with `review.teamProcess=true`; fake attribution and explicitly understated sensitive-path risk are never acceptable.
 **Ask first:** actual destructive/persistent data migrations · spending or privileged/Production deployment · access to real secrets · material auth/permission/release trust changes. Routine local/test edits, deleting generated temporary files, and non-privileged maintenance are not automatically new approval requests.
 **Never:** push to `main` · `--admin`/protection bypass · force-push shared branches · `--no-verify` · commit, log or disclose secrets ·
 disable or skip tests to go green · handle SETAD/Moadian/bank credentials, OTPs, CAPTCHAs, cookies or signing keys ·

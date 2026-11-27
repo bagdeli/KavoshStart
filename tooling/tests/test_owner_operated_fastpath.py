@@ -95,6 +95,23 @@ class OwnerOperatedFastPath(unittest.TestCase):
         self.assertIn("continue unrelated authorized development", work)
         self.assertNotIn("`gh issue view <n>`", work)
         self.assertNotIn("Open a **draft PR early**", work)
+        # The same contract must not be contradicted by an agent bridge or selected Spec.
+        for path, obsolete in (
+            ("templates/common/CLAUDE.md", "One session = one issue"),
+            ("templates/tier/T1/specs/README.md", "One folder per feature"),
+            ("templates/tier/T1/specs/README.md", "≤ 400 lines"),
+            (".github/pull_request_template.md", "Remaining (as new issues)"),
+            ("templates/common/AGENTS.md", "Add a line here whenever an agent repeats a mistake"),
+            ("README.md", "اصلاحات فرایندیِ پیشنهادی هنوز به نسخهٔ منتشرشده تبدیل نشده‌اند"),
+            ("templates/tier/T1/docs/runbooks/local-validation.md", "report `SKIP`"),
+        ):
+            with self.subTest(path=path, obsolete=obsolete):
+                self.assertNotIn(obsolete, (ROOT / path).read_text(encoding="utf-8"))
+        rules = (ROOT / "standard/RULES.md").read_text(encoding="utf-8")
+        ai2 = next(line for line in rules.splitlines() if line.startswith("| AI-2 |"))
+        self.assertIn("Issue مصنوعی", ai2)
+        self.assertIn("| SHOULD | All | R |", ai2)
+        self.assertIn("NOT_RUN", (ROOT / "templates/tier/T1/docs/runbooks/local-validation.md").read_text(encoding="utf-8"))
 
     def test_empty_ready_pr_is_not_a_fastpath(self):
         for body in ("", "<!-- placeholder -->", "## Change\n## Verification"):

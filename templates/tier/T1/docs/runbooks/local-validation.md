@@ -3,7 +3,7 @@
 Use this only when the manifest has `tier: "T1"`, `runtime: "static"`, `ci.runner: "none"`, and
 `ci.monthlyMinutesBudget: 0`. KavoshStart scaffolding omits every GitHub Actions workflow for this profile.
 
-Before each PR, run:
+Before each PR, run the project's actual semantic setup/check contract (CI-8). The default Make adapter is:
 
 ```bash
 make setup
@@ -16,6 +16,6 @@ validation record blocks merge. The profile has no CI status check to bypass; pu
 remain active. If GitHub reports an actual required check as failing, fix it instead of bypassing it.
 
 For a browser-driven smoke test, use headless Chromium or Chrome already installed on the machine. If no supported
-browser is installed, report `SKIP` and say which browser was absent. Store each test file's output separately under
+browser is installed, report `NOT_RUN` with the missing browser and the effect on the required outcome. Use `N/A` only when browser validation is genuinely inapplicable; an unexecuted necessary test cannot pass. Store each test file's output separately under
 `artifacts/smoke/<test-name>/`. On Windows, place the app and browser in a Job Object and close the whole process
 tree in a `finally` cleanup path. Offline validation must not download browsers or dependencies.
