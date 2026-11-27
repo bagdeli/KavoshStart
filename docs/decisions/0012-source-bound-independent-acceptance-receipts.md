@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed; human acceptance and operational rollout are separate from passing tests.
+The source-bound verifier and attested contract were implemented and published in [v3.0.0](https://github.com/bagdeli/KavoshStart/releases/tag/v3.0.0). ADR-0014 later added the risk-based option; the current owner-operated default does not require continuous acceptance. This historical ADR describes the attested boundary, not a claim that any producer, human acceptance or operational rollout has been approved.
 
 ## Context
 
@@ -54,9 +54,8 @@ remain part of the trust boundary; bypassing them can replace the policy.
 
 ## Compatibility and migration
 
-This is a breaking continuous-acceptance contract and must not ship as a silent
-patch upgrade. Publish only through the normal reviewed major-version release
-path. Existing pinned consumers remain on their exact version until a dedicated
+This was a breaking continuous-acceptance contract, published through a major
+release rather than a silent patch upgrade. Existing pinned consumers remain on their exact version until a dedicated
 upgrade supplies genuine scope assertions, reviewed producer policy, receipts
 and independently authenticated decisions. Non-continuous profiles do not gain
 an implicit acceptance requirement. Do not promote historical work automatically.
@@ -64,7 +63,7 @@ an implicit acceptance requirement. Do not promote historical work automatically
 The producer protocol and migration fields are specified in
 `templates/tier/T2/acceptance/README.md`. Policy is versioned intent, not a second
 live acceptance tracker. No paid service, new App installation, consumer upgrade,
-Release, deployment or product acceptance is authorized by this ADR proposal.
+release, deployment or product acceptance is authorized by this historical ADR.
 
 ## Verification boundary
 

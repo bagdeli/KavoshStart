@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed breaking control-plane release, not part of published KavoshStart v3.0.2.
+The breaking risk-based control-plane contract was implemented and published in [v4.0.0](https://github.com/bagdeli/KavoshStart/releases/tag/v4.0.0). This remains an explicitly selected continuous-acceptance assurance option, not a requirement for an owner-operated project. Consumer adoption and actual acceptance are separate.
 
 ## Context
 
@@ -22,4 +22,4 @@ Native proof demonstrates successful required engineering CI, **not** domain UAT
 
 ## Compatibility and verification
 
-This changes governance/release proof semantics and must be published only as a reviewed breaking major release with explicit consumer migration. There is no implicit relaxation for pinned v3 projects. Offline regression fixtures prove positive CI-only native acceptance without a publisher, and negative failed/stale/mismatched proof, false specialist claims, high-risk and deferred proof, while legacy attested fixtures stay green. Health and Release share the same evaluator; no additional tracking app or service is introduced.
+This changed governance/release proof semantics in a major release; consumer migration remains explicitly selected. There is no implicit relaxation for pinned v3 projects. Offline regression fixtures prove positive CI-only native acceptance without a publisher, and negative failed/stale/mismatched proof, false specialist claims, high-risk and deferred proof, while legacy attested fixtures stay green. Health and Release share the same evaluator; no additional tracking app or service is introduced.

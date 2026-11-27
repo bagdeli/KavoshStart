@@ -31,8 +31,8 @@ KavoshStart فقط استانداردهای مستقل از محصول و نمو
 2 Classify   → Tier + Runtime + composable Capabilities طبق intake/CLASSIFICATION.md؛ مالک facts و capabilityهای غیرقابل‌استنتاج را تأیید می‌کند
 3 Manifest   → kavosh.project.json (ماشین‌خوان) + PROJECT.md (یک صفحه)
 4 Scaffold   → scripts/scaffold.py: فایل‌های مشترک + overlayهای Tier/Runtime؛ capabilityها applicability/evidence را در manifest اعلام می‌کنند
-5 Backlog    → Milestone و Issueها در GitHub (نه در فایل)
-6 Deliver    → هر Issue = یک تغییر coherent و reviewable؛ risk/evidence مستقل از اندازهٔ diff → ادغام فقط به main
+5 Backlog    → کارهای واقعی در Issue/PR؛ Milestone/Project فقط در صورت نیاز (نه tracker فایل)
+6 Deliver    → یک تغییر coherent و reviewable در مرجع موجود؛ risk/evidence مستقل از اندازهٔ diff → ادغام فقط به main
 7 Decide     → low/medium پس از gate کامل delegated merge؛ high/critical نیازمند تصمیم انسانی، نه کلیک مکانیکی Merge
 8 Maintain   → گزارش سلامت، انتشار gated، و ارتقای KavoshStart و بسته‌های انتخابی با PR
 ```
