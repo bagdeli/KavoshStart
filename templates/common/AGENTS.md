@@ -45,6 +45,7 @@ make check    # lint + test + build — run before review; rerun relevant checks
 - Avoid speculative wrappers, options, config and dependencies. Fix the root cause and affected consumers; do not trim trust validation, data-loss handling, accessibility or required checks to save lines.
 - For new/changed material requirements/tests cite purpose, contract owner/source/version, upstream guarantee and smallest missing product/integration behavior. Do not copy a mature dependency's internal tests; do verify real user journeys, permissions, money, RTL and data boundaries where affected.
 - Old criteria and tests can be kept/narrowed/merged/retired in their owning Issue/Spec/PR with evidence, risk and provenance. Update affected checks and acceptance scope together; do not hide a red required check or critical safety obligation.
+- Prefer fast deterministic checks and dependency-only caching (CI-9); use affected-test selection only with a trustworthy diff and complete relevant input scope, otherwise run full verification. Prior PASS is not current execution; reuse acceptance evidence only under its existing valid contract. Measure a real bottleneck before adding selection infrastructure; follow KavoshStart `standard/04-ci-runners-minutes.md`.
 - Keep focused regression evidence for changed non-trivial owned logic. At handoff state what was verified, what was not checked, and residual risk.
 - One business concept = one writer. No dual-write, no silent legacy fallback.
 - An API change, its UI consumer and their tests change in the same PR.
