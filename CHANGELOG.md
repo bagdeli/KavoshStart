@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.1.3](https://github.com/bagdeli/KavoshStart/compare/v9.1.2...v9.1.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **docs:** align agent guidance and optional planning with published rules ([#225](https://github.com/bagdeli/KavoshStart/issues/225)) ([a64f987](https://github.com/bagdeli/KavoshStart/commit/a64f987bb55571d4d0ff9fee079703f30b83683b))
+
 ## [9.1.2](https://github.com/bagdeli/KavoshStart/compare/v9.1.1...v9.1.2) (2026-11-27)
 
 
