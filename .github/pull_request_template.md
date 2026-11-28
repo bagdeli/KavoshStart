@@ -1,12 +1,11 @@
-Closes #
-
 ## What and why
-<!-- 1–3 sentences. The issue holds the context; do not repeat it. -->
+<!-- 1–3 sentences about the actual change and scope. Link an existing Issue when relevant; use Closes only for real completion. No artificial Issue needed. -->
 
-## Change risk
-Risk: <!-- low | medium | high | critical -->
-Capabilities: <!-- e.g. docs, public-api, ui, data, migration, security, deploy, release, governance -->
-Rationale: <!-- Why this level; line/file count is not a risk classifier. -->
+<!-- Record actual sensitive risk and its scoped owner decision whenever applicable. Formal risk metadata is required for the selected team process only; use real capability IDs and never understate risk.
+Risk: low|medium|high|critical
+Capabilities: affected capabilities
+Rationale: why this level; line/file count is not a risk classifier.
+-->
 
 ## How verified
 <!-- Semantic check and affected tests, generated-change review, relevant rendered evidence only. For new/retired material requirements/tests cite the authoritative source/version/owner and unique integration risk or upstream-equivalent proof in the same Issue/Spec/PR. No extra receipt per inherited row. -->
@@ -18,20 +17,19 @@ not-applicable: <specific reason>
 
 ## Session handoff
 - **Done:**
-- **Remaining (as new issues):**
+- **Remaining (same work record; new Issue only for independent, unowned work):**
 - **Decisions (ADR if architectural):**
 
+<!-- Formal team-process AI section when selected; otherwise genuine attribution may be recorded without this form. Never claim a human review that did not happen or leave a placeholder trailer in the submitted PR.
 ## AI involvement
-<!-- Agent and model, or "none". If an agent wrote code keep the trailer line below: it becomes part of the squash commit. -->
-- Agent / model:
-- Human reviewed the full diff: [ ]
+- Agent / model: actual agent and model, or none
+Co-Authored-By: Name <real@example.invalid> (only for genuine agent work)
+-->
 
-Co-Authored-By: <Agent> <noreply@example.com>
-
-## Checklist
-- [ ] Change risk and affected capabilities are declared
+## Checklist (applicable items only)
+- [ ] Actual risk and necessary owner decisions are recorded; formal fields only where applicable
 - [ ] Change is coherent/reviewable; any generated or broad mechanical diff documents its generator and verification
 - [ ] Searched for existing ownership before new code; material test/requirement changes have a scoped rationale when applicable
-- [ ] API + UI consumer + tests changed together (if an API changed)
+- [ ] Affected callers and tests are consistent (if a contract changed)
 - [ ] Third-party changes reviewed for risk, licence/NOTICE and distribution/network obligations (TP-1/TP-2; N/A with reason if none)
 - [ ] Docs / ADR / runbook updated (if behaviour changed)

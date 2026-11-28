@@ -12,9 +12,9 @@ Using KavoshStart for another project? Read `START.md`, not this file.
 START.md                 agent protocol for product projects (NEW / ADOPT / UPGRADE / WORK)
 intake/                  questionnaire, classification, manifest schema + example
 standard/RULES.md        canonical rule list — every rule has ID, level, tiers and enforcement layer
-standard/0*.md           explanations (Persian)
+standard/                rule explanations and registry (Persian explanations)
 templates/common|tier|runtime   files copied into product repos by scripts/scaffold.py
-templates/labels.json, rulesets/ settings applied by scripts/bootstrap-repo.sh (not copied)
+templates/labels.json, templates/rulesets/   settings applied by scripts/bootstrap-repo.sh (not copied)
 scripts/portfolio_guard.py Layer O (explicit audit via .github/workflows/kavosh-portfolio.yml; reuses layer P checks)
 tooling/src/*.py         source of the reusable workflows' logic
 tooling/templates/*.yml  workflow skeletons; tooling/build_workflows.py writes .github/workflows/kavosh-*.yml

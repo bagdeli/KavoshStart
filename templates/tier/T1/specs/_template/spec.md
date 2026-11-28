@@ -1,6 +1,6 @@
 # Spec: <feature>
 
-- Issue: #<n> · Status: draft | approved
+- Work reference: <existing Issue/PR or authorized task> · Status: draft | approved
 
 ## Problem
 <Who has which problem? Why now?>
